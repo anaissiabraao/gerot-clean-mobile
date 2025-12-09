@@ -9,6 +9,9 @@ import Tasks from "./pages/Tasks";
 import Team from "./pages/Team";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
+import Login from "./pages/Login";
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminEnvironments from "./pages/AdminEnvironments";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -20,6 +23,10 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          {/* Auth Route */}
+          <Route path="/login" element={<Login />} />
+          
+          {/* App Routes with Layout */}
           <Route element={<AppLayout />}>
             <Route path="/" element={<Index />} />
             <Route path="/tasks" element={<Tasks />} />
@@ -29,7 +36,12 @@ const App = () => (
             <Route path="/calendar" element={<Index />} />
             <Route path="/sectors" element={<Index />} />
             <Route path="/documents" element={<Index />} />
+            
+            {/* Admin Routes */}
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/environments" element={<AdminEnvironments />} />
           </Route>
+          
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

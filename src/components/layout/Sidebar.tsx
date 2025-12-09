@@ -1,4 +1,4 @@
-import { Home, ListTodo, BarChart3, Users, Settings, ChevronLeft, Building2, CalendarDays, FileText } from "lucide-react";
+import { Home, ListTodo, BarChart3, Users, Settings, ChevronLeft, Building2, CalendarDays, FileText, Shield, Box } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,11 @@ const secondaryNavItems = [
   { icon: Building2, label: "Setores", href: "/sectors" },
   { icon: FileText, label: "Documentos", href: "/documents" },
   { icon: Settings, label: "Configurações", href: "/settings" },
+];
+
+const adminNavItems = [
+  { icon: Shield, label: "Painel Admin", href: "/admin" },
+  { icon: Box, label: "Ambientes 3D", href: "/admin/environments" },
 ];
 
 interface SidebarProps {
@@ -89,6 +94,27 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 Gestão
               </p>
               {secondaryNavItems.map((item) => (
+                <NavLink
+                  key={item.href}
+                  to={item.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/80 transition-colors",
+                    "hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  )}
+                  activeClassName="bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground"
+                  onClick={onClose}
+                >
+                  <item.icon className="h-5 w-5" />
+                  {item.label}
+                </NavLink>
+              ))}
+            </div>
+
+            <div className="mt-6 space-y-1">
+              <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/50">
+                Administração
+              </p>
+              {adminNavItems.map((item) => (
                 <NavLink
                   key={item.href}
                   to={item.href}
