@@ -70,11 +70,11 @@ class ApiClient {
         return true;
       }
 
-      // Se refresh falhou, fazer logout
-      this.logout();
+      // Se refresh falhou, limpar sessão local sem redirecionar imediato
+      this.clearSession(false);
       return false;
     } catch (error) {
-      this.logout();
+      this.clearSession(false);
       return false;
     }
   }
@@ -92,12 +92,14 @@ class ApiClient {
   /**
    * Remove tokens
    */
-  logout() {
+  clearSession(redirectToLogin = true) {
     this.token = null;
     this.refreshToken = null;
     localStorage.removeItem('auth_token');
     localStorage.removeItem('refresh_token');
-    window.location.href = '/login';
+    if (redirectToLogin) {
+      window.location.href = '/login';
+    }
   }
 
   // ============================================
@@ -145,7 +147,7 @@ class ApiClient {
         console.error('Erro ao fazer logout:', error);
       }
     }
-    this.logout();
+    this.clearSession();
   }
 
   // ============================================

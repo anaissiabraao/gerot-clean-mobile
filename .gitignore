@@ -39,3 +39,15 @@ build/
 
 # Railway
 .railway/
+
+# Runtime / temp (gerados em execução)
+*.pid
+*.dump
+rag_tunnel_url*.txt
+rag_uvicorn.pid
+cloudflared.pid
+tunnel_watcher.pid
+
+# Python bytecode/cache
+__pycache__/
+*.pyc

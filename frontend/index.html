@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GeRot Frontend</title>
+    <link rel="stylesheet" href="./assets/styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header class="card">
+        <h1>GeRot Frontend</h1>
+        <p>Cliente estático separado do backend Node/Express.</p>
+      </header>
+
+      <section class="card">
+        <h2>Configuração de API</h2>
+        <label for="apiBaseUrl">API Base URL</label>
+        <input id="apiBaseUrl" type="url" placeholder="https://backend.up.railway.app/api" />
+        <div class="actions">
+          <button id="saveApiUrl" type="button">Salvar URL</button>
+          <button id="checkHealth" type="button">Checar /health</button>
+        </div>
+        <pre id="healthResult" class="result"></pre>
+      </section>
+
+      <section class="card">
+        <h2>Autenticação</h2>
+        <label for="email">Email</label>
+        <input id="email" type="email" placeholder="admin@vcitransportes.com.br" />
+        <label for="password">Senha</label>
+        <input id="password" type="password" placeholder="••••••••" />
+        <div class="actions">
+          <button id="loginBtn" type="button">Login</button>
+          <button id="profileBtn" type="button">Perfil</button>
+          <button id="logoutBtn" type="button" class="secondary">Logout</button>
+        </div>
+        <pre id="authResult" class="result"></pre>
+      </section>
+    </main>
+
+    <script src="./assets/config.js"></script>
+    <script src="./assets/app.js"></script>
+  </body>
+</html>

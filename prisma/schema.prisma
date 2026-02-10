@@ -3,11 +3,6 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// Seed configuration
-seed {
-  provider = "node --experimental-modules src/prisma/seed.js"
-}
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -204,6 +199,7 @@ enum MdfeStatus {
 model Boleto {
   id              String        @id @default(uuid())
   cteId           String        @map("cte_id")
+  cte             Cte           @relation(fields: [cteId], references: [id])
   nossoNumero     String        @unique @map("nosso_numero")
   linhaDigitavel  String        @map("linha_digitavel")
   codigoBarras     String        @map("codigo_barras")

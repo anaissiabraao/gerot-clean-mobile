@@ -187,25 +187,40 @@ Os boletos são enviados automaticamente após a autorização do CT-e, se o cli
 
 ### 1. Preparação
 
-O projeto já está configurado para Railway. Certifique-se de:
+A arquitetura recomendada em produção é:
 
-- Ter todas as variáveis de ambiente configuradas no Railway
-- Ter o PostgreSQL provisionado no Railway
+- **Serviço 1 (Backend API)**: Node.js + Express (raiz do repositório)
+- **Serviço 2 (Frontend)**: estático em `frontend/`
+- **Serviço 3 (Banco)**: PostgreSQL gerenciado do Railway
+
+Certifique-se de:
+
+- Provisionar o PostgreSQL no mesmo projeto Railway e conectar ao backend
+- Configurar as variáveis de ambiente do backend no painel Railway
+- Definir CORS para o domínio do frontend (`CORS_ORIGIN`)
 - Ter o certificado digital disponível (via variável de ambiente ou upload)
 
 ### 2. Deploy
 
-1. Conecte seu repositório ao Railway
-2. Configure as variáveis de ambiente no painel do Railway
-3. O Railway executará automaticamente:
+1. Conecte seu repositório ao Railway.
+2. Crie o serviço **backend** (root do repositório):
    - `npm install`
    - `npm run build` (gera Prisma Client)
-   - `npm run migrate:deploy` (executa migrations)
-   - `npm start` (inicia servidor)
+   - `npm run start:railway` (tenta `migrate deploy`, fallback para `db push`, e sobe API)
+3. Crie o serviço **frontend** com `Root Directory = frontend`:
+   - `npm install && npm run build`
+   - `npm start`
+4. Publique e valide:
+   - Backend em `https://<backend>.up.railway.app/health`
+   - Frontend apontando para `https://<backend>.up.railway.app/api`
 
 ### 3. Variáveis de Ambiente no Railway
 
-Configure todas as variáveis do `.env.example` no painel do Railway.
+Configure todas as variáveis do `.env.example` no backend e garanta:
+
+- `DATABASE_URL` recebendo a URL do PostgreSQL Railway
+- `JWT_SECRET` e `JWT_REFRESH_SECRET` fortes
+- `CORS_ORIGIN` com o domínio do frontend (ou lista separada por vírgula)
 
 **Importante**: Para o certificado digital, você pode:
 - Fazer upload via Railway CLI

@@ -18,10 +18,35 @@ dotenv.config();
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
+const isProduction = process.env.NODE_ENV === 'production';
+
+if (isProduction) {
+  const requiredEnvs = ['DATABASE_URL', 'JWT_SECRET', 'JWT_REFRESH_SECRET'];
+  const missingEnvs = requiredEnvs.filter((key) => !process.env[key]);
+  if (missingEnvs.length > 0) {
+    throw new Error(`Variáveis obrigatórias ausentes em produção: ${missingEnvs.join(', ')}`);
+  }
+}
+
+function parseCorsOrigins() {
+  const raw = process.env.CORS_ORIGIN || process.env.FRONTEND_URL || 'http://localhost:5173';
+  return raw
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+}
+
+const allowedOrigins = parseCorsOrigins();
+console.log('🌐 CORS_ORIGIN configurado para:', allowedOrigins.join(', '));
 
 // Middlewares
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: (origin, callback) => {
+    // Permite chamadas server-to-server e ferramentas sem Origin header.
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error(`CORS bloqueado para origem: ${origin}`));
+  },
   credentials: true
 }));
 app.use(express.json());
@@ -42,6 +67,15 @@ app.get('/health', async (req, res) => {
       database: 'disconnected',
       error: error.message 
     });
+  }
+});
+
+app.get('/ready', async (req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.status(200).json({ ready: true, timestamp: new Date().toISOString() });
+  } catch (error) {
+    res.status(503).json({ ready: false, error: error.message });
   }
 });
 
