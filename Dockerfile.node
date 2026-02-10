@@ -1,0 +1,19 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Dependências do sistema úteis para runtime e Prisma.
+RUN apk add --no-cache openssl libc6-compat
+
+COPY package*.json ./
+RUN npm install
+
+COPY prisma ./prisma
+RUN npx prisma generate
+
+COPY src ./src
+
+ENV NODE_ENV=production
+EXPOSE 3000
+
+CMD ["npm", "run", "start:railway"]

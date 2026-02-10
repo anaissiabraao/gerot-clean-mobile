@@ -7,7 +7,7 @@
    - Guarde as credenciais/variáveis geradas (principalmente `DATABASE_URL`).
 2. **Backend Node/Express**
    - Use a raiz do repositório.
-   - Build: `npm run build`
+   - Build via `railway.json` usando `Dockerfile.node`
    - Start: `npm run start:railway`
 3. **Frontend estático**
    - Use `Root Directory = frontend`.
@@ -53,3 +53,8 @@ Os componentes Python/Flask/RAG do repositório permanecem para compatibilidade 
 - `rag_service/`
 - `Dockerfile.rag`
 - `railway-rag.json`
+
+Para evitar conflito no Railway:
+
+- serviço backend Node deve usar `railway.json` + `Dockerfile.node`
+- serviço Python/RAG (se existir) deve usar configuração separada (`railway-rag.json`/`Dockerfile.rag`)
