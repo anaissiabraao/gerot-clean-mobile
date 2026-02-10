@@ -114,10 +114,16 @@
                         <!-- Seleção de Sala -->
                         <div class="space-y-2">
                             <label class="text-sm font-medium text-foreground">Selecione a Sala</label>
-                            <div id="room-selector" class="grid grid-cols-2 gap-3">
-                                <!-- Salas serão carregadas dinamicamente via JavaScript (sem hardcode) -->
-                                <div class="col-span-2 text-center text-muted-foreground py-4">
-                                    <i class="fas fa-spinner fa-spin mr-2"></i>Carregando salas...
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="room-option cursor-pointer rounded-lg border-2 border-transparent bg-muted/30 p-4 text-center transition-all hover:border-primary/50 hover:bg-muted/50" data-room="reunion_1" data-capacity="10">
+                                    <i class="fas fa-users mb-2 text-2xl text-primary"></i>
+                                    <div class="font-medium">Reunião 1</div>
+                                    <small class="text-muted-foreground">10 pessoas</small>
+                                </div>
+                                <div class="room-option cursor-pointer rounded-lg border-2 border-transparent bg-muted/30 p-4 text-center transition-all hover:border-primary/50 hover:bg-muted/50" data-room="reunion_2" data-capacity="10">
+                                    <i class="fas fa-users mb-2 text-2xl text-primary"></i>
+                                    <div class="font-medium">Reunião 2</div>
+                                    <small class="text-muted-foreground">10 pessoas</small>
                                 </div>
                             </div>
                             <input type="hidden" id="room" name="room" required>
@@ -289,46 +295,8 @@
     let selectedRoom = null;
     let currentWeekOffset = 0;
     let bookings = [];
-    let rooms = [];
-    let roomNames = {};
     const currentUserId = {{ session.user_id }};
     const currentUserRole = '{{ session.role }}';
-    
-    // Load rooms from API (removed hardcoded data)
-    async function loadRooms() {
-        try {
-            // Tentar carregar do endpoint de salas
-            const response = await fetch('/api/rooms');
-            if (response.ok) {
-                const data = await response.json();
-                rooms = data.rooms || [];
-                roomNames = {};
-                rooms.forEach(room => {
-                    roomNames[room.id] = room.name || room.nome;
-                });
-            } else {
-                // Fallback: buscar salas únicas dos agendamentos existentes
-                const bookingsResponse = await fetch('/api/room-bookings');
-                if (bookingsResponse.ok) {
-                    const allBookings = await bookingsResponse.json();
-                    const uniqueRooms = [...new Set(allBookings.map(b => b.room))];
-                    rooms = uniqueRooms;
-                    roomNames = {};
-                    uniqueRooms.forEach(roomId => {
-                        roomNames[roomId] = roomId.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-                    });
-                } else {
-                    // Último fallback vazio
-                    rooms = [];
-                    roomNames = {};
-                }
-            }
-        } catch (error) {
-            console.error('Erro ao carregar salas:', error);
-            rooms = [];
-            roomNames = {};
-        }
-    }
     
     // Room selection
     document.querySelectorAll('.room-option').forEach(room => {
@@ -392,66 +360,12 @@
         try {
             const response = await fetch('/api/room-bookings');
             bookings = await response.json();
-            // Se ainda não carregou salas, carregar agora
-            if (rooms.length === 0) {
-                await loadRooms();
-            }
             updateTimeline();
             updateStats();
         } catch (error) {
             console.error('Erro ao carregar agendamentos:', error);
         }
     }
-    
-    // Render room selector dynamically (no hardcoded HTML)
-    function renderRoomSelector() {
-        const selector = document.getElementById('room-selector');
-        if (!selector) return;
-        
-        if (rooms.length === 0) {
-            selector.innerHTML = '<div class="col-span-2 text-center text-muted-foreground py-4"><i class="fas fa-spinner fa-spin mr-2"></i>Carregando salas...</div>';
-            return;
-        }
-        
-        let html = '';
-        rooms.forEach(room => {
-            const roomId = typeof room === 'string' ? room : room.id;
-            const roomName = roomNames[roomId] || roomId;
-            const capacity = typeof room === 'object' ? room.capacity : 10;
-            
-            html += `
-                <div class="room-option cursor-pointer rounded-lg border-2 border-transparent bg-muted/30 p-4 text-center transition-all hover:border-primary/50 hover:bg-muted/50" 
-                     data-room="${roomId}" 
-                     data-capacity="${capacity}">
-                    <i class="fas fa-users mb-2 text-2xl text-primary"></i>
-                    <div class="font-medium">${roomName}</div>
-                    <small class="text-muted-foreground">${capacity} pessoas</small>
-                </div>
-            `;
-        });
-        
-        selector.innerHTML = html;
-        
-        // Re-attach event listeners
-        document.querySelectorAll('.room-option').forEach(room => {
-            room.addEventListener('click', function() {
-                document.querySelectorAll('.room-option').forEach(r => r.classList.remove('selected'));
-                this.classList.add('selected');
-                selectedRoom = this.dataset.room;
-                document.getElementById('room').value = selectedRoom;
-                
-                const capacity = parseInt(this.dataset.capacity);
-                document.getElementById('participants').max = capacity;
-            });
-        });
-    }
-    
-    // Initialize: load rooms first, then bookings
-    (async function init() {
-        await loadRooms();
-        renderRoomSelector();
-        await loadBookings();
-    })();
     
     // Update timeline view
     function updateTimeline() {
@@ -482,16 +396,16 @@
         }
         html += '</div>';
         
-        // Room columns (loaded from API, no hardcoded data)
-        if (rooms.length === 0) {
-            timeline.innerHTML = '<div class="text-center p-8 text-muted-foreground">Carregando salas...</div>';
-            return;
-        }
+        // Room columns
+        const rooms = ['reunion_1', 'reunion_2'];
+        const roomNames = {
+            'reunion_1': 'Reunião 1',
+            'reunion_2': 'Reunião 2'
+        };
         
         rooms.forEach(room => {
-            const roomId = typeof room === 'string' ? room : room.id;
             html += `<div class="room-column">`;
-            html += `<div class="sticky top-0 z-20 rounded-t-lg bg-primary px-3 py-2 text-center text-sm font-semibold text-white shadow-sm">${roomNames[roomId] || roomId}</div>`;
+            html += `<div class="sticky top-0 z-20 rounded-t-lg bg-primary px-3 py-2 text-center text-sm font-semibold text-white shadow-sm">${roomNames[room]}</div>`;
             
             // Grid lines background
             html += '<div class="absolute inset-0 top-10 flex flex-col pointer-events-none">';
@@ -501,7 +415,7 @@
             html += '</div>';
             
             // Add bookings for this room
-            const roomBookings = weekBookings.filter(b => b.room === roomId);
+            const roomBookings = weekBookings.filter(b => b.room === room);
             roomBookings.forEach(booking => {
                 const startTime = booking.start_time.split(':');
                 const endTime = booking.end_time.split(':');
@@ -576,8 +490,8 @@
             `;
         }
         
-        // Room display from API data (no hardcode)
-        const roomDisplay = roomNames[booking.room] || booking.room;
+        const roomDisplay = booking.room === 'reunion_1' ? 'Reunião 1' : 
+                          booking.room === 'reunion_2' ? 'Reunião 2' : booking.room;
 
         modalBody.innerHTML = `
             <div class="space-y-3 text-sm">

@@ -2,6 +2,7 @@
 module.exports = {
   content: [
     "./templates/**/*.html",
+    "./GeRot/**/*.html",
     "./static/js/**/*.js",
     "./app_production.py"
   ],

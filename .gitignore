@@ -1,53 +1,77 @@
-# Dependencies
-node_modules/
-package-lock.json
+# Bytecode / cache
+__pycache__/
+*.py[cod]
 
-# Environment variables
-.env
-.env.local
-.env.production
+# Virtual environments
+.venv/
+venv/
+env/
 
-# Prisma
-prisma/migrations/
+# IDE / tooling
+.idea/
+.vscode/
 
-# Logs
-logs/
+# Logs / temp
 *.log
-npm-debug.log*
+logs/
+rag_uvicorn.log
+cloudflared_tunnel.log
+rag_tunnel_url.txt
+rag_tunnel_url_last_seen.txt
+*.pid
 
-# Certificados
-certs/*.pfx
-certs/*.p12
-certs/*.cer
-certs/*.key
-*.pfx
-*.p12
+# Local configs / secrets
+.env
+agent_local/.env
+agent_local/*.log
 
 # OS
 .DS_Store
 Thumbs.db
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
+# Data / exports
+*.sqlite3
+*.db
+*.xlsx
+~$*.xlsx
 
-# Build
-dist/
-build/
+# Agent Local Data (Generated)
+agent_local/data/db_schema.json
+agent_local/data/knowledge_dump.json
+data/db_schema.json
 
-# Railway
-.railway/
+# Temporary Migration/Debug Scripts
+db/migrate_roles.py
+db/migrate_roles_v2.py
+db/debug_connection.py
+db/manual_update.sql
+apply_migration.py
 
-# Runtime / temp (gerados em execução)
-*.pid
-*.dump
-rag_tunnel_url*.txt
-rag_uvicorn.pid
-cloudflared.pid
-tunnel_watcher.pid
+# Render / deployment artifacts
+/terminals/
 
-# Python bytecode/cache
-__pycache__/
-*.pyc
+# React project folder (reference only)
+/update/
+
+
+# Arquivos 3D grandes (não fazer upload para GitHub)
+static/docs/*.glb
+static/docs/*.fbx
+docs/*.glb
+docs/*.fbx
+*.glb
+*.fbx
+
+# Outros arquivos grandes
+*.zip
+*.rar
+*.7z
+
+
+docling-main/tests/
+docling-main/docs/
+
+documents/incoming/
+
+rag_tunnel_url.txt
+scripts/_tmp_*.py

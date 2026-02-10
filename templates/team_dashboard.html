@@ -973,36 +973,17 @@
             return date.toLocaleDateString('pt-BR');
         }
         
-        // Room names loaded from API (no hardcode)
-        let roomNamesMap = {};
-        
-        async function loadRoomNames() {
-            try {
-                const response = await fetch('/api/rooms');
-                if (response.ok) {
-                    const data = await response.json();
-                    roomNamesMap = {};
-                    (data.rooms || []).forEach(room => {
-                        roomNamesMap[room.id] = room.name || room.nome;
-                    });
-                }
-            } catch (error) {
-                console.error('Erro ao carregar nomes de salas:', error);
-            }
-        }
-        
         function formatRoomName(room) {
-            // Use API data, fallback to formatted room ID
-            if (roomNamesMap[room]) {
-                return roomNamesMap[room];
-            }
-            // Fallback: format room ID nicely
-            return room.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-            return formatRoomName(room);
+            const roomNames = {
+                'reunion_1': 'Reunião 1',
+                'reunion_2': 'Reunião 2',
+                'treinamento': 'Treinamento',
+                'auditorio': 'Auditório',
+                'videoconf': 'Videoconferência',
+                'workshop': 'Workshop'
+            };
+            return roomNames[room] || room;
         }
-        
-        // Load room names on page load
-        loadRoomNames();
         
         function updateNotificationBadge() {
             const unreadCount = notifications.filter(n => !n.read).length;

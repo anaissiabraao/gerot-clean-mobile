@@ -21,11 +21,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Caminhos e integrações externas (docling via pip; DOCLING_PATH opcional para path local)
+# Caminhos e integrações externas
 BASE_DIR = Path(__file__).resolve().parent.parent
-DOCLING_PATH = os.getenv("DOCLING_PATH")
-if DOCLING_PATH and os.path.isdir(DOCLING_PATH) and DOCLING_PATH not in sys.path:
-    sys.path.append(DOCLING_PATH)
+DEFAULT_DOCLING_PATH = os.getenv("DOCLING_PATH", str(BASE_DIR / "docling-main"))
+if os.path.isdir(DEFAULT_DOCLING_PATH) and DEFAULT_DOCLING_PATH not in sys.path:
+    sys.path.append(DEFAULT_DOCLING_PATH)
 
 DOCLING_AVAILABLE = False
 try:

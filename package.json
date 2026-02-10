@@ -1,38 +1,5 @@
 {
-  "name": "gerot-tms",
-  "version": "1.0.0",
-  "description": "Sistema TMS para VCI TRANSPORTES - Backend Node.js + Express",
-  "main": "src/server.js",
-  "type": "module",
-  "scripts": {
-    "dev": "node --watch src/server.js",
-    "start": "node src/server.js",
-    "start:railway": "npm run migrate:deploy || npx prisma db push; npm start",
-    "build": "prisma generate",
-    "postinstall": "prisma generate",
-    "migrate": "prisma migrate dev",
-    "migrate:deploy": "prisma migrate deploy",
-    "prisma:studio": "prisma studio",
-    "seed": "node src/prisma/seed.js"
-  },
-  "keywords": ["tms", "cte", "mdfe", "sefaz", "transportes"],
-  "author": "VCI TRANSPORTES",
-  "license": "ISC",
-  "dependencies": {
-    "@prisma/client": "^5.19.1",
-    "express": "^4.21.1",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "bcrypt": "^5.1.1",
-    "jsonwebtoken": "^9.0.2",
-    "express-validator": "^7.2.0",
-    "axios": "^1.7.7",
-    "node-forge": "^1.3.1",
-    "nodemailer": "^6.9.15",
-    "uuid": "^10.0.0"
-  },
   "devDependencies": {
-    "prisma": "^5.19.1",
     "autoprefixer": "^10.4.23",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18"
