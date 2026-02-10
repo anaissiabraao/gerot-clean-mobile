@@ -21,13 +21,13 @@ window.openTab = function(tabName) {
             }
         });
         document.querySelectorAll('.tab-btn').forEach(function(btn) {
-            btn.classList.remove('border-primary', 'text-primary');
-            btn.classList.add('border-transparent', 'text-muted-foreground');
+            btn.classList.remove('active');
+            btn.removeAttribute('data-active');
         });
         var activeBtn = document.getElementById('tab-btn-' + tabName);
         if (activeBtn) {
-            activeBtn.classList.add('border-primary', 'text-primary');
-            activeBtn.classList.remove('border-transparent', 'text-muted-foreground');
+            activeBtn.classList.add('active');
+            activeBtn.setAttribute('data-active', 'true');
         }
         if (tabName === 'indicadores-executivos') {
             setTimeout(function() {
@@ -62,22 +62,23 @@ window.openTab = function(tabName) {
 {% endblock %}
 
 {% block header_prepend %}
-<div class="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
+<!-- Info Bar -->
+<div class="border-b bg-muted/30">
     <div class="container mx-auto px-4">
-        <div class="flex flex-wrap items-center justify-between gap-4 py-2 text-xs text-muted-foreground">
-            <div class="flex items-center gap-3">
-                <span id="relatorio-global-clock" class="inline-flex items-center rounded-full bg-muted px-3 py-1">
-                    <i class="far fa-clock mr-2"></i>--:--:--
+        <div class="flex flex-wrap items-center justify-between gap-3 py-2 text-xs text-muted-foreground">
+            <div class="flex items-center gap-2">
+                <span id="relatorio-global-clock" class="badge badge-muted">
+                    <i class="far fa-clock mr-1.5"></i>--:--:--
                 </span>
-                <span id="relatorio-global-status" class="inline-flex items-center rounded-full bg-muted px-3 py-1">
-                    <i id="relatorio-global-refresh-icon" class="fas fa-sync-alt mr-2"></i>
+                <span id="relatorio-global-status" class="badge badge-muted">
+                    <i id="relatorio-global-refresh-icon" class="fas fa-sync-alt mr-1.5"></i>
                     <span>Sem recarregar</span>
                 </span>
             </div>
             <div id="relatorio-ticker"
                  data-meta-valor="{{ relatorio_meta.meta_valor if relatorio_meta else 0 }}"
                  data-meta-percentual="{{ relatorio_meta.meta_percentual if relatorio_meta else 0 }}"
-                 class="relative hidden md:flex h-8 max-w-[640px] flex-1 overflow-hidden rounded-full border border-input bg-muted/40 px-3">
+                 class="relative hidden md:flex h-7 max-w-[600px] flex-1 overflow-hidden rounded-full border bg-muted/30 px-3">
                 <div id="relatorio-ticker-track" class="flex items-center gap-4 whitespace-nowrap text-[11px] text-muted-foreground">
                     <span>Sem dados carregados.</span>
                 </div>
@@ -93,79 +94,82 @@ window.openTab = function(tabName) {
     <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-            <div class="container mx-auto px-4 py-4">
+            <div class="fixed top-16 right-4 z-50 space-y-2" id="flash-container">
                 {% for category, message in messages %}
-                    <div class="mb-4 rounded-lg border px-4 py-3 {% if category == 'success' %}bg-green-50 border-green-200 text-green-800{% elif category == 'error' %}bg-red-50 border-red-200 text-red-800{% else %}bg-orange-50 border-orange-200 text-orange-800{% endif %}">
-                        {{ message }}
+                    <div class="animate-slide-in rounded-lg border px-4 py-3 shadow-lg backdrop-blur-sm {% if category == 'success' %}bg-green-50/95 border-green-200 text-green-800{% elif category == 'error' %}bg-red-50/95 border-red-200 text-red-800{% else %}bg-orange-50/95 border-orange-200 text-orange-800{% endif %}">
+                        <div class="flex items-center gap-2">
+                            <i class="fas {% if category == 'success' %}fa-check-circle text-green-500{% elif category == 'error' %}fa-exclamation-circle text-red-500{% else %}fa-info-circle text-orange-500{% endif %}"></i>
+                            <span class="text-sm">{{ message }}</span>
+                        </div>
                     </div>
                 {% endfor %}
             </div>
         {% endif %}
     {% endwith %}
 
-    <!-- Conteúdo Principal -->
-    <main class="container mx-auto px-4 py-8">
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-6 lg:py-8">
         <!-- Tabs Navigation -->
-        <div class="mb-6 border-b">
-            <nav class="flex flex-wrap items-center justify-between gap-4">
-                <div class="flex gap-4">
-                <button onclick="openTab('dashboards')" id="tab-btn-dashboards" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-primary text-primary transition-colors">
-                    <i class="fas fa-chart-bar mr-2"></i>Dashboards
-                </button>
-                <button onclick="openTab('indicadores-executivos')" id="tab-btn-indicadores-executivos" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-muted-foreground hover:text-foreground transition-colors">
-                    <i class="fas fa-chart-line mr-2"></i>Indicadores Executivos
-                </button>
-                <button onclick="openTab('chat')" id="tab-btn-chat" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-muted-foreground hover:text-foreground transition-colors">
-                    <i class="fas fa-robot mr-2"></i>Chat IA
-                </button>
-                </div>
-                <div class="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span class="inline-flex items-center rounded-full bg-muted px-3 py-1">
-                        <i class="fas fa-layer-group mr-2"></i>{{ assets|length }} ativo(s)
-                    </span>
-                </div>
-            </nav>
+        <div class="mb-6">
+            <div class="flex items-center justify-between border-b">
+                <nav class="flex gap-1 overflow-x-auto no-scrollbar -mb-px">
+                    <button onclick="openTab('dashboards')" id="tab-btn-dashboards" class="tab-btn active" data-active="true">
+                        <i class="fas fa-chart-bar mr-1.5"></i>
+                        <span>Dashboards</span>
+                    </button>
+                    <button onclick="openTab('indicadores-executivos')" id="tab-btn-indicadores-executivos" class="tab-btn">
+                        <i class="fas fa-chart-line mr-1.5"></i>
+                        <span class="hidden sm:inline">Indicadores Executivos</span>
+                        <span class="sm:hidden">Indicadores</span>
+                    </button>
+                    <button onclick="openTab('chat')" id="tab-btn-chat" class="tab-btn">
+                        <i class="fas fa-robot mr-1.5"></i>
+                        <span>Chat IA</span>
+                    </button>
+                </nav>
+                <span class="hidden sm:inline badge badge-muted ml-3 mb-2">
+                    <i class="fas fa-layer-group mr-1.5"></i>{{ assets|length }} ativo(s)
+                </span>
+            </div>
         </div>
 
-        <!-- Tab: Dashboards -->
+        <!-- ═══════════════════════════════════════ -->
+        <!-- Tab: Dashboards                         -->
+        <!-- ═══════════════════════════════════════ -->
         <div id="tab-dashboards" class="tab-pane" data-tab-active="true" style="display: block;">
-        <!-- Título e Descrição -->
 
-
-        <!-- Grid de Dashboards -->
         {% if regular_assets %}
-            <div class="mb-6 flex items-center justify-between">
-                <h3 class="text-lg font-semibold text-foreground">Painéis e automações</h3>
-                <span class="text-xs text-muted-foreground">{{ regular_assets|length }} item(ns)</span>
+            <div class="mb-5 flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold text-foreground lg:text-xl">Painéis e automações</h2>
+                    <p class="text-sm text-muted-foreground mt-0.5">{{ regular_assets|length }} item(ns) disponíveis</p>
+                </div>
             </div>
-            <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+
+            <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 stagger-children">
                 {% for asset in regular_assets %}
                     {% set selected_types = asset.assignment_config.chart_types if asset.assignment_config and asset.assignment_config.chart_types else [] %}
                     {% set selected_components = asset.assignment_config.components if asset.assignment_config and asset.assignment_config.components else [] %}
-                    <div class="group relative overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover:shadow-lg hover:scale-[1.01]">
-                        <div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                        <div class="relative p-6">
-                            <div class="mb-4 flex items-center justify-between">
-                                <div class="flex items-center gap-2">
-                                    <span class="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                                        {{ asset.tipo }}
-                                    </span>
+                    <div class="card-interactive overflow-hidden group">
+                        <div class="p-5">
+                            <!-- Tags -->
+                            <div class="mb-3 flex items-center justify-between">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="badge badge-primary">{{ asset.tipo }}</span>
                                     {% if asset.categoria %}
-                                        <span class="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-                                            {{ asset.categoria }}
-                                        </span>
+                                        <span class="badge badge-muted">{{ asset.categoria }}</span>
                                     {% endif %}
                                 </div>
-                                <i class="fas fa-external-link-alt text-muted-foreground group-hover:text-primary transition-colors"></i>
+                                <i class="fas fa-arrow-right text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"></i>
                             </div>
-                            <h3 class="text-lg font-semibold text-foreground">
-                                {{ asset.nome }}
-                            </h3>
-                            <p class="text-sm text-muted-foreground">
-                                {{ asset.descricao or "Sem descrição disponível." }}
-                            </p>
+
+                            <!-- Title -->
+                            <h3 class="text-base font-semibold text-foreground leading-snug">{{ asset.nome }}</h3>
+                            <p class="mt-1 text-sm text-muted-foreground line-clamp-2">{{ asset.descricao or "Sem descrição disponível." }}</p>
+
+                            <!-- Component tags -->
                             {% if asset.tipo == 'interno' and selected_components %}
-                                <div class="mt-2 flex flex-wrap gap-2">
+                                <div class="mt-2.5 flex flex-wrap gap-1.5">
                                     {% for comp in selected_components %}
                                         {% set ns = namespace(label=comp) %}
                                         {% if asset.asset_config and asset.asset_config.available_components %}
@@ -175,31 +179,30 @@ window.openTab = function(tabName) {
                                                 {% endif %}
                                             {% endfor %}
                                         {% endif %}
-                                        <span class="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                                            {{ ns.label }}
-                                        </span>
+                                        <span class="badge badge-muted text-[11px]">{{ ns.label }}</span>
                                     {% endfor %}
                                 </div>
                             {% endif %}
-                            <div class="my-4 rounded-xl border bg-muted/20 overflow-hidden shadow-inner">
+
+                            <!-- Preview Area -->
+                            <div class="mt-4 rounded-lg border bg-muted/20 overflow-hidden">
                                 {% if asset.tipo == 'PBI' and asset.embed_url %}
                                     <div class="relative">
-                                        <div class="absolute inset-0 bg-gradient-to-b from-transparent to-background/60 pointer-events-none"></div>
+                                        <div class="absolute inset-0 bg-gradient-to-b from-transparent to-background/50 pointer-events-none z-10"></div>
                                         <iframe
                                             src="{{ asset.embed_url }}"
                                             title="Prévia de {{ asset.nome }}"
                                             loading="lazy"
-                                            class="h-48 w-full border-0 pointer-events-none"
+                                            class="h-40 w-full border-0 pointer-events-none"
                                             allowfullscreen
                                             referrerpolicy="no-referrer-when-downgrade">
                                         </iframe>
-                                        <div class="absolute bottom-2 right-2 rounded-full bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground shadow-md flex items-center gap-1">
-                                            <i class="fas fa-eye"></i>
-                                            Prévia
+                                        <div class="absolute bottom-2 right-2 z-20 badge badge-muted shadow-sm">
+                                            <i class="fas fa-eye mr-1"></i>Prévia
                                         </div>
                                     </div>
                                 {% elif asset.tipo == 'grafico' and asset.asset_config and asset.asset_config.chart %}
-                                    <div class="p-4">
+                                    <div class="p-3">
                                         <canvas id="chart-{{ asset.id }}" data-chart='{{ asset.asset_config.chart | tojson | safe }}'></canvas>
                                     </div>
                                 {% elif asset.tipo == 'interno' and asset.asset_config and asset.asset_config.embed_mode and selected_components and asset.resource_url %}
@@ -212,239 +215,240 @@ window.openTab = function(tabName) {
                                             referrerpolicy="no-referrer-when-downgrade"></iframe>
                                     </div>
                                 {% else %}
-                                    <div class="flex h-48 items-center justify-center text-sm text-muted-foreground">
-                                        Prévia indisponível
+                                    <div class="flex h-40 items-center justify-center text-sm text-muted-foreground">
+                                        <i class="fas fa-chart-area text-2xl opacity-30"></i>
                                     </div>
                                 {% endif %}
                             </div>
+
+                            <!-- Action Button -->
+                            <div class="mt-4">
                             {% if asset.tipo == 'PBI' and asset.embed_url %}
                                 <button onclick="openDashboard('{{ asset.embed_url }}', '{{ asset.nome }}')"
-                                   class="inline-flex items-center justify-center w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors cursor-pointer">
-                                    <i class="fas fa-chart-line mr-2"></i>
+                                   class="btn-primary w-full">
+                                    <i class="fas fa-chart-line"></i>
                                     Acessar Dashboard
                                 </button>
                             {% elif not (asset.tipo == 'interno' and asset.asset_config and asset.asset_config.embed_mode and selected_components and asset.resource_url) %}
                                 {% if asset.resource_url %}
-                                    <a href="{{ asset.resource_url }}" target="_blank"
-                                       class="inline-flex items-center justify-center w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors">
-                                        <i class="fas fa-link mr-2"></i>
+                                    <a href="{{ asset.resource_url }}" target="_blank" class="btn-primary w-full">
+                                        <i class="fas fa-external-link-alt"></i>
                                         Abrir Ativo
                                     </a>
                                 {% else %}
-                                    <button class="inline-flex items-center justify-center w-full rounded-md bg-muted px-4 py-2 text-sm font-medium text-muted-foreground cursor-not-allowed" disabled>
-                                        <i class="fas fa-ban mr-2"></i>
+                                    <button class="btn-secondary w-full cursor-not-allowed opacity-50" disabled>
+                                        <i class="fas fa-ban"></i>
                                         Link indisponível
                                     </button>
                                 {% endif %}
                             {% endif %}
+                            </div>
                         </div>
                     </div>
                 {% endfor %}
             </div>
         {% elif not internal_assets %}
-            <div class="rounded-lg border-2 border-dashed bg-card p-12 text-center">
-                <i class="fas fa-inbox text-6xl text-muted-foreground mb-4"></i>
-                <h3 class="text-lg font-medium text-foreground mb-2">
-                    Nenhum dashboard disponível
-                </h3>
-                <p class="text-sm text-muted-foreground">
-                    Entre em contato com o administrador para liberar acesso aos dashboards.
-                </p>
+            <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <h3>Nenhum dashboard disponível</h3>
+                <p>Entre em contato com o administrador para liberar acesso aos dashboards.</p>
             </div>
         {% endif %}
 
+        <!-- Internal Assets -->
         {% if internal_assets %}
-            <div class="mt-10">
-                <div class="mb-4 flex items-center justify-between">
-                    <h3 class="text-lg font-semibold text-foreground">Painéis internos atribuídos</h3>
-                    <span class="text-xs text-muted-foreground">{{ internal_assets|length }} painel(is)</span>
+            <div class="section-gap-lg">
+                <div class="mb-5 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-lg font-semibold text-foreground lg:text-xl">Painéis internos atribuídos</h2>
+                        <p class="text-sm text-muted-foreground mt-0.5">{{ internal_assets|length }} painel(is)</p>
+                    </div>
                 </div>
-                <div class="space-y-6">
+                <div class="space-y-5">
                 {% for asset in internal_assets %}
                     {% set selected_components = asset.assignment_config.components if asset.assignment_config and asset.assignment_config.components else [] %}
-                    <section class="rounded-2xl border bg-card shadow-sm p-6">
-                        <div class="flex flex-wrap items-start justify-between gap-4 border-b pb-4">
-                            <div>
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <span class="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                                        interno
-                                    </span>
-                                    {% if asset.categoria %}
-                                        <span class="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-                                            {{ asset.categoria }}
-                                        </span>
+                    <section class="card-base overflow-hidden">
+                        <div class="p-5 lg:p-6">
+                            <div class="flex flex-wrap items-start justify-between gap-3 pb-4 border-b">
+                                <div>
+                                    <div class="flex flex-wrap items-center gap-1.5">
+                                        <span class="badge badge-primary">interno</span>
+                                        {% if asset.categoria %}
+                                            <span class="badge badge-muted">{{ asset.categoria }}</span>
+                                        {% endif %}
+                                    </div>
+                                    {% if not (asset.asset_config and asset.asset_config.legacy_view == 'relatorio_resultados') %}
+                                        <h3 class="mt-2 text-lg font-semibold text-foreground lg:text-xl">{{ asset.nome }}</h3>
+                                        <p class="text-sm text-muted-foreground">{{ asset.descricao }}</p>
                                     {% endif %}
                                 </div>
-                                {% if not (asset.asset_config and asset.asset_config.legacy_view == 'relatorio_resultados') %}
-                                    <h3 class="mt-2 text-xl font-semibold text-foreground">{{ asset.nome }}</h3>
-                                    <p class="text-sm text-muted-foreground">{{ asset.descricao }}</p>
-                                {% endif %}
+                                <div class="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <button type="button"
+                                            data-action="toggle-components"
+                                            data-target="component-tags-{{ asset.id }}"
+                                            class="btn-ghost text-xs py-1 px-2">
+                                        <i class="fas fa-eye-slash"></i>Blocos
+                                    </button>
+                                    <button type="button"
+                                            data-action="toggle-controls"
+                                            data-target="internal-embed-{{ asset.id }}"
+                                            class="btn-ghost text-xs py-1 px-2">
+                                        <i class="fas fa-sliders-h"></i>Controles
+                                    </button>
+                                    <span class="badge badge-muted">{{ selected_components|length }} blocos</span>
+                                </div>
                             </div>
-                            <div class="flex items-center gap-3 text-xs text-muted-foreground">
-                                <button type="button"
-                                        data-action="toggle-components"
-                                        data-target="component-tags-{{ asset.id }}"
-                                        class="rounded-md border border-input px-2 py-1 text-xs font-medium text-foreground hover:bg-muted/40">
-                                    <i class="fas fa-eye-slash mr-1"></i>Blocos
-                                </button>
-                                <button type="button"
-                                        data-action="toggle-controls"
-                                        data-target="internal-embed-{{ asset.id }}"
-                                        class="rounded-md border border-input px-2 py-1 text-xs font-medium text-foreground hover:bg-muted/40">
-                                    <i class="fas fa-sliders-h mr-1"></i>Controles
-                                </button>
-                                <span>Blocos atribuídos: {{ selected_components|length }}</span>
-                            </div>
+                            {% if selected_components %}
+                                <div id="component-tags-{{ asset.id }}" class="mt-3 hidden flex-wrap gap-1.5">
+                                    {% for comp in selected_components %}
+                                        {% set ns = namespace(label=comp) %}
+                                        {% if asset.asset_config and asset.asset_config.available_components %}
+                                            {% for opt in asset.asset_config.available_components %}
+                                                {% if opt.key == comp %}
+                                                    {% set ns.label = opt.label %}
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% endif %}
+                                        <span class="badge badge-muted">{{ ns.label }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            {% if asset.asset_config and asset.asset_config.legacy_view == 'relatorio_resultados' %}
+                                <div class="mt-5 rounded-xl border bg-muted/10 overflow-hidden" data-relatorio-scope data-components="{{ selected_components | join(',') }}">
+                                    {% set relatorio_mode = 'dashboard' %}
+                                    {% include "partials/relatorio_block.html" %}
+                                </div>
+                            {% else %}
+                                <div class="mt-5 rounded-xl border bg-muted/10 overflow-hidden">
+                                    <div class="flex min-h-[200px] items-center justify-center text-sm text-muted-foreground">
+                                        <div class="text-center">
+                                            <i class="fas fa-puzzle-piece text-3xl opacity-30 mb-2"></i>
+                                            <p>Conteúdo interno indisponível sem modo embed.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
                         </div>
-                        {% if selected_components %}
-                            <div id="component-tags-{{ asset.id }}" class="mt-4 hidden flex-wrap gap-2">
-                                {% for comp in selected_components %}
-                                    {% set ns = namespace(label=comp) %}
-                                    {% if asset.asset_config and asset.asset_config.available_components %}
-                                        {% for opt in asset.asset_config.available_components %}
-                                            {% if opt.key == comp %}
-                                                {% set ns.label = opt.label %}
-                                            {% endif %}
-                                        {% endfor %}
-                                    {% endif %}
-                                    <span class="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                                        {{ ns.label }}
-                                    </span>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-                        {% if asset.asset_config and asset.asset_config.legacy_view == 'relatorio_resultados' %}
-                            <div class="mt-6 rounded-2xl border bg-muted/20 overflow-hidden" data-relatorio-scope data-components="{{ selected_components | join(',') }}">
-                                {% set relatorio_mode = 'dashboard' %}
-                                {% include "partials/relatorio_block.html" %}
-                            </div>
-                        {% else %}
-                            <div class="mt-6 rounded-2xl border bg-muted/20 overflow-hidden">
-                                <div class="flex min-h-[240px] items-center justify-center text-sm text-muted-foreground">
-                                    Conteúdo interno indisponível sem modo embed.
-                                </div>
-                            </div>
-                        {% endif %}
                     </section>
                 {% endfor %}
+                </div>
             </div>
         {% endif %}
 
-        <!-- Ações Rápidas -->
-        <div class="mt-8 rounded-lg border bg-card p-6">
-            <h3 class="mb-4 text-lg font-semibold text-foreground">Ações Rápidas</h3>
-            <div class="grid gap-4 md:grid-cols-3">
-                <a href="{{ url_for('cd_booking') }}" 
-                   class="flex items-center justify-center rounded-md border bg-background px-4 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground">
-                    <i class="fas fa-calendar-alt mr-2"></i>
-                    Agendar Sala de Reunião
-                </a>
-                <a href="{{ url_for('profile') }}" 
-                   class="flex items-center justify-center rounded-md border bg-background px-4 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground">
-                    <i class="fas fa-user-edit mr-2"></i>
-                    Editar Perfil
-                </a>
-                <a href="https://docs.google.com/forms/u/1/d/e/1FAIpQLSdI3tO7oVJ2omPsgtO-OYh5384OX3d4pwRddt0n0XUsuHJZgA/viewform" target="_blank"
-                   class="flex items-center justify-center rounded-md border bg-background px-4 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground">
-                    <i class="fas fa-headset mr-2"></i>
-                    Suporte
-                </a>
+        <!-- Quick Actions -->
+        <div class="section-gap">
+            <div class="card-base p-5 lg:p-6">
+                <h3 class="text-base font-semibold text-foreground mb-4">Ações Rápidas</h3>
+                <div class="grid gap-3 sm:grid-cols-3">
+                    <a href="{{ url_for('cd_booking') }}" class="btn-ghost justify-start py-3">
+                        <i class="fas fa-calendar-alt text-primary"></i>
+                        Agendar Sala
+                    </a>
+                    <a href="{{ url_for('profile') }}" class="btn-ghost justify-start py-3">
+                        <i class="fas fa-user-edit text-primary"></i>
+                        Editar Perfil
+                    </a>
+                    <a href="https://docs.google.com/forms/u/1/d/e/1FAIpQLSdI3tO7oVJ2omPsgtO-OYh5384OX3d4pwRddt0n0XUsuHJZgA/viewform" target="_blank" class="btn-ghost justify-start py-3">
+                        <i class="fas fa-headset text-primary"></i>
+                        Suporte
+                    </a>
+                </div>
             </div>
         </div>
         </div><!-- End tab-dashboards -->
 
-        <!-- Tab: Indicadores Executivos -->
+        <!-- ═══════════════════════════════════════ -->
+        <!-- Tab: Indicadores Executivos              -->
+        <!-- ═══════════════════════════════════════ -->
         <div id="tab-indicadores-executivos" class="tab-pane" data-tab-active="false" style="display: none;">
-            <div class="mb-6">
-                <h2 class="text-3xl font-bold text-foreground">Indicadores Executivos</h2>
-                <p class="mt-2 text-muted-foreground">
-                    Visao executiva orientada a decisao do desempenho operacional e financeiro.
-                </p>
+            <div class="page-header">
+                <h1><i class="fas fa-chart-line text-primary mr-2"></i>Indicadores Executivos</h1>
+                <p>Visão executiva orientada a decisão do desempenho operacional e financeiro.</p>
             </div>
 
-            <!-- Filtros -->
-            <div class="mb-6 rounded-lg border bg-card p-4">
-                <div class="grid gap-4 md:grid-cols-4">
+            <!-- Filters -->
+            <div class="card-base p-4 lg:p-5 mb-6">
+                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <div>
-                        <label class="block text-sm font-medium mb-1">Base de Dados</label>
-                        <select id="exec-database" class="w-full rounded-md border px-3 py-2 text-sm">
+                        <label class="block text-sm font-medium text-foreground mb-1.5">Base de Dados</label>
+                        <select id="exec-database" class="input-field">
                             <option value="azportoex">MATRIZ (azportoex)</option>
                             <option value="portoexsp">FILIAL (portoexsp)</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-1">Data Inicio</label>
-                        <input type="date" id="exec-data-inicio" class="w-full rounded-md border px-3 py-2 text-sm" />
+                        <label class="block text-sm font-medium text-foreground mb-1.5">Data Início</label>
+                        <input type="date" id="exec-data-inicio" class="input-field" />
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-1">Data Fim</label>
-                        <input type="date" id="exec-data-fim" class="w-full rounded-md border px-3 py-2 text-sm" />
+                        <label class="block text-sm font-medium text-foreground mb-1.5">Data Fim</label>
+                        <input type="date" id="exec-data-fim" class="input-field" />
                     </div>
                     <div class="flex items-end">
-                        <button onclick="carregarIndicadoresExecutivos()" class="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors">
-                            <i class="fas fa-sync-alt mr-2"></i>Atualizar
+                        <button onclick="carregarIndicadoresExecutivos()" class="btn-primary w-full">
+                            <i class="fas fa-sync-alt"></i>Atualizar
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Leitura Executiva -->
-            <div id="exec-leitura-container" class="mb-6 rounded-lg border bg-gradient-to-r from-blue-50 to-indigo-50 p-6 hidden">
-                <div class="flex items-start justify-between mb-4">
+            <!-- Executive Reading -->
+            <div id="exec-leitura-container" class="mb-6 card-base border-l-4 border-l-primary p-5 hidden">
+                <div class="flex items-start justify-between mb-3">
                     <div>
-                        <h3 class="text-lg font-semibold text-foreground">Leitura Executiva</h3>
-                        <p class="text-sm text-muted-foreground">Resumo orientado a decisao do painel atual</p>
+                        <h3 class="text-base font-semibold text-foreground">Leitura Executiva</h3>
+                        <p class="text-xs text-muted-foreground mt-0.5">Resumo orientado a decisão do painel atual</p>
                     </div>
-                    <span id="exec-panel-badge" class="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">-</span>
+                    <span id="exec-panel-badge" class="badge badge-primary">-</span>
                 </div>
                 <p id="exec-leitura-texto" class="text-sm text-foreground leading-relaxed">Carregando leitura executiva...</p>
             </div>
 
-            <!-- Indicadores (serao inseridos via JavaScript) -->
-            <div id="exec-indicadores-container" class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <!-- Indicators Container -->
+            <div id="exec-indicadores-container" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 stagger-children">
                 <div class="col-span-full text-center py-12 text-muted-foreground">
-                    <i class="fas fa-chart-line text-4xl mb-4"></i>
-                    <p>Selecione um periodo e clique em Atualizar para carregar os indicadores executivos.</p>
+                    <i class="fas fa-chart-line text-4xl mb-4 opacity-30"></i>
+                    <p>Selecione um período e clique em Atualizar para carregar os indicadores executivos.</p>
                 </div>
             </div>
         </div><!-- End tab-indicadores-executivos -->
 
-        <!-- Tab: Chat IA -->
+        <!-- ═══════════════════════════════════════ -->
+        <!-- Tab: Chat IA                             -->
+        <!-- ═══════════════════════════════════════ -->
         <div id="tab-chat" class="tab-pane" data-tab-active="false" style="display: none;">
-            <div class="mb-6">
-                <h2 class="text-3xl font-bold text-foreground">Chat IA</h2>
-                <p class="mt-2 text-muted-foreground">
-                    Converse com o assistente inteligente para obter informações e insights.
-                </p>
+            <div class="page-header">
+                <h1><i class="fas fa-robot text-primary mr-2"></i>Chat IA</h1>
+                <p>Converse com o assistente inteligente para obter informações e insights.</p>
             </div>
             
-            <div id="chatContainer" class="rounded-lg border bg-card shadow-lg overflow-hidden flex flex-col" style="height: 70vh; min-height: 500px;">
+            <div id="chatContainer" class="card-base overflow-hidden flex flex-col shadow-medium" style="height: 70vh; min-height: 500px;">
                 <!-- Chat Header -->
-                <div class="flex items-center justify-between border-b bg-gradient-to-r from-purple-500 to-indigo-600 px-4 py-3">
+                <div class="flex items-center justify-between bg-secondary px-4 py-3">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                            <i class="fas fa-robot text-white text-lg"></i>
+                        <div class="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center">
+                            <i class="fas fa-robot text-white"></i>
                         </div>
                         <div>
-                            <h3 class="font-semibold text-white">Assistente GeRot</h3>
-                            <p class="text-xs text-white/70">IA integrada aos dados</p>
+                            <h3 class="font-semibold text-white text-sm">Assistente GeRot</h3>
+                            <p class="text-xs text-white/60">IA integrada aos dados</p>
                         </div>
                     </div>
-                    <button onclick="toggleChatFullscreen()" class="rounded-md bg-white/20 px-3 py-1.5 text-sm font-medium text-white hover:bg-white/30 transition-colors">
-                        <i id="chatExpandIcon" class="fas fa-expand mr-1"></i>
+                    <button onclick="toggleChatFullscreen()" class="btn-ghost border-white/20 text-white/80 hover:bg-white/10 hover:text-white text-xs py-1.5">
+                        <i id="chatExpandIcon" class="fas fa-expand"></i>
                         <span id="chatExpandText">Expandir</span>
                     </button>
                 </div>
                 
                 <!-- Chat Messages -->
-                <div id="fullChatMessages" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-gradient-to-b from-gray-50 to-gray-100" style="scroll-behavior: smooth;">
+                <div id="fullChatMessages" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-muted/20" style="scroll-behavior: smooth;">
                     <div class="flex items-start gap-3 max-w-4xl mx-auto">
-                        <div class="w-10 h-10 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-md p-1">
+                        <div class="w-9 h-9 rounded-full bg-card border-2 border-border flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm p-1">
                             <img src="{{ url_for('static', filename='avatar-bot.png') }}" alt="AI" class="w-full h-full object-contain">
                         </div>
                         <div class="flex-1 min-w-0">
-                            <div class="rounded-2xl bg-white border-2 border-gray-200 p-4 text-sm rounded-tl-sm shadow-md max-w-[90%] md:max-w-[80%]">
-                                <div class="prose prose-sm max-w-none text-gray-800 leading-relaxed">
+                            <div class="rounded-2xl bg-card border p-4 text-sm rounded-tl-sm shadow-xs max-w-[90%] md:max-w-[80%]">
+                                <div class="prose prose-sm max-w-none text-foreground leading-relaxed">
                                     Olá! Sou o assistente virtual do GeRot. Como posso ajudar você hoje com seus dados e relatórios?
                                 </div>
                             </div>
@@ -453,26 +457,26 @@ window.openTab = function(tabName) {
                 </div>
                 
                 <!-- Chat Input -->
-                <div class="border-t bg-white p-4">
+                <div class="border-t bg-card p-3 lg:p-4">
                     <form onsubmit="sendFullChatMessage(event)" class="flex gap-2 items-end">
                         <input id="fullChatFileInput" type="file" class="hidden" accept=".pdf,.doc,.docx,.txt,.md" onchange="uploadKnowledgeFileFromFullChat(this)" />
                         <button type="button"
                                 onclick="document.getElementById('fullChatFileInput').click()"
-                                class="h-[44px] w-[44px] rounded-md border border-gray-200 bg-white hover:bg-gray-50 transition-all flex items-center justify-center flex-shrink-0"
-                                title="Enviar arquivo para ingestão (Docling)">
-                            <i class="fas fa-paperclip text-gray-700"></i>
+                                class="h-10 w-10 rounded-lg border bg-card hover:bg-muted transition-colors flex items-center justify-center flex-shrink-0"
+                                title="Enviar arquivo para ingestão">
+                            <i class="fas fa-paperclip text-muted-foreground"></i>
                         </button>
                         <textarea id="fullChatInput" rows="1" 
-                                  class="flex-1 min-h-[44px] max-h-[100px] rounded-md border border-input bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                                  class="input-field flex-1 min-h-[40px] max-h-[100px] resize-none"
                                   placeholder="Digite sua mensagem..."
                                   onkeydown="handleFullChatKey(event)"></textarea>
                         <button type="button" id="fullVoiceBtn" onclick="toggleFullChatVoiceInput()" title="Perguntar por voz"
-                                class="h-[44px] w-[44px] rounded-md border border-gray-200 bg-white hover:bg-gray-50 transition-all flex items-center justify-center flex-shrink-0">
-                            <i class="fas fa-microphone text-gray-700"></i>
+                                class="h-10 w-10 rounded-lg border bg-card hover:bg-muted transition-colors flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-microphone text-muted-foreground"></i>
                         </button>
                         <button type="submit" 
-                                class="h-[44px] w-[44px] rounded-md bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 transition-all flex items-center justify-center flex-shrink-0">
-                            <i class="fas fa-paper-plane"></i>
+                                class="h-10 w-10 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors flex items-center justify-center flex-shrink-0 shadow-sm">
+                            <i class="fas fa-paper-plane text-sm"></i>
                         </button>
                     </form>
                 </div>
@@ -483,20 +487,23 @@ window.openTab = function(tabName) {
 
 <!-- Modal Fullscreen para Dashboard -->
 <div id="dashboardModal" class="fixed inset-0 z-50 hidden flex-col bg-background">
-    <div class="flex items-center justify-between border-b bg-card px-4 py-3 shadow-sm">
-        <h2 id="modalTitle" class="text-lg font-semibold text-foreground">Visualizando Dashboard</h2>
-        <div class="flex items-center space-x-2">
-            <button onclick="toggleFullscreen()" class="rounded-md bg-muted px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent transition-colors">
-                <i class="fas fa-expand mr-2"></i>Expandir
+    <div class="flex items-center justify-between border-b bg-card px-4 py-3 shadow-xs">
+        <h2 id="modalTitle" class="text-base font-semibold text-foreground lg:text-lg">Visualizando Dashboard</h2>
+        <div class="flex items-center gap-2">
+            <button onclick="toggleFullscreen()" class="btn-ghost text-xs py-1.5">
+                <i class="fas fa-expand"></i>Expandir
             </button>
-            <button onclick="closeDashboard()" class="rounded-md bg-destructive px-3 py-1.5 text-sm font-medium text-white hover:bg-destructive/90 transition-colors">
-                <i class="fas fa-times mr-2"></i>Fechar
+            <button onclick="closeDashboard()" class="rounded-lg bg-destructive px-3 py-1.5 text-sm font-medium text-white hover:bg-destructive/90 transition-colors">
+                <i class="fas fa-times mr-1"></i>Fechar
             </button>
         </div>
     </div>
-    <div class="flex-1 bg-muted/20 p-0 relative">
-        <div id="loadingSpinner" class="absolute inset-0 flex items-center justify-center">
-            <div class="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+    <div class="flex-1 bg-muted/10 relative">
+        <div id="loadingSpinner" class="absolute inset-0 flex items-center justify-center bg-card/50">
+            <div class="flex flex-col items-center gap-3">
+                <div class="h-10 w-10 animate-spin rounded-full border-3 border-primary border-t-transparent"></div>
+                <span class="text-sm text-muted-foreground">Carregando dashboard...</span>
+            </div>
         </div>
         <iframe id="dashboardFrame" class="h-full w-full border-none" allowfullscreen></iframe>
     </div>
@@ -504,12 +511,11 @@ window.openTab = function(tabName) {
 
 <script src="{{ url_for('static', filename='relatorio.js') }}"></script>
 <script>
-// openTab ja definido no <head> - NAO redefinir para evitar quebrar abas Indicadores Executivos e Chat IA
+// openTab ja definido no <head>
 window.TAB_IDS = window.TAB_IDS || ['tab-dashboards', 'tab-indicadores-executivos', 'tab-chat'];
 
 function initAssetCharts() {
     if (typeof Chart === 'undefined') return;
-    // Apenas canvas com data-chart (JSON). Divs no relatorio usam data-chart como identificador, nao JSON.
     const chartNodes = document.querySelectorAll('canvas[data-chart]');
     chartNodes.forEach((node) => {
         try {
@@ -526,15 +532,24 @@ function initAssetCharts() {
                 datasets: [{
                     label: cfg.label || 'Série',
                     data: dataValues,
-                    backgroundColor: cfg.backgroundColor || 'rgba(99, 102, 241, 0.6)',
-                    borderColor: cfg.borderColor || 'rgba(99, 102, 241, 1)',
-                    borderWidth: 1,
+                    backgroundColor: cfg.backgroundColor || 'hsl(19 79% 56% / 0.2)',
+                    borderColor: cfg.borderColor || 'hsl(19 79% 56%)',
+                    borderWidth: 2,
+                    borderRadius: 4,
                 }]
             };
             new Chart(node.getContext('2d'), {
                 type: cfg.type || 'bar',
                 data,
-                options: cfg.options || { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } } },
+                options: cfg.options || {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { grid: { color: 'rgba(0,0,0,0.05)' } },
+                        x: { grid: { display: false } }
+                    }
+                },
             });
         } catch (err) {
             console.warn('Falha ao renderizar gráfico interno', err);
@@ -584,16 +599,13 @@ async function sendMessage(e) {
     
     if (!message) return;
     
-    // UI Updates
     input.value = '';
     appendMessage('user', message);
     scrollToBottom();
     
-    // Disable input while loading
     input.disabled = true;
     btn.disabled = true;
     
-    // Show typing
     const typingId = 'typing-' + Date.now();
     appendTypingIndicator(typingId);
     scrollToBottom();
@@ -641,7 +653,6 @@ async function uploadKnowledgeFileFromFullChat(inputEl) {
     try {
         const file = inputEl?.files?.[0];
         if (!file) return;
-        // feedback no chat
         appendFullChatMessage('system', `Enviando arquivo para ingestão: ${file.name}...`);
         scrollFullChatToBottom();
 
@@ -674,11 +685,11 @@ function appendMessage(role, content) {
     let html = '';
     
     if (isSystem) {
-        html = `<div class="flex justify-center my-2"><span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">${content}</span></div>`;
+        html = `<div class="flex justify-center my-2"><span class="badge badge-destructive">${content}</span></div>`;
     } else {
         const avatarHtml = isUser 
             ? `<div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0 text-white shadow-sm"><i class="fas fa-user text-xs"></i></div>`
-            : `<div class="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm p-1">
+            : `<div class="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm p-1">
                  <img src="{{ url_for('static', filename='avatar-bot.png') }}" alt="AI" class="w-full h-full object-contain">
                </div>`;
 
@@ -686,11 +697,11 @@ function appendMessage(role, content) {
         if (!isUser) {
             const encoded = btoa(unescape(encodeURIComponent(String(content))));
             actionsHtml = `
-                <div class="mt-2 flex gap-3 border-t border-gray-100 pt-2 text-xs text-gray-600">
-                    <button type="button" onclick="speakChatText('${encoded}')" class="hover:text-gray-900 flex items-center gap-1" title="Ouvir resposta">
+                <div class="mt-2 flex gap-3 border-t pt-2 text-xs text-muted-foreground">
+                    <button type="button" onclick="speakChatText('${encoded}')" class="hover:text-foreground flex items-center gap-1" title="Ouvir resposta">
                         <i class="fas fa-volume-up"></i> Ouvir
                     </button>
-                    <button type="button" onclick="stopSpeech()" class="hover:text-gray-900 flex items-center gap-1" title="Parar áudio">
+                    <button type="button" onclick="stopSpeech()" class="hover:text-foreground flex items-center gap-1" title="Parar áudio">
                         <i class="fas fa-stop"></i> Parar
                     </button>
                 </div>
@@ -698,10 +709,10 @@ function appendMessage(role, content) {
         }
 
         html = `
-            <div class="flex items-start gap-3 ${isUser ? 'flex-row-reverse' : ''} animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div class="flex items-start gap-3 ${isUser ? 'flex-row-reverse' : ''} animate-fade-in-up">
                 ${avatarHtml}
-                <div class="rounded-2xl p-3 text-sm max-w-[85%] ${isUser ? 'bg-primary text-white rounded-tr-sm' : 'bg-white border border-gray-100 text-gray-800 rounded-tl-sm shadow-sm'}">
-                    <div class="prose prose-sm ${isUser ? 'text-white' : 'text-gray-800'} max-w-none break-words">
+                <div class="rounded-2xl p-3 text-sm max-w-[85%] ${isUser ? 'bg-primary text-white rounded-tr-sm' : 'bg-card border text-foreground rounded-tl-sm shadow-xs'}">
+                    <div class="prose prose-sm ${isUser ? 'text-white' : 'text-foreground'} max-w-none break-words">
                         ${formatMessageContent(content)}
                     </div>
                     ${actionsHtml}
@@ -717,14 +728,12 @@ function appendTypingIndicator(id) {
     const container = document.getElementById('chat-messages');
     const html = `
         <div id="${id}" class="flex items-start gap-3">
-            <div class="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm p-1">
+            <div class="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm p-1">
                  <img src="{{ url_for('static', filename='avatar-bot.png') }}" alt="AI" class="w-full h-full object-contain">
             </div>
-            <div class="rounded-2xl bg-white border border-gray-100 p-3 text-sm rounded-tl-sm shadow-sm">
-                <div class="flex gap-1">
-                    <div class="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce"></div>
-                    <div class="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce delay-100"></div>
-                    <div class="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce delay-200"></div>
+            <div class="rounded-2xl bg-card border p-3 text-sm rounded-tl-sm shadow-xs">
+                <div class="loading-dots">
+                    <span></span><span></span><span></span>
                 </div>
             </div>
         </div>
@@ -735,14 +744,7 @@ function appendTypingIndicator(id) {
 function formatMessageContent(text) {
     if (text === null || text === undefined) return '';
     text = String(text);
-
-    // Normalizações para evitar "resposta quebrada":
-    // - remove placeholders de imagens do Docling
-    // - conserta URLs quebradas por quebras de linha do dump (ex.: https:\nsite)
-    // IMPORTANT: avoid JS ASI (no leading-dot on a new line)
-    // Remove placeholder do Docling (forma escapada que chega do backend)
     text = text.replace(/&lt;!--\s*image\s*--&gt;/gi, '');
-    // Fix URLs quebradas por quebras de linha vindas do dump (sem regex com \n para evitar lints do template)
     text = text
         .split('https:\r\n').join('https://')
         .split('http:\r\n').join('http://')
@@ -751,7 +753,6 @@ function formatMessageContent(text) {
         .split(':\r\n//').join('://')
         .split(':\n//').join('://');
 
-    // Markdown render (mais robusto que regex manual)
     try {
         if (typeof marked !== 'undefined') {
             const renderer = new marked.Renderer();
@@ -760,52 +761,45 @@ function formatMessageContent(text) {
                 .replace(/</g, "&lt;")
                 .replace(/>/g, "&gt;")
                 .replace(/\"/g, "&quot;");
-            // Evita injetar HTML arbitrário vindo do texto
             renderer.html = () => '';
-            // Link: sempre nova aba + url limpa
             renderer.link = (href, title, text) => {
                 const h = String(href || '').replace(/\s+/g, '');
                 const t = String(text || h);
                 if (!/^https?:\/\//i.test(h)) return t;
                 const ti = title ? ` title="${String(title).replace(/"/g, '&quot;')}"` : '';
-                return `<a href="${h}" target="_blank" rel="noopener noreferrer"${ti} class="text-blue-600 hover:text-blue-800 underline break-all">${t}</a>`;
+                return `<a href="${h}" target="_blank" rel="noopener noreferrer"${ti} class="text-primary hover:text-primary/80 underline break-all">${t}</a>`;
             };
 
-            // Tabelas com layout clean
             renderer.table = (header, body) => {
                 return `
-<div class="my-3 overflow-x-auto rounded-lg border border-gray-200 bg-white">
-  <table class="min-w-full text-sm">
-    <thead class="bg-gray-50">${header}</thead>
+<div class="my-3 overflow-x-auto rounded-lg border bg-card">
+  <table class="table-clean">
+    <thead>${header}</thead>
     <tbody>${body}</tbody>
   </table>
 </div>`;
             };
-            renderer.tablerow = (content) => `<tr class="border-b border-gray-200 last:border-b-0">${content}</tr>`;
+            renderer.tablerow = (content) => `<tr>${content}</tr>`;
             renderer.tablecell = (content, flags) => {
                 if (flags && flags.header) {
-                    return `<th class="px-3 py-2 text-left font-semibold text-gray-700">${content}</th>`;
+                    return `<th class="px-3 py-2 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wider">${content}</th>`;
                 }
-                return `<td class="px-3 py-2 align-top text-gray-800">${content}</td>`;
+                return `<td class="px-3 py-2 align-top text-foreground">${content}</td>`;
             };
 
-            // Blocos especiais: mindmap/quadro
             renderer.code = (code, infostring) => {
                 const lang = String(infostring || '').trim().toLowerCase();
                 const c = String(code || '').trimEnd();
                 if (lang === 'mindmap') {
                     return `
-<div class="my-3 rounded-lg border border-indigo-200 bg-indigo-50/40">
-  <div class="flex items-center justify-between px-3 py-2 border-b border-indigo-200">
-    <span class="text-xs font-semibold text-indigo-700">Mapa mental</span>
+<div class="my-3 rounded-lg border border-primary/20 bg-primary/5">
+  <div class="flex items-center px-3 py-2 border-b border-primary/20">
+    <span class="text-xs font-semibold text-primary">Mapa mental</span>
   </div>
-  <pre class="p-3 overflow-x-auto text-xs leading-relaxed font-mono text-indigo-950 whitespace-pre">${escHtml(c)}</pre>
+  <pre class="p-3 overflow-x-auto text-xs leading-relaxed font-mono text-foreground whitespace-pre">${escHtml(c)}</pre>
 </div>`;
                 }
                 if (lang === 'quadro') {
-                    // Formato esperado:
-                    // [Tema]
-                    // - item
                     const lines = c.split(/\r?\n/);
                     const sections = [];
                     let cur = null;
@@ -826,27 +820,26 @@ function formatMessageContent(text) {
                         cur.items.push(it);
                     }
                     const cards = sections.map(sec => {
-                        const items = (sec.items || []).map(i => `<li class="text-sm text-gray-800">${escHtml(i)}</li>`).join('');
+                        const items = (sec.items || []).map(i => `<li class="text-sm text-foreground">${escHtml(i)}</li>`).join('');
                         return `
-<div class="rounded-lg border border-gray-200 bg-white">
-  <div class="px-3 py-2 border-b border-gray-200 bg-gray-50">
-    <div class="text-xs font-semibold text-gray-700">${escHtml(sec.title)}</div>
+<div class="card-base">
+  <div class="px-3 py-2 border-b bg-muted/30">
+    <div class="text-xs font-semibold text-foreground">${escHtml(sec.title)}</div>
   </div>
-  <ul class="p-3 space-y-2 list-disc list-inside">${items || '<li class="text-sm text-gray-500">—</li>'}</ul>
+  <ul class="p-3 space-y-2 list-disc list-inside">${items || '<li class="text-sm text-muted-foreground">—</li>'}</ul>
 </div>`;
                     }).join('');
                     return `
-<div class="my-3 rounded-lg border border-gray-200 bg-white">
-  <div class="flex items-center justify-between px-3 py-2 border-b border-gray-200">
-    <span class="text-xs font-semibold text-gray-700">Quadro por tema</span>
+<div class="my-3 card-base">
+  <div class="flex items-center px-3 py-2 border-b">
+    <span class="text-xs font-semibold text-foreground">Quadro por tema</span>
   </div>
   <div class="p-3 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
     ${cards}
   </div>
 </div>`;
                 }
-                // default code block (clean)
-                return `<pre class="my-3 overflow-x-auto rounded-lg border border-gray-200 bg-gray-900 p-3 text-xs text-gray-100"><code>${escHtml(c)}</code></pre>`;
+                return `<pre class="my-3 overflow-x-auto rounded-lg border bg-secondary p-3 text-xs text-white"><code>${escHtml(c)}</code></pre>`;
             };
 
             marked.setOptions({ gfm: true, breaks: true, renderer, mangle: false, headerIds: false });
@@ -854,7 +847,6 @@ function formatMessageContent(text) {
         }
     } catch (e) {}
 
-    // Fallback simples: escapa e troca quebras de linha
     const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     return '<p class="leading-relaxed">' + esc(text).replace(/\n/g, '<br>') + '</p>';
 }
@@ -874,7 +866,7 @@ function openDashboard(url, title) {
     titleEl.textContent = title;
     modal.classList.remove('hidden');
     modal.classList.add('flex');
-    document.body.style.overflow = 'hidden'; // Previne scroll na página principal
+    document.body.style.overflow = 'hidden';
     
     spinner.style.display = 'flex';
     iframe.style.opacity = '0';
@@ -893,7 +885,7 @@ function closeDashboard() {
     
     modal.classList.add('hidden');
     modal.classList.remove('flex');
-    document.body.style.overflow = ''; // Restaura scroll
+    document.body.style.overflow = '';
     
     iframe.src = '';
 }
@@ -908,7 +900,6 @@ function toggleFullscreen() {
     }
 }
 
-// Fechar com ESC
 document.addEventListener('keydown', function(event) {
     if (event.key === "Escape") {
         if (document.fullscreenElement) {
@@ -958,7 +949,7 @@ function handleFullChatKey(e) {
 }
 
 // ============================================================
-// VOZ (Web Speech API) - 100% local no navegador (FULL CHAT)
+// VOZ (Web Speech API)
 // ============================================================
 let _fullSpeechRec = null;
 let _fullSpeechActive = false;
@@ -978,12 +969,12 @@ function _setFullVoiceButtonState(active) {
     if (!btn) return;
     _fullSpeechActive = !!active;
     if (_fullSpeechActive) {
-        btn.classList.add('bg-red-50', 'border-red-200');
-        btn.innerHTML = '<i class="fas fa-stop text-red-700"></i>';
+        btn.classList.add('bg-destructive/10', 'border-destructive/30');
+        btn.innerHTML = '<i class="fas fa-stop text-destructive"></i>';
         btn.title = 'Parar gravação';
     } else {
-        btn.classList.remove('bg-red-50', 'border-red-200');
-        btn.innerHTML = '<i class="fas fa-microphone text-gray-700"></i>';
+        btn.classList.remove('bg-destructive/10', 'border-destructive/30');
+        btn.innerHTML = '<i class="fas fa-microphone text-muted-foreground"></i>';
         btn.title = 'Perguntar por voz';
     }
 }
@@ -1034,17 +1025,14 @@ async function sendFullChatMessage(e) {
     e.preventDefault();
     const input = document.getElementById('fullChatInput');
     const message = input.value.trim();
-    const container = document.getElementById('fullChatMessages');
     
     if (!message) return;
     
-    // Add user message
     appendFullChatMessage('user', message);
     input.value = '';
     input.disabled = true;
     scrollFullChatToBottom();
     
-    // Show typing indicator
     const typingId = 'full-typing-' + Date.now();
     appendFullChatTypingIndicator(typingId);
     scrollFullChatToBottom();
@@ -1096,11 +1084,11 @@ function appendFullChatMessage(role, content) {
     let html = '';
     
     if (isSystem) {
-        html = `<div class="flex justify-center my-2"><span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">${content}</span></div>`;
+        html = `<div class="flex justify-center my-2"><span class="badge badge-destructive">${content}</span></div>`;
     } else {
         const avatarHtml = isUser 
-            ? `<div class="w-10 h-10 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 flex items-center justify-center flex-shrink-0 text-white shadow-md border-2 border-white"><i class="fas fa-user text-sm"></i></div>`
-            : `<div class="w-10 h-10 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-md p-1">
+            ? `<div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center flex-shrink-0 text-white shadow-sm"><i class="fas fa-user text-sm"></i></div>`
+            : `<div class="w-9 h-9 rounded-full bg-card border-2 border-border flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm p-1">
                  <img src="{{ url_for('static', filename='avatar-bot.png') }}" alt="AI" class="w-full h-full object-contain">
                </div>`;
 
@@ -1108,11 +1096,11 @@ function appendFullChatMessage(role, content) {
         if (!isUser) {
             const encoded = btoa(unescape(encodeURIComponent(String(content))));
             actionsHtml = `
-                <div class="mt-3 flex gap-4 border-t border-gray-100 pt-3 text-xs text-gray-600">
-                    <button type="button" onclick="speakChatText('${encoded}')" class="hover:text-gray-900 flex items-center gap-1" title="Ouvir resposta">
+                <div class="mt-3 flex gap-4 border-t pt-3 text-xs text-muted-foreground">
+                    <button type="button" onclick="speakChatText('${encoded}')" class="hover:text-foreground flex items-center gap-1" title="Ouvir resposta">
                         <i class="fas fa-volume-up"></i> Ouvir
                     </button>
-                    <button type="button" onclick="stopSpeech()" class="hover:text-gray-900 flex items-center gap-1" title="Parar áudio">
+                    <button type="button" onclick="stopSpeech()" class="hover:text-foreground flex items-center gap-1" title="Parar áudio">
                         <i class="fas fa-stop"></i> Parar
                     </button>
                 </div>
@@ -1120,11 +1108,11 @@ function appendFullChatMessage(role, content) {
         }
 
         html = `
-            <div class="flex items-start gap-3 ${isUser ? 'flex-row-reverse' : ''} max-w-4xl ${isUser ? 'ml-auto' : 'mr-auto'}">
+            <div class="flex items-start gap-3 ${isUser ? 'flex-row-reverse' : ''} max-w-4xl ${isUser ? 'ml-auto' : 'mr-auto'} animate-fade-in-up">
                 ${avatarHtml}
                 <div class="flex-1 min-w-0">
-                    <div class="rounded-2xl p-4 md:p-5 text-sm ${isUser ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-tr-sm shadow-lg' : 'bg-white border-2 border-gray-200 text-gray-800 rounded-tl-sm shadow-md'} max-w-[90%] md:max-w-[85%] ${isUser ? 'ml-auto' : ''}">
-                        <div class="prose prose-sm ${isUser ? 'text-white prose-invert prose-headings:text-white prose-a:text-blue-200 prose-strong:text-white' : 'text-gray-800 prose-headings:text-gray-900 prose-a:text-blue-600 prose-strong:text-gray-900'} max-w-none break-words leading-relaxed">
+                    <div class="rounded-2xl p-4 text-sm ${isUser ? 'bg-primary text-white rounded-tr-sm shadow-sm' : 'bg-card border text-foreground rounded-tl-sm shadow-xs'} max-w-[90%] md:max-w-[85%] ${isUser ? 'ml-auto' : ''}">
+                        <div class="prose prose-sm ${isUser ? 'text-white prose-invert' : 'text-foreground'} max-w-none break-words leading-relaxed">
                             ${formatMessageContent(content)}
                         </div>
                         ${actionsHtml}
@@ -1139,19 +1127,12 @@ function appendFullChatMessage(role, content) {
 
 function cleanTextForSpeech(text) {
     let t = String(text || '');
-    // remove blocos de código
     t = t.replace(/```[\s\S]*?```/g, ' ');
-    // links markdown [txt](url) -> txt
     t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1');
-    // remove tags html
     t = t.replace(/<[^>]+>/g, ' ');
-    // remove colchetes de fontes e metadados
     t = t.replace(/\[(Fonte|Trecho)[^\]]*\]/gi, ' ');
-    // remove markdown comum
     t = t.replace(/[#>*_`~]/g, ' ');
-    // remove urls “cruas”
     t = t.replace(/https?:\/\/\S+/g, ' ');
-    // normaliza espaços
     t = t.replace(/\s+/g, ' ').trim();
     return t;
 }
@@ -1169,7 +1150,6 @@ function speakChatText(encodedContent) {
         const utter = new SpeechSynthesisUtterance(text);
         utter.lang = 'pt-BR';
         utter.rate = 1.05;
-        // tenta escolher uma voz pt-BR (best-effort)
         const voices = window.speechSynthesis.getVoices?.() || [];
         const pt = voices.find(v => (v.lang || '').toLowerCase().startsWith('pt'));
         if (pt) utter.voice = pt;
@@ -1187,15 +1167,13 @@ function appendFullChatTypingIndicator(id) {
     const container = document.getElementById('fullChatMessages');
     const html = `
         <div id="${id}" class="flex items-start gap-3 max-w-4xl mr-auto">
-            <div class="w-10 h-10 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-md p-1">
+            <div class="w-9 h-9 rounded-full bg-card border-2 border-border flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm p-1">
                  <img src="{{ url_for('static', filename='avatar-bot.png') }}" alt="AI" class="w-full h-full object-contain">
             </div>
             <div class="flex-1 min-w-0">
-                <div class="rounded-2xl bg-white border-2 border-gray-200 p-4 text-sm rounded-tl-sm shadow-md max-w-[90%] md:max-w-[85%]">
-                    <div class="flex gap-1.5">
-                        <div class="w-2 h-2 bg-purple-600 rounded-full animate-bounce"></div>
-                        <div class="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style="animation-delay: 0.15s"></div>
-                        <div class="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style="animation-delay: 0.3s"></div>
+                <div class="rounded-2xl bg-card border p-4 text-sm rounded-tl-sm shadow-xs max-w-[90%] md:max-w-[85%]">
+                    <div class="loading-dots">
+                        <span></span><span></span><span></span>
                     </div>
                 </div>
             </div>
@@ -1318,23 +1296,16 @@ function initComponentTagsToggle() {
 
 function initFullChatDefaultMessage() {
     const container = document.getElementById('fullChatMessages');
-    if (!container) {
-        console.warn('[CHAT] Container fullChatMessages nao encontrado');
-        return;
-    }
-    if (container.children.length > 0) {
-        console.log('[CHAT] Mensagem inicial ja existe');
-        return;
-    }
-    console.log('[CHAT] Adicionando mensagem inicial');
+    if (!container) return;
+    if (container.children.length > 0) return;
     container.insertAdjacentHTML('beforeend', `
         <div class="flex items-start gap-3 max-w-4xl mx-auto">
-            <div class="w-10 h-10 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-md p-1">
+            <div class="w-9 h-9 rounded-full bg-card border-2 border-border flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm p-1">
                 <img src="{{ url_for('static', filename='avatar-bot.png') }}" alt="AI" class="w-full h-full object-contain">
             </div>
             <div class="flex-1 min-w-0">
-                <div class="rounded-2xl bg-white border-2 border-gray-200 p-4 text-sm rounded-tl-sm shadow-md max-w-[90%] md:max-w-[80%]">
-                    <div class="prose prose-sm max-w-none text-gray-800 leading-relaxed">
+                <div class="rounded-2xl bg-card border p-4 text-sm rounded-tl-sm shadow-xs max-w-[90%] md:max-w-[80%]">
+                    <div class="prose prose-sm max-w-none text-foreground leading-relaxed">
                         Olá! Sou o assistente virtual do GeRot. Como posso ajudar você hoje com seus dados e relatórios?
                     </div>
                 </div>
@@ -1344,9 +1315,7 @@ function initFullChatDefaultMessage() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('[INIT] Inicializando dashboard...');
     try {
-        // Garantir estado inicial das abas
         const dashboardsTab = document.getElementById('tab-dashboards');
         const indicadoresTab = document.getElementById('tab-indicadores-executivos');
         const chatTab = document.getElementById('tab-chat');
@@ -1374,8 +1343,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (document.querySelector('[data-relatorio-scope]') && typeof buscarRelatorioResultados === 'function') {
             buscarRelatorioResultados();
         }
-        
-        console.log('[INIT] Dashboard inicializado');
+
+        // Auto-hide flash messages
+        const flashContainer = document.getElementById('flash-container');
+        if (flashContainer) {
+            setTimeout(() => {
+                flashContainer.style.opacity = '0';
+                flashContainer.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => flashContainer.remove(), 300);
+            }, 4000);
+        }
     } catch (err) {
         console.error('[INIT] Erro na inicializacao do dashboard:', err);
     }
@@ -1405,7 +1382,13 @@ async function carregarIndicadoresExecutivos() {
     const dataInicio = dataInicioEl ? dataInicioEl.value : '';
     const dataFim = dataFimEl ? dataFimEl.value : '';
     
-    container.innerHTML = '<div class="col-span-full text-center py-12"><i class="fas fa-spinner fa-spin text-4xl mb-4 text-primary"></i><p class="text-muted-foreground">Carregando indicadores...</p></div>';
+    // Skeleton loading
+    container.innerHTML = `
+        <div class="stat-card"><div class="skeleton skeleton-title mb-3"></div><div class="skeleton skeleton-text w-1/2"></div></div>
+        <div class="stat-card"><div class="skeleton skeleton-title mb-3"></div><div class="skeleton skeleton-text w-1/2"></div></div>
+        <div class="stat-card"><div class="skeleton skeleton-title mb-3"></div><div class="skeleton skeleton-text w-1/2"></div></div>
+        <div class="stat-card"><div class="skeleton skeleton-title mb-3"></div><div class="skeleton skeleton-text w-1/2"></div></div>
+    `;
     
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 60000);
@@ -1417,12 +1400,8 @@ async function carregarIndicadoresExecutivos() {
         
         const data = await response.json().catch(() => ({}));
         
-        if (!response.ok) {
-            throw new Error(data.error || `Erro HTTP ${response.status}`);
-        }
-        if (!data.success) {
-            throw new Error(data.error || 'Erro ao carregar indicadores');
-        }
+        if (!response.ok) throw new Error(data.error || `Erro HTTP ${response.status}`);
+        if (!data.success) throw new Error(data.error || 'Erro ao carregar indicadores');
         
         if (leituraTexto && data.leitura_executiva) {
             leituraTexto.textContent = data.leitura_executiva;
@@ -1436,14 +1415,13 @@ async function carregarIndicadoresExecutivos() {
         if (data.panel_data) {
             renderIndicadoresExecutivos(data.panel_key, data.panel_data);
         } else {
-            container.innerHTML = '<div class="col-span-full text-center py-12 text-muted-foreground"><i class="fas fa-chart-line text-4xl mb-4"></i><p>Nenhum indicador disponivel para seu perfil.</p><button onclick="carregarIndicadoresExecutivos()" class="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90">Tentar novamente</button></div>';
+            container.innerHTML = '<div class="col-span-full empty-state"><i class="fas fa-chart-line"></i><h3>Sem indicadores</h3><p>Nenhum indicador disponível para seu perfil.</p><button onclick="carregarIndicadoresExecutivos()" class="btn-primary mt-4">Tentar novamente</button></div>';
         }
         container.setAttribute('data-indicador-loaded', 'true');
     } catch (error) {
         clearTimeout(timeoutId);
-        console.error('Erro ao carregar indicadores executivos:', error);
         const msg = error.name === 'AbortError' ? 'Tempo limite excedido (60s). Tente novamente.' : (error.message || 'Erro de conexão.');
-        container.innerHTML = `<div class="col-span-full text-center py-12 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>${msg}</p><button onclick="carregarIndicadoresExecutivos()" class="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90">Tentar novamente</button></div>`;
+        container.innerHTML = `<div class="col-span-full empty-state"><i class="fas fa-exclamation-circle text-destructive"></i><h3>Erro ao carregar</h3><p>${msg}</p><button onclick="carregarIndicadoresExecutivos()" class="btn-primary mt-4">Tentar novamente</button></div>`;
     }
 }
 
@@ -1453,63 +1431,56 @@ function renderIndicadoresExecutivos(panelKey, panelData) {
     const data = panelData || {};
     let html = '';
     try {
-        if (panelKey === 'ceo') {
-            html = renderCEOPanel(data);
-        } else if (panelKey === 'diretoria') {
-            html = renderDiretoriaPanel(data);
-        } else if (panelKey === 'operacional') {
-            html = renderOperacionalPanel(data);
-        } else if (panelKey === 'projetos') {
-            html = renderProjetosPanel(data);
-        } else {
-            html = '<div class="col-span-full text-center py-12 text-muted-foreground"><p>Painel nao identificado.</p></div>';
-        }
+        if (panelKey === 'ceo') html = renderCEOPanel(data);
+        else if (panelKey === 'diretoria') html = renderDiretoriaPanel(data);
+        else if (panelKey === 'operacional') html = renderOperacionalPanel(data);
+        else if (panelKey === 'projetos') html = renderProjetosPanel(data);
+        else html = '<div class="col-span-full empty-state"><p>Painel não identificado.</p></div>';
         container.innerHTML = html;
         container.setAttribute('data-indicador-loaded', 'true');
     } catch (err) {
-        console.error('Erro ao renderizar indicadores:', err);
-        container.innerHTML = `<div class="col-span-full text-center py-12 text-red-600"><p>Erro ao exibir indicadores: ${err.message}</p></div>`;
+        container.innerHTML = `<div class="col-span-full empty-state text-destructive"><p>Erro: ${err.message}</p></div>`;
     }
 }
 
 function renderCEOPanel(data) {
     return `
-        <div class="rounded-lg border bg-card p-4 shadow-sm ${getStatusBorderClass(data.status?.resultado_geral)}">
+        <div class="stat-card ${getStatusBorderClass(data.status?.resultado_geral)}">
             <div class="flex items-center justify-between mb-2">
-                <h4 class="text-sm font-medium text-muted-foreground">Resultado geral acumulado (D+5)</h4>
-                <i class="fas fa-chart-line text-muted-foreground"></i>
+                <h4 class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Resultado geral (D+5)</h4>
+                <div class="rounded-lg bg-primary/10 p-2 text-primary"><i class="fas fa-chart-line text-sm"></i></div>
             </div>
-            <p class="text-2xl font-bold">${formatCurrency(data.resultado_geral_acumulado_d5)}</p>
+            <p class="text-2xl font-bold animate-count-up">${formatCurrency(data.resultado_geral_acumulado_d5)}</p>
         </div>
-        <div class="rounded-lg border bg-card p-4 shadow-sm ${getStatusBorderClass(data.status?.performance_entrega)}">
+        <div class="stat-card ${getStatusBorderClass(data.status?.performance_entrega)}">
             <div class="flex items-center justify-between mb-2">
-                <h4 class="text-sm font-medium text-muted-foreground">Performance On Time (%)</h4>
-                <i class="fas fa-percentage text-muted-foreground"></i>
+                <h4 class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Performance On Time</h4>
+                <div class="rounded-lg bg-success/10 p-2 text-success"><i class="fas fa-percentage text-sm"></i></div>
             </div>
-            <p class="text-2xl font-bold">${formatPercent(data.performance_entrega_on_time_percent)}</p>
+            <p class="text-2xl font-bold animate-count-up">${formatPercent(data.performance_entrega_on_time_percent)}</p>
             <p class="text-xs text-muted-foreground mt-1">Acumulado</p>
         </div>
-        <div class="rounded-lg border bg-card p-4 shadow-sm">
+        <div class="stat-card">
             <div class="flex items-center justify-between mb-2">
-                <h4 class="text-sm font-medium text-muted-foreground">Faturamento mensal x acumulado (D+0)</h4>
-                <i class="fas fa-dollar-sign text-muted-foreground"></i>
+                <h4 class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Faturamento (D+0)</h4>
+                <div class="rounded-lg bg-primary/10 p-2 text-primary"><i class="fas fa-dollar-sign text-sm"></i></div>
             </div>
-            <p class="text-2xl font-bold">${formatCurrency(data.faturamento_mensal_d0)}</p>
-            <p class="text-xs text-muted-foreground mt-1">Acumulado: ${formatCurrency(data.faturamento_acumulado_d0)}</p>
+            <p class="text-2xl font-bold animate-count-up">${formatCurrency(data.faturamento_mensal_d0)}</p>
+            <p class="text-xs text-muted-foreground mt-1">Acum: ${formatCurrency(data.faturamento_acumulado_d0)}</p>
         </div>
-        <div class="rounded-lg border bg-card p-4 shadow-sm ${getStatusBorderClass(data.status?.operacoes_negativas)}">
+        <div class="stat-card ${getStatusBorderClass(data.status?.operacoes_negativas)}">
             <div class="flex items-center justify-between mb-2">
-                <h4 class="text-sm font-medium text-muted-foreground">Operacoes negativas (D+5)</h4>
-                <i class="fas fa-exclamation-triangle text-muted-foreground"></i>
+                <h4 class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Op. negativas (D+5)</h4>
+                <div class="rounded-lg bg-warning/10 p-2 text-warning"><i class="fas fa-exclamation-triangle text-sm"></i></div>
             </div>
-            <p class="text-2xl font-bold">${formatCurrency(data.valor_operacoes_negativas_d5)}</p>
+            <p class="text-2xl font-bold animate-count-up">${formatCurrency(data.valor_operacoes_negativas_d5)}</p>
         </div>
-        <div class="rounded-lg border bg-card p-4 shadow-sm ${getStatusBorderClass(data.status?.fluxo_caixa)}">
+        <div class="stat-card ${getStatusBorderClass(data.status?.fluxo_caixa)}">
             <div class="flex items-center justify-between mb-2">
-                <h4 class="text-sm font-medium text-muted-foreground">Fluxo de caixa atual</h4>
-                <i class="fas fa-wallet text-muted-foreground"></i>
+                <h4 class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Fluxo de caixa</h4>
+                <div class="rounded-lg bg-info/10 p-2 text-info"><i class="fas fa-wallet text-sm"></i></div>
             </div>
-            <p class="text-2xl font-bold">${formatCurrency(data.fluxo_caixa_atual)}</p>
+            <p class="text-2xl font-bold animate-count-up">${formatCurrency(data.fluxo_caixa_atual)}</p>
         </div>
     `;
 }
@@ -1520,60 +1491,60 @@ function renderDiretoriaPanel(data) {
         .slice(0, 5);
     
     return `
-        <div class="rounded-lg border bg-card p-4 shadow-sm">
+        <div class="stat-card">
             <div class="flex items-center justify-between mb-2">
-                <h4 class="text-sm font-medium text-muted-foreground">Faturamento mensal x acumulado (D+0)</h4>
-                <i class="fas fa-dollar-sign text-muted-foreground"></i>
+                <h4 class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Faturamento (D+0)</h4>
+                <div class="rounded-lg bg-primary/10 p-2 text-primary"><i class="fas fa-dollar-sign text-sm"></i></div>
             </div>
             <p class="text-2xl font-bold">${formatCurrency(data.faturamento_mensal_d0)}</p>
-            <p class="text-xs text-muted-foreground mt-1">Acumulado: ${formatCurrency(data.faturamento_acumulado_d0)}</p>
+            <p class="text-xs text-muted-foreground mt-1">Acum: ${formatCurrency(data.faturamento_acumulado_d0)}</p>
         </div>
-        <div class="rounded-lg border bg-card p-4 shadow-sm ${getStatusBorderClass(data.status?.operacoes_negativas)}">
+        <div class="stat-card ${getStatusBorderClass(data.status?.operacoes_negativas)}">
             <div class="flex items-center justify-between mb-2">
-                <h4 class="text-sm font-medium text-muted-foreground">Embarques com prejuizo (D+5)</h4>
-                <i class="fas fa-exclamation-triangle text-muted-foreground"></i>
+                <h4 class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Embarques c/ prejuízo</h4>
+                <div class="rounded-lg bg-destructive/10 p-2 text-destructive"><i class="fas fa-exclamation-triangle text-sm"></i></div>
             </div>
             <p class="text-2xl font-bold">${formatCurrency(data.valor_embarques_prejuizo_d5)}</p>
         </div>
-        <div class="rounded-lg border bg-card p-4 shadow-sm ${getStatusBorderClass(data.status?.inadimplencia)}">
+        <div class="stat-card ${getStatusBorderClass(data.status?.inadimplencia)}">
             <div class="flex items-center justify-between mb-2">
-                <h4 class="text-sm font-medium text-muted-foreground">Inadimplencia</h4>
-                <i class="fas fa-exclamation-circle text-muted-foreground"></i>
+                <h4 class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Inadimplência</h4>
+                <div class="rounded-lg bg-warning/10 p-2 text-warning"><i class="fas fa-exclamation-circle text-sm"></i></div>
             </div>
             <p class="text-2xl font-bold">${formatPercent(data.inadimplencia_percent)}</p>
-            <p class="text-xs text-muted-foreground mt-1">Valor: ${formatCurrency(data.inadimplencia_valor)}</p>
+            <p class="text-xs text-muted-foreground mt-1">${formatCurrency(data.inadimplencia_valor)}</p>
         </div>
-        <div class="rounded-lg border bg-card p-4 shadow-sm">
+        <div class="stat-card">
             <div class="flex items-center justify-between mb-2">
-                <h4 class="text-sm font-medium text-muted-foreground">Participacao faturamento (Base 147)</h4>
-                <i class="fas fa-chart-pie text-muted-foreground"></i>
+                <h4 class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Participação (Base 147)</h4>
+                <div class="rounded-lg bg-info/10 p-2 text-info"><i class="fas fa-chart-pie text-sm"></i></div>
             </div>
             <p class="text-2xl font-bold">${formatPercent(data.participacao_corporativo_percent)}</p>
             <p class="text-xs text-muted-foreground mt-1">Vendedores: ${formatPercent(data.participacao_vendedores_percent)}</p>
         </div>
-        <div class="rounded-lg border bg-card p-4 shadow-sm">
+        <div class="stat-card">
             <div class="flex items-center justify-between mb-2">
-                <h4 class="text-sm font-medium text-muted-foreground">Custos do dia</h4>
-                <i class="fas fa-file-invoice text-muted-foreground"></i>
+                <h4 class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Custos do dia</h4>
+                <div class="rounded-lg bg-muted p-2 text-muted-foreground"><i class="fas fa-file-invoice text-sm"></i></div>
             </div>
             <p class="text-2xl font-bold">${formatCurrency(data.custos_dia)}</p>
         </div>
-        <div class="rounded-lg border bg-card p-4 shadow-sm">
+        <div class="stat-card">
             <div class="flex items-center justify-between mb-2">
-                <h4 class="text-sm font-medium text-muted-foreground">Lucro liquido / faturamento</h4>
-                <i class="fas fa-chart-line text-muted-foreground"></i>
+                <h4 class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Lucro / Faturamento</h4>
+                <div class="rounded-lg bg-success/10 p-2 text-success"><i class="fas fa-chart-line text-sm"></i></div>
             </div>
             <p class="text-2xl font-bold">${formatPercent(data.lucro_liquido_sobre_faturamento)}</p>
         </div>
-        <div class="rounded-lg border bg-card p-4 shadow-sm ${getStatusBorderClass(data.status?.fluxo_caixa)}">
+        <div class="stat-card ${getStatusBorderClass(data.status?.fluxo_caixa)}">
             <div class="flex items-center justify-between mb-2">
-                <h4 class="text-sm font-medium text-muted-foreground">Fluxo de caixa (D+5)</h4>
-                <i class="fas fa-wallet text-muted-foreground"></i>
+                <h4 class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Fluxo de caixa (D+5)</h4>
+                <div class="rounded-lg bg-info/10 p-2 text-info"><i class="fas fa-wallet text-sm"></i></div>
             </div>
             <p class="text-2xl font-bold">${formatCurrency(data.fluxo_caixa_d5)}</p>
         </div>
-        <div class="md:col-span-2 lg:col-span-4 rounded-lg border bg-card p-4 shadow-sm">
-            <h4 class="text-sm font-medium text-muted-foreground mb-3">Resultado por servico (D+5) - Top 5</h4>
+        <div class="sm:col-span-2 lg:col-span-4 card-base p-5">
+            <h4 class="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-3">Resultado por serviço (D+5) — Top 5</h4>
             ${topServicos.length > 0 ? `
                 <div class="space-y-2">
                     ${topServicos.map(([servico, dados]) => `
@@ -1590,35 +1561,35 @@ function renderDiretoriaPanel(data) {
 
 function renderOperacionalPanel(data) {
     return `
-        <div class="rounded-lg border bg-card p-4 shadow-sm ${getStatusBorderClass(data.status?.performance_entrega)}">
+        <div class="stat-card ${getStatusBorderClass(data.status?.performance_entrega)}">
             <div class="flex items-center justify-between mb-2">
-                <h4 class="text-sm font-medium text-muted-foreground">Performance de entrega</h4>
-                <i class="fas fa-bullseye text-muted-foreground"></i>
+                <h4 class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Performance entrega</h4>
+                <div class="rounded-lg bg-success/10 p-2 text-success"><i class="fas fa-bullseye text-sm"></i></div>
             </div>
             <p class="text-2xl font-bold">${formatPercent(data.performance_entrega_on_time_percent)}</p>
         </div>
-        <div class="rounded-lg border bg-card p-4 shadow-sm">
+        <div class="stat-card">
             <div class="flex items-center justify-between mb-2">
-                <h4 class="text-sm font-medium text-muted-foreground">Resultado das composicoes do dia</h4>
-                <i class="fas fa-route text-muted-foreground"></i>
+                <h4 class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Composições do dia</h4>
+                <div class="rounded-lg bg-primary/10 p-2 text-primary"><i class="fas fa-route text-sm"></i></div>
             </div>
             <p class="text-2xl font-bold">${formatCurrency(data.resultado_composicoes_rotas_dia?.faturamento_total)}</p>
             <p class="text-xs text-muted-foreground mt-1">Rotas: ${data.resultado_composicoes_rotas_dia?.total_rotas ?? 'N/D'}</p>
         </div>
-        <div class="rounded-lg border bg-card p-4 shadow-sm">
+        <div class="stat-card">
             <div class="flex items-center justify-between mb-2">
-                <h4 class="text-sm font-medium text-muted-foreground">Faturamento mensal x acumulado</h4>
-                <i class="fas fa-dollar-sign text-muted-foreground"></i>
+                <h4 class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Faturamento mensal</h4>
+                <div class="rounded-lg bg-primary/10 p-2 text-primary"><i class="fas fa-dollar-sign text-sm"></i></div>
             </div>
             <p class="text-2xl font-bold">${formatCurrency(data.faturamento_mensal_d0)}</p>
-            <p class="text-xs text-muted-foreground mt-1">Acumulado: ${formatCurrency(data.faturamento_acumulado_d0)}</p>
+            <p class="text-xs text-muted-foreground mt-1">Acum: ${formatCurrency(data.faturamento_acumulado_d0)}</p>
         </div>
-        <div class="rounded-lg border bg-card p-4 shadow-sm ${getStatusBorderClass(data.status?.nivel_operacao)}">
+        <div class="stat-card ${getStatusBorderClass(data.status?.nivel_operacao)}">
             <div class="flex items-center justify-between mb-2">
-                <h4 class="text-sm font-medium text-muted-foreground">Nivel de Operacao e Atendimento</h4>
-                <i class="fas fa-signal text-muted-foreground"></i>
+                <h4 class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Nível Operação</h4>
+                <div class="rounded-lg bg-info/10 p-2 text-info"><i class="fas fa-signal text-sm"></i></div>
             </div>
-            <p class="text-2xl font-bold">Nivel ${data.nivel_operacao_atendimento?.nivel ?? 'N/D'}</p>
+            <p class="text-2xl font-bold">Nível ${data.nivel_operacao_atendimento?.nivel ?? 'N/D'}</p>
             <p class="text-xs text-muted-foreground mt-1">${data.nivel_operacao_atendimento?.descricao || 'N/D'}</p>
         </div>
     `;
@@ -1626,36 +1597,36 @@ function renderOperacionalPanel(data) {
 
 function renderProjetosPanel(data) {
     return `
-        <div class="rounded-lg border bg-card p-4 shadow-sm">
+        <div class="stat-card">
             <div class="flex items-center justify-between mb-2">
-                <h4 class="text-sm font-medium text-muted-foreground">Projetos ativos x concluidos</h4>
-                <i class="fas fa-check-circle text-muted-foreground"></i>
+                <h4 class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Projetos ativos / concluídos</h4>
+                <div class="rounded-lg bg-success/10 p-2 text-success"><i class="fas fa-check-circle text-sm"></i></div>
             </div>
             <p class="text-2xl font-bold">${data.projetos_ativos ?? 'N/D'} / ${data.projetos_concluidos ?? 'N/D'}</p>
         </div>
-        <div class="rounded-lg border bg-card p-4 shadow-sm ${data.projetos_atraso > 0 ? 'border-red-500' : 'border-green-500'}">
+        <div class="stat-card ${data.projetos_atraso > 0 ? 'border-destructive' : 'border-success'}">
             <div class="flex items-center justify-between mb-2">
-                <h4 class="text-sm font-medium text-muted-foreground">Projetos em atraso</h4>
-                <i class="fas fa-exclamation-triangle text-muted-foreground"></i>
+                <h4 class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Projetos em atraso</h4>
+                <div class="rounded-lg bg-destructive/10 p-2 text-destructive"><i class="fas fa-exclamation-triangle text-sm"></i></div>
             </div>
             <p class="text-2xl font-bold">${data.projetos_atraso ?? 'N/D'}</p>
         </div>
-        <div class="rounded-lg border bg-card p-4 shadow-sm">
+        <div class="stat-card">
             <div class="flex items-center justify-between mb-2">
-                <h4 class="text-sm font-medium text-muted-foreground">Prazo medio dos projetos</h4>
-                <i class="fas fa-clock text-muted-foreground"></i>
+                <h4 class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Prazo médio</h4>
+                <div class="rounded-lg bg-info/10 p-2 text-info"><i class="fas fa-clock text-sm"></i></div>
             </div>
             <p class="text-2xl font-bold">${data.prazo_medio_dias ?? 'N/D'}</p>
             <p class="text-xs text-muted-foreground mt-1">Dias</p>
         </div>
-        <div class="md:col-span-2 lg:col-span-4 rounded-lg border bg-card p-4 shadow-sm">
-            <h4 class="text-sm font-medium text-muted-foreground mb-3">Gargalos recorrentes</h4>
+        <div class="sm:col-span-2 lg:col-span-4 card-base p-5">
+            <h4 class="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-3">Gargalos recorrentes</h4>
             ${data.gargalos && data.gargalos.length > 0 ? `
                 <div class="space-y-2">
                     ${data.gargalos.slice(0, 5).map(gargalo => `
                         <div class="flex items-center justify-between py-2 border-b last:border-0">
                             <span class="text-sm font-medium">${gargalo}</span>
-                            <span class="inline-flex items-center rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-800">Risco</span>
+                            <span class="badge badge-destructive">Risco</span>
                         </div>
                     `).join('')}
                 </div>
@@ -1681,82 +1652,28 @@ function formatPercent(value) {
 function getStatusBorderClass(status) {
     if (!status || status === 'indefinido') return '';
     const map = {
-        'green': 'border-green-500',
-        'positivo': 'border-green-500',
-        'yellow': 'border-yellow-500',
-        'red': 'border-red-500',
-        'negativo': 'border-red-500'
+        'green': 'border-l-4 border-l-green-500',
+        'positivo': 'border-l-4 border-l-green-500',
+        'yellow': 'border-l-4 border-l-yellow-500',
+        'red': 'border-l-4 border-l-red-500',
+        'negativo': 'border-l-4 border-l-red-500'
     };
     return map[status] || '';
 }
 </script>
 
 <style>
-/* Melhorias de formatação para mensagens do chat */
-#fullChatMessages .prose {
-    line-height: 1.7;
-}
+/* Chat prose improvements */
+#fullChatMessages .prose { line-height: 1.7; }
+#fullChatMessages .prose p { margin-top: 0.5rem; margin-bottom: 0.5rem; }
+#fullChatMessages .prose p:first-child { margin-top: 0; }
+#fullChatMessages .prose p:last-child { margin-bottom: 0; }
+#fullChatMessages .prose strong { font-weight: 600; }
+#fullChatMessages .prose code { font-size: 0.85em; padding: 0.1rem 0.35rem; border-radius: 4px; background: hsl(var(--muted)); }
+#fullChatMessages .prose a { color: hsl(var(--primary)); text-decoration: underline; text-underline-offset: 2px; word-break: break-all; }
 
-#fullChatMessages .prose p {
-    margin-top: 0.75rem;
-    margin-bottom: 0.75rem;
-}
-
-#fullChatMessages .prose p:first-child {
-    margin-top: 0;
-}
-
-#fullChatMessages .prose p:last-child {
-    margin-bottom: 0;
-}
-
-#fullChatMessages .prose strong {
-    font-weight: 600;
-    color: inherit;
-}
-
-#fullChatMessages .prose code {
-    font-size: 0.875em;
-    padding: 0.125rem 0.375rem;
-}
-
-#fullChatMessages .prose pre {
-    margin-top: 1rem;
-    margin-bottom: 1rem;
-    padding: 0.75rem;
-}
-
-#fullChatMessages .prose a {
-    word-break: break-all;
-    text-decoration: underline;
-    text-underline-offset: 2px;
-}
-
-#fullChatMessages .prose a:hover {
-    text-decoration-thickness: 2px;
-}
-
-/* Melhorar espaçamento de listas */
-#fullChatMessages .prose > div.flex {
-    margin-top: 0.5rem;
-    margin-bottom: 0.5rem;
-}
-
-/* Garantir quebra de palavras longas */
-#fullChatMessages .prose {
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-}
-
-/* Melhorar legibilidade em telas pequenas */
 @media (max-width: 768px) {
-    #fullChatMessages .prose {
-        font-size: 0.875rem;
-    }
-    
-    #fullChatMessages .prose code {
-        font-size: 0.75rem;
-    }
+    #fullChatMessages .prose { font-size: 0.875rem; }
 }
 
 @keyframes relatorio-marquee {
@@ -1774,22 +1691,8 @@ function getStatusBorderClass(status) {
     animation-play-state: paused;
 }
 
-/* Controle de visibilidade das abas via data-tab-active */
-.tab-pane[data-tab-active="false"] {
-    display: none !important;
-}
-
-.tab-pane[data-tab-active="true"] {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    min-height: 200px;
-}
-
-/* Garantir que o container do chat seja visivel */
-#chatContainer {
-    display: flex !important;
-    flex-direction: column !important;
-}
+.tab-pane[data-tab-active="false"] { display: none !important; }
+.tab-pane[data-tab-active="true"] { display: block !important; visibility: visible !important; opacity: 1 !important; min-height: 200px; }
+#chatContainer { display: flex !important; flex-direction: column !important; }
 </style>
 {% endblock %}
