@@ -2387,6 +2387,19 @@ def index():
     return redirect(url_for("login"))
 
 
+@app.route("/signin")
+def signin():
+    """Alias legado para a página de login."""
+    return redirect(url_for("login"))
+
+
+@app.route("/dashboard")
+@login_required
+def dashboard_redirect():
+    """Alias legado para encaminhar ao dashboard correto por perfil."""
+    return redirect(url_for("admin_dashboard") if is_admin_session() else url_for("team_dashboard"))
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":

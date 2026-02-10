@@ -13,7 +13,7 @@ export function BackendStatusCard() {
       </div>
 
       <p className="status-card__description">
-        Endpoint atual: <code>{import.meta.env.VITE_HEALTH_ENDPOINT ?? '/api/health'}</code>
+        Endpoint atual: <code>{import.meta.env.VITE_HEALTH_ENDPOINT ?? '/api/agent/health'}</code>
       </p>
 
       {loading && <p className="status-card__info">Consultando servico...</p>}
