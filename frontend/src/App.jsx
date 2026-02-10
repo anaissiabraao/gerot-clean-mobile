@@ -1,7 +1,19 @@
+import { useEffect } from 'react'
 import './App.css'
+import env from './config/env'
 import { BackendStatusCard } from './modules/health/components/BackendStatusCard'
 
 function App() {
+  useEffect(() => {
+    if (!env.redirectToBackendLogin || !env.backendUrl) {
+      return
+    }
+
+    if (window.location.pathname === '/' || window.location.pathname === '/index.html') {
+      window.location.replace(`${env.backendUrl}/login`)
+    }
+  }, [])
+
   return (
     <main className="app-shell">
       <header className="app-header">
@@ -15,6 +27,14 @@ function App() {
       <section className="cards-grid">
         <BackendStatusCard />
       </section>
+
+      <div className="next-steps">
+        <h2>Atalhos legados</h2>
+        <ul>
+          <li><a href={`${env.backendUrl}/login`}>Abrir login do GeRot</a></li>
+          <li><a href={`${env.backendUrl}/dashboard`}>Abrir dashboard do GeRot</a></li>
+        </ul>
+      </div>
 
       <div className="next-steps">
         <h2>Proximos passos</h2>

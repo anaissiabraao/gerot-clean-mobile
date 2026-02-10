@@ -366,6 +366,8 @@ if db_pool is None and last_pool_error is not None:
 
 BASE_DIR = Path(__file__).resolve().parent
 PLANILHA_USUARIOS = BASE_DIR / "dados.xlsx"
+FRONTEND_DIST_DIR = BASE_DIR / "frontend" / "dist"
+FRONTEND_APP_URL = (os.getenv("FRONTEND_APP_URL") or "").strip().rstrip("/")
 ADMIN_CARGOS = {"CONSULTOR", "COORDENADOR", "DIRETOR"}
 ALLOWED_AVATAR_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "gif"}
 MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB
@@ -2385,6 +2387,48 @@ def index():
             else redirect(url_for("team_dashboard"))
         )
     return redirect(url_for("login"))
+
+
+def _build_frontend_redirect(path: str = "") -> str:
+    suffix = f"/{path.lstrip('/')}" if path else ""
+    return f"{FRONTEND_APP_URL}{suffix}" if FRONTEND_APP_URL else ""
+
+
+@app.route("/assets/<path:asset_path>")
+def frontend_assets_root(asset_path: str):
+    """Serve assets do build Vite quando o SPA roda pelo backend."""
+    assets_dir = FRONTEND_DIST_DIR / "assets"
+    if assets_dir.exists():
+        return send_from_directory(str(assets_dir), asset_path)
+    target = _build_frontend_redirect(f"assets/{asset_path}")
+    if target:
+        return redirect(target)
+    return jsonify({"error": "Frontend build não encontrado em frontend/dist"}), 404
+
+
+@app.route("/app/assets/<path:asset_path>")
+def frontend_assets_app(asset_path: str):
+    """Alias para servir assets sob /app/assets."""
+    return frontend_assets_root(asset_path)
+
+
+@app.route("/app")
+@app.route("/app/<path:subpath>")
+@login_required
+def frontend_spa(subpath: str = ""):
+    """
+    Modo híbrido:
+    - "/" mantém fluxo legado (login/dashboard)
+    - "/app" entrega o SPA Vite (local) ou redireciona para FRONTEND_APP_URL.
+    """
+    index_file = FRONTEND_DIST_DIR / "index.html"
+    if index_file.exists():
+        return send_from_directory(str(FRONTEND_DIST_DIR), "index.html")
+
+    target = _build_frontend_redirect(subpath)
+    if target:
+        return redirect(target)
+    return jsonify({"error": "Frontend SPA não configurado. Defina FRONTEND_APP_URL ou publique frontend/dist."}), 404
 
 
 @app.route("/signin")

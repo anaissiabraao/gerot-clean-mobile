@@ -15,8 +15,10 @@ Por padrao, o app abre na porta `5173`.
 ## Integracao com backend
 
 - O `vite.config.js` tem proxy de `/api` para `VITE_BACKEND_URL` (padrao `http://localhost:5000`).
-- O modulo de status usa `VITE_HEALTH_ENDPOINT` (padrao `/api/health`) para validar conectividade.
+- Em producao, `VITE_BACKEND_URL` tambem eh usado como fallback para chamadas HTTP quando `VITE_API_BASE_URL` estiver vazio.
+- O modulo de status usa `VITE_HEALTH_ENDPOINT` (padrao `/api/agent/health`) para validar conectividade.
 - Para consumir backend sem proxy, configure `VITE_API_BASE_URL`.
+- Para redirecionar automaticamente da raiz do front para o login legado, use `VITE_REDIRECT_TO_BACKEND_LOGIN=true`.
 
 ## Estrutura inicial
 
