@@ -1,0 +1,231 @@
+// Prisma Schema - Sistema TMS VCI TRANSPORTES
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Seed configuration
+seed {
+  provider = "node --experimental-modules src/prisma/seed.js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USUÁRIOS E AUTENTICAÇÃO
+// ============================================
+
+model User {
+  id            String    @id @default(uuid())
+  name          String
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  role          UserRole  @default(OPERACIONAL)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  OPERACIONAL
+  FINANCEIRO
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+// ============================================
+// CLIENTES
+// ============================================
+
+model Client {
+  id              String    @id @default(uuid())
+  cnpj            String    @unique
+  razaoSocial     String    @map("razao_social")
+  nomeFantasia    String?   @map("nome_fantasia")
+  emailFaturamento String?  @map("email_faturamento")
+  telefone        String?
+  endereco        String?
+  cidade          String?
+  estado          String?
+  cep             String?
+  ativo           Boolean   @default(true)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  quotes          Quote[]
+  invoices        Invoice[]
+
+  @@map("clients")
+}
+
+// ============================================
+// COTAÇÕES
+// ============================================
+
+model Quote {
+  id            String      @id @default(uuid())
+  clientId      String      @map("client_id")
+  origem        String
+  destino       String
+  peso          Float
+  cubagem       Float
+  valor         Float
+  status        QuoteStatus @default(PENDENTE)
+  observacoes   String?     @db.Text
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+  client        Client      @relation(fields: [clientId], references: [id])
+  ctes          Cte[]
+
+  @@map("quotes")
+}
+
+enum QuoteStatus {
+  PENDENTE
+  APROVADA
+  REJEITADA
+  EM_TRANSITO
+  CONCLUIDA
+  CANCELADA
+}
+
+// ============================================
+// NOTAS FISCAIS
+// ============================================
+
+model Invoice {
+  id          String    @id @default(uuid())
+  clientId    String    @map("client_id")
+  numeroNfe   String?   @unique @map("numero_nfe")
+  serieNfe    String?   @map("serie_nfe")
+  chaveNfe    String?   @unique @map("chave_nfe")
+  xml         String?   @db.Text
+  valorTotal  Float     @map("valor_total")
+  dataEmissao DateTime? @map("data_emissao")
+  status      String    @default("PENDENTE")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  client      Client    @relation(fields: [clientId], references: [id])
+  ctes        Cte[]
+
+  @@map("invoices")
+}
+
+// ============================================
+// CT-e (CONHECIMENTO DE TRANSPORTE ELETRÔNICO)
+// ============================================
+
+model Cte {
+  id            String      @id @default(uuid())
+  quoteId       String?     @map("quote_id")
+  invoiceId    String?     @map("invoice_id")
+  numeroCte    String?     @map("numero_cte")
+  serieCte      String      @default("1") @map("serie_cte")
+  chaveCte      String?     @unique @map("chave_cte")
+  xml           String?     @db.Text
+  xmlAutorizado String?     @db.Text @map("xml_autorizado")
+  statusSefaz   CteStatus   @default(PENDENTE) @map("status_sefaz")
+  protocolo     String?
+  motivoRejeicao String?    @db.Text @map("motivo_rejeicao")
+  dataEmissao   DateTime?   @map("data_emissao")
+  dataAutorizacao DateTime? @map("data_autorizacao")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+  quote         Quote?      @relation(fields: [quoteId], references: [id])
+  invoice       Invoice?    @relation(fields: [invoiceId], references: [id])
+  mdfes         Mdfe[]
+  boletos        Boleto[]
+
+  @@map("ctes")
+}
+
+enum CteStatus {
+  PENDENTE
+  PROCESSANDO
+  AUTORIZADO
+  REJEITADO
+  CANCELADO
+  DENEGADO
+}
+
+// ============================================
+// MDF-e (MANIFESTO DE DOCUMENTOS FISCAIS ELETRÔNICOS)
+// ============================================
+
+model Mdfe {
+  id              String      @id @default(uuid())
+  cteId           String?     @map("cte_id")
+  numeroMdfe      String?     @map("numero_mdfe")
+  serieMdfe       String      @default("1") @map("serie_mdfe")
+  chaveMdfe       String?     @unique @map("chave_mdfe")
+  xml             String?     @db.Text
+  xmlAutorizado   String?     @db.Text @map("xml_autorizado")
+  statusSefaz     MdfeStatus  @default(PENDENTE) @map("status_sefaz")
+  protocolo       String?
+  motivoRejeicao  String?     @db.Text @map("motivo_rejeicao")
+  dataEmissao     DateTime?   @map("data_emissao")
+  dataAutorizacao DateTime?   @map("data_autorizacao")
+  dataEncerramento DateTime?  @map("data_encerramento")
+  codigoEncerramento String?  @map("codigo_encerramento")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+  cte             Cte?        @relation(fields: [cteId], references: [id])
+
+  @@map("mdfes")
+}
+
+enum MdfeStatus {
+  PENDENTE
+  PROCESSANDO
+  AUTORIZADO
+  REJEITADO
+  CANCELADO
+  ENCERRADO
+  DENEGADO
+}
+
+// ============================================
+// BOLETOS
+// ============================================
+
+model Boleto {
+  id              String        @id @default(uuid())
+  cteId           String        @map("cte_id")
+  nossoNumero     String        @unique @map("nosso_numero")
+  linhaDigitavel  String        @map("linha_digitavel")
+  codigoBarras     String        @map("codigo_barras")
+  valor           Float
+  vencimento      DateTime
+  banco           String
+  status          BoletoStatus  @default(PENDENTE)
+  urlBoleto       String?       @map("url_boleto")
+  pdfBoleto       String?       @db.Text @map("pdf_boleto")
+  emailEnviado    Boolean       @default(false) @map("email_enviado")
+  dataEnvioEmail  DateTime?     @map("data_envio_email")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  @@map("boletos")
+}
+
+enum BoletoStatus {
+  PENDENTE
+  GERADO
+  ENVIADO
+  PAGO
+  VENCIDO
+  CANCELADO
+}

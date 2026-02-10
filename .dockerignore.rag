@@ -1,0 +1,61 @@
+# Dockerignore específico para serviço RAG
+.git
+.gitignore
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.log
+env/
+venv/
+.venv/
+.idea/
+.vscode/
+# Excluir aplicação Flask (não precisa no RAG)
+app_production.py
+templates/
+static/
+utils/
+tools/
+# Excluir arquivos grandes desnecessários
+*.md
+*.bat
+*.sh
+docling-main/
+agent_local/
+batch/
+scripts/
+*.txt
+!requirements.txt
+# Excluir logs e temporários
+*.log
+logs/
+tmp/
+temp/
+# Excluir documentação
+docs/
+*.pdf
+# Excluir backups
+*.bak
+*.backup
+# Excluir arquivos de desenvolvimento
+.env.example
+.env.local
+*.dev
+# Excluir arquivos de teste
+test/
+tests/
+*_test.py
+*_tests.py
+# Excluir Dockerfiles não usados
+Dockerfile
+Dockerfile.optimized
+fly.toml
+render.yaml
+railway.json
+railway-env-vars.txt
+# Manter apenas o necessário para RAG
+# rag_service/ (incluído)
+# data/ (incluído para knowledge_dump.json)
+

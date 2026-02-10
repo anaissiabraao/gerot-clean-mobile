@@ -1,0 +1,52 @@
+# Multi-stage build para reduzir tamanho da imagem
+FROM python:3.11-slim AS builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Instalar apenas dependências de build necessárias
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        libffi-dev \
+        gcc \
+        g++ \
+        && rm -rf /var/lib/apt/lists/*
+
+# Copiar requirements e instalar PyTorch CPU-only primeiro (muito menor que CUDA)
+COPY requirements.txt .
+# Instalar numpy antes do PyTorch para evitar falhas de resolução no índice do PyTorch
+RUN pip install --no-cache-dir numpy
+# Instalar PyTorch CPU-only antes do docling para evitar CUDA (~3GB menor)
+RUN pip install --no-cache-dir \
+    --index-url https://download.pytorch.org/whl/cpu \
+    --extra-index-url https://pypi.org/simple \
+    torch==2.9.1+cpu torchvision==0.24.1+cpu
+# Instalar resto das dependências (docling vai usar PyTorch já instalado)
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Stage final: apenas runtime (sem build tools)
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PORT=5000
+
+WORKDIR /app
+
+# Copiar apenas Python packages instalados (sem build tools)
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Copiar código da aplicação
+COPY . .
+
+# Limpar cache Python e arquivos temporários
+RUN find /usr/local/lib/python3.11/site-packages -type d -name __pycache__ -exec rm -r {} + 2>/dev/null || true && \
+    find /usr/local/lib/python3.11/site-packages -name "*.pyc" -delete 2>/dev/null || true && \
+    rm -rf /tmp/* /var/tmp/* ~/.cache/pip
+
+CMD ["sh", "-c", "if [ \"${APP_ROLE:-dashboard}\" = \"rag\" ]; then uvicorn rag_service.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${UVICORN_WORKERS:-2}; else gunicorn -w ${GUNICORN_WORKERS:-4} -k sync -b 0.0.0.0:${PORT:-5000} --timeout 300 --keep-alive 5 --graceful-timeout 300 app_production:app; fi"]
+

@@ -1,0 +1,1302 @@
+        <!-- Conteúdo da Tab Relatório de Resultados -->
+        <div id="content-relatorio"
+             class="{% if relatorio_mode == 'tab' %}tab-content hidden{% else %}relatorio-block{% endif %}"
+             data-meta-valor="{{ relatorio_meta.meta_valor if relatorio_meta else 0 }}"
+             data-meta-percentual="{{ relatorio_meta.meta_percentual if relatorio_meta else 0 }}">
+            <div class="space-y-6" style="display: block;">
+                <!-- Filtros -->
+                <div class="rounded-lg border bg-card shadow-sm hidden" data-relatorio-filter>
+                    <div class="border-b px-6 py-4">
+                        <h3 class="flex items-center gap-2 text-lg font-semibold">
+                            <i class="fas fa-filter text-primary"></i>
+                            Filtros Analíticos
+                        </h3>
+                    </div>
+                    <div class="p-6">
+                        <div class="grid gap-4 md:grid-cols-6">
+                            <div>
+                                <label class="block text-sm font-medium text-foreground mb-1">
+                                    Período *
+                                </label>
+                                <select id="relatorio-period"
+                                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                                    <option value="mes_atual">Mês atual</option>
+                                    <option value="mes_menos1">Mês -1</option>
+                                    <option value="mes_menos2">Mês -2</option>
+                                    <option value="mes_menos3">Mês -3</option>
+                                    <option value="custom">Custom (datas)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-foreground mb-1">
+                                    Unidade *
+                                </label>
+                                <select id="relatorio-database"
+                                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                                    <option value="azportoex">MATRIZ (azportoex)</option>
+                                    <option value="portoexsp">FILIAL SP (portoexsp)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-foreground mb-1">
+                                    Forma de Pagamento
+                                </label>
+                                <div class="rounded-md border border-input bg-background px-3 py-2 text-sm space-y-2">
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <label class="flex items-center gap-2 cursor-pointer">
+                                            <input type="checkbox" id="relatorio-fp-faturado" class="rounded border-input" checked>
+                                            <span>Faturado</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 cursor-pointer">
+                                            <input type="checkbox" id="relatorio-fp-avista" class="rounded border-input" checked>
+                                            <span>À vista</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 cursor-pointer col-span-2">
+                                            <input type="checkbox" id="relatorio-fp-excluir-cortesia" class="rounded border-input" checked>
+                                            <span>Excluir Cortesia</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-foreground mb-1">
+                                    Datas (custom)
+                                </label>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <input type="date" id="relatorio-data-inicio"
+                                               class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                                    </div>
+                                    <div>
+                                        <input type="date" id="relatorio-data-fim"
+                                               class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="md:col-span-2 flex items-end">
+                                <button onclick="buscarRelatorioResultados()" class="w-full rounded-md bg-primary px-4 py-3 text-sm font-medium text-white hover:bg-primary/90 transition-colors flex items-center justify-center gap-2">
+                                    <i class="fas fa-chart-line"></i>
+                                    Gerar Análise
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Refresh Automático -->
+                        <div class="mt-4 pt-4 border-t border-border">
+                            <div class="flex items-center justify-between gap-4">
+                                <div class="flex items-center gap-3 flex-1">
+                                    <label class="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                                        <input type="checkbox" id="relatorio-auto-refresh" onchange="toggleAutoRefresh()" class="rounded border-input">
+                                        <span>Refresh Automático</span>
+                                    </label>
+                                    <select id="relatorio-refresh-interval" onchange="updateAutoRefreshInterval()" class="rounded-md border border-input bg-background px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-primary" disabled>
+                                        <option value="30">30 segundos</option>
+                                        <option value="60" selected>1 minuto</option>
+                                        <option value="300">5 minutos</option>
+                                    </select>
+                                </div>
+                                <div id="relatorio-refresh-status" class="text-xs text-muted-foreground hidden">
+                                    <i id="relatorio-refresh-icon" class="fas fa-sync-alt"></i>
+                                    <span id="relatorio-refresh-message" class="mr-2"></span>
+                                    <span id="relatorio-refresh-countdown"></span>
+                                </div>
+                            </div>
+                            <div class="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+                                <span id="relatorio-refresh-clock">
+                                    <i class="far fa-clock mr-1"></i>--:--:--
+                                </span>
+                                <span id="relatorio-refresh-summary"></span>
+                            </div>
+                            <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+                                <div class="flex items-center gap-2">
+                                    <button type="button" id="relatorio-save-layout"
+                                            class="rounded-md border border-input px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted/40">
+                                        <i class="fas fa-save mr-1"></i>Salvar layout
+                                    </button>
+                                    <span id="relatorio-layout-status" class="text-[11px] text-muted-foreground"></span>
+                                </div>
+                                <label class="flex items-center gap-2 text-xs font-medium text-muted-foreground cursor-pointer">
+                                    <input type="checkbox" id="relatorio-sound-enabled" class="rounded border-input" checked>
+                                    <span>Efeitos sonoros</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loading -->
+                <div id="relatorio-loading" class="hidden text-center py-12">
+                    <i class="fas fa-spinner fa-spin text-4xl text-primary mb-4"></i>
+                    <p class="text-muted-foreground">Gerando análise gerencial...</p>
+                </div>
+
+                <!-- Resultados -->
+                <div id="relatorio-results" class="hidden space-y-6" data-relatorio-container="relatorio_blocks">
+                    <div id="relatorio-alerts" class="hidden cursor-pointer rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2" role="button" tabindex="0">
+                        <span class="inline-block h-2 w-2 rounded-full bg-red-500"></span>
+                        Indicadores negativos detectados. Verifique os blocos destacados.
+                    </div>
+                    <div id="relatorio-meta-alerts" class="hidden"></div>
+                    <div id="relatorio-alerts-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                        <div class="bg-card rounded-lg shadow-xl max-w-lg w-full mx-4">
+                            <div class="border-b px-4 py-3 flex items-center justify-between">
+                                <h4 class="text-sm font-semibold">Indicadores negativos</h4>
+                                <button type="button" id="relatorio-alerts-close" class="text-muted-foreground hover:text-foreground">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div class="p-4">
+                                <ul id="relatorio-alerts-list" class="space-y-2 text-sm text-muted-foreground">
+                                    <li>Nenhum indicador negativo identificado.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Resumo - Primeira Linha: 5 Cards Principais -->
+                    <div class="grid gap-4 grid-cols-2 lg:grid-cols-5" data-relatorio-container="cards_resumo" data-relatorio-component="block_cards_resumo">
+                        <div class="rounded-lg border bg-card p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer" data-relatorio-component="card_operacoes" onclick="mostrarDetalhesMetrica('operacoes')">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-muted-foreground">Operações</span>
+                                <i class="fas fa-stream text-primary"></i>
+                            </div>
+                            <p id="relatorio-total-operacoes" class="text-2xl font-bold mt-2">0</p>
+                        </div>
+                        <div class="rounded-lg border bg-card p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer" data-relatorio-component="card_frete" data-meta-card="frete" onclick="mostrarDetalhesMetrica('frete')">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-muted-foreground">Lucro Líquido</span>
+                                <i class="fas fa-truck text-emerald-500"></i>
+                            </div>
+                            <p id="relatorio-total-frete" class="text-2xl font-bold mt-2">R$ 0,00</p>
+                            <p id="relatorio-frete-meta" class="text-xs text-muted-foreground mt-1">Meta: —</p>
+                        </div>
+                        <div class="rounded-lg border bg-card p-4 shadow-sm hover:shadow-md transition-shadow relatorio-draggable" data-relatorio-component="indicador_frete">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-muted-foreground">Indicador: Frete</span>
+                                <span data-gauge-info-for="chart-gauge-frete" class="text-xs font-semibold text-emerald-600">--</span>
+                            </div>
+                            <div class="mt-3 relative" data-gauge-wrapper data-gauge-height="180" style="height: 180px;">
+                                <canvas id="chart-gauge-frete" class="w-full h-full"></canvas>
+                            </div>
+                            <button type="button" id="relatorio-frete-gauge-toggle"
+                                    class="mt-2 text-xs text-muted-foreground hover:text-foreground">
+                                Ver detalhes
+                            </button>
+                            <div data-gauge-detail-for="chart-gauge-frete" class="hidden mt-3 rounded-md bg-muted/30 px-3 py-2 text-xs text-muted-foreground"></div>
+                        </div>
+                        <div class="rounded-lg border bg-card p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer" data-relatorio-component="card_valor_nf" onclick="mostrarDetalhesMetrica('valor-nf')">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-muted-foreground">Valor NF</span>
+                                <i class="fas fa-file-invoice-dollar text-blue-500"></i>
+                            </div>
+                            <p id="relatorio-total-valor-nf" class="text-2xl font-bold mt-2">R$ 0,00</p>
+                        </div>
+                        <div class="rounded-lg border bg-card p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer" data-relatorio-component="card_resultado" onclick="mostrarDetalhesMetrica('resultado')">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-muted-foreground">Resultado Líquido</span>
+                                <i class="fas fa-coins text-amber-500"></i>
+                            </div>
+                            <p id="relatorio-total-resultado" class="text-2xl font-bold mt-2">R$ 0,00</p>
+                        </div>
+                        <div class="rounded-lg border bg-card p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer" data-relatorio-component="card_ticket_medio" onclick="mostrarDetalhesMetrica('ticket-medio')">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-muted-foreground">Ticket Médio</span>
+                                <i class="fas fa-receipt text-blue-500"></i>
+                            </div>
+                            <p id="relatorio-ticket-medio" class="text-2xl font-bold mt-2">R$ 0,00</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Segunda Linha: 3 Cards (Impostos, Prejuízos, Margem) -->
+                    <div class="grid gap-4 grid-cols-2 lg:grid-cols-3" data-relatorio-container="cards_impostos" data-relatorio-component="block_cards_impostos">
+                        <div class="rounded-lg border bg-card p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer" data-relatorio-component="card_impostos" onclick="mostrarDetalhesMetrica('impostos')">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-muted-foreground">Total Impostos</span>
+                                <i class="fas fa-receipt text-orange-500"></i>
+                            </div>
+                            <p id="relatorio-total-impostos" class="text-2xl font-bold mt-2">R$ 0,00</p>
+                        </div>
+                        <div class="rounded-lg border bg-card p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer" data-relatorio-component="card_prejuizos" onclick="mostrarDetalhesMetrica('prejuizos')">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-muted-foreground">Prejuízos</span>
+                                <i class="fas fa-exclamation-triangle text-red-600"></i>
+                            </div>
+                            <p id="relatorio-total-prejuizos" class="text-2xl font-bold mt-2 text-red-600">R$ 0,00</p>
+                        </div>
+                        <div class="rounded-lg border bg-card p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer" data-relatorio-component="card_margem" data-meta-card="margem" onclick="mostrarDetalhesMetrica('margem')">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-muted-foreground">Margem %</span>
+                                <i class="fas fa-percentage text-blue-500"></i>
+                            </div>
+                            <p id="relatorio-margem-percentual" class="text-2xl font-bold mt-2">0%</p>
+                        </div>
+                    </div>
+
+                    <!-- Métricas Adicionais: Ocultas por padrão -->
+                    <div class="hidden" id="metricas-adicionais-container" data-relatorio-component="block_metricas_adicionais">
+                        <!-- Métricas Adicionais: Volumes, Peso e Receita -->
+                        <div class="grid gap-4 grid-cols-2 lg:grid-cols-4">
+                            <div class="rounded-lg border bg-card p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer" onclick="mostrarDetalhesMetrica('volumes')">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-muted-foreground">Volumes</span>
+                                    <i class="fas fa-boxes text-purple-500"></i>
+                                </div>
+                                <p id="relatorio-total-volumes" class="text-2xl font-bold mt-2">0</p>
+                            </div>
+                            <div class="rounded-lg border bg-card p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer" onclick="mostrarDetalhesMetrica('peso')">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-muted-foreground">Peso</span>
+                                    <i class="fas fa-weight text-gray-500"></i>
+                                </div>
+                                <p id="relatorio-total-peso" class="text-2xl font-bold mt-2">0 kg</p>
+                            </div>
+                            <div class="rounded-lg border bg-card p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer" onclick="mostrarDetalhesMetrica('receita')">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-muted-foreground">Receita</span>
+                                    <i class="fas fa-chart-line text-green-500"></i>
+                                </div>
+                                <p id="relatorio-total-receita" class="text-2xl font-bold mt-2">R$ 0,00</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Custos Detalhados -->
+                        <div class="grid gap-4 grid-cols-2 lg:grid-cols-4">
+                            <div class="rounded-lg border bg-card p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer" onclick="mostrarDetalhesMetrica('custos')">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-muted-foreground">Total Custos (C.TOTAL)</span>
+                                    <i class="fas fa-dollar-sign text-red-500"></i>
+                                </div>
+                                <p id="relatorio-total-custos" class="text-2xl font-bold mt-2">R$ 0,00</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Custos Detalhados por Tipo -->
+                        <div class="grid gap-4 grid-cols-2 lg:grid-cols-4">
+                        <div class="rounded-lg border bg-card p-4 shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-muted-foreground">Custo Coleta</span>
+                                <i class="fas fa-hand-holding-box text-yellow-500"></i>
+                            </div>
+                            <p id="relatorio-total-coleta-custo" class="text-2xl font-bold mt-2">R$ 0,00</p>
+                        </div>
+                        <div class="rounded-lg border bg-card p-4 shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-muted-foreground">Custo Entrega</span>
+                                <i class="fas fa-truck-loading text-orange-500"></i>
+                            </div>
+                            <p id="relatorio-total-entrega-custo" class="text-2xl font-bold mt-2">R$ 0,00</p>
+                        </div>
+                        <div class="rounded-lg border bg-card p-4 shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-muted-foreground">Custo Transferência</span>
+                                <i class="fas fa-exchange-alt text-indigo-500"></i>
+                            </div>
+                            <p id="relatorio-total-transf-custo" class="text-2xl font-bold mt-2">R$ 0,00</p>
+                        </div>
+                        <div class="rounded-lg border bg-card p-4 shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-muted-foreground">ICMS/ISS</span>
+                                <i class="fas fa-file-invoice-dollar text-red-400"></i>
+                            </div>
+                            <p id="relatorio-total-icms" class="text-2xl font-bold mt-2">R$ 0,00</p>
+                        </div>
+                        </div>
+                        
+                        <!-- Impostos e Outros Custos -->
+                        <div class="grid gap-4 grid-cols-2 lg:grid-cols-4">
+                        <div class="rounded-lg border bg-card p-4 shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-muted-foreground">DIFAL</span>
+                                <i class="fas fa-file-invoice text-pink-500"></i>
+                            </div>
+                            <p id="relatorio-total-difal" class="text-2xl font-bold mt-2">R$ 0,00</p>
+                        </div>
+                        <div class="rounded-lg border bg-card p-4 shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-muted-foreground">C. Despacho</span>
+                                <i class="fas fa-clipboard-check text-teal-500"></i>
+                            </div>
+                            <p id="relatorio-total-despacho" class="text-2xl font-bold mt-2">R$ 0,00</p>
+                        </div>
+                        <div class="rounded-lg border bg-card p-4 shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-muted-foreground">Seguro</span>
+                                <i class="fas fa-shield-alt text-blue-400"></i>
+                            </div>
+                            <p id="relatorio-total-seguro" class="text-2xl font-bold mt-2">R$ 0,00</p>
+                        </div>
+                        <div class="rounded-lg border bg-card p-4 shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-muted-foreground">Outros Custos</span>
+                                <i class="fas fa-ellipsis-h text-gray-400"></i>
+                            </div>
+                            <p id="relatorio-total-outros" class="text-2xl font-bold mt-2">R$ 0,00</p>
+                        </div>
+                        </div>
+                        
+                        <!-- Comissões e Lucro Líquido -->
+                        <div class="grid gap-4 grid-cols-2 lg:grid-cols-4">
+                        <div class="rounded-lg border bg-card p-4 shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-muted-foreground">Comissões</span>
+                                <i class="fas fa-handshake text-green-400"></i>
+                            </div>
+                            <p id="relatorio-total-comis" class="text-2xl font-bold mt-2">R$ 0,00</p>
+                        </div>
+                        <div class="rounded-lg border bg-card p-4 shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-muted-foreground">Lucro Líquido</span>
+                                <i class="fas fa-chart-pie text-emerald-600"></i>
+                            </div>
+                            <p id="relatorio-total-lucro-liq" class="text-2xl font-bold mt-2">R$ 0,00</p>
+                        </div>
+                        </div>
+                    </div>
+                    <!-- Fim das Métricas Adicionais Ocultas -->
+                    
+                    <!-- Modal de Detalhes da Métrica -->
+                    <div id="metrica-detail-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                        <div class="bg-card rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                            <div class="border-b px-6 py-4 flex items-center justify-between sticky top-0 bg-card">
+                                <h3 class="text-lg font-semibold flex items-center gap-2" id="metrica-detail-title">
+                                    <i class="fas fa-calculator text-primary"></i>
+                                    Detalhes da Métrica
+                                </h3>
+                                <button onclick="fecharDetalhesMetrica()" class="text-muted-foreground hover:text-foreground">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div class="p-6" id="metrica-detail-content">
+                                <!-- Conteúdo preenchido via JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Insights -->
+                    <div class="grid gap-4 md:grid-cols-3" data-relatorio-container="insights_resumo" data-relatorio-component="block_insights_resumo">
+                        <div class="rounded-lg border bg-card p-4" data-relatorio-component="insight_melhor_vendedor">
+                            <p class="text-xs uppercase tracking-wide text-muted-foreground">Melhor Vendedor</p>
+                            <p id="relatorio-melhor-vendedor" class="text-lg font-semibold mt-1">-</p>
+                            <p id="relatorio-melhor-vendedor-valor" class="text-sm text-muted-foreground">-</p>
+                        </div>
+                        <div class="rounded-lg border bg-card p-4" data-relatorio-component="insight_pior_vendedor">
+                            <p class="text-xs uppercase tracking-wide text-muted-foreground">Pior Vendedor</p>
+                            <p id="relatorio-pior-vendedor" class="text-lg font-semibold mt-1">-</p>
+                            <p id="relatorio-pior-vendedor-valor" class="text-sm text-muted-foreground">-</p>
+                        </div>
+                        <div class="rounded-lg border bg-card p-4" data-relatorio-component="insight_resultado_medio">
+                            <p class="text-xs uppercase tracking-wide text-muted-foreground">Resultado Médio</p>
+                            <p id="relatorio-media-resultado" class="text-lg font-semibold mt-1">R$ 0,00</p>
+                            <p class="text-sm text-muted-foreground">Referência para o farol de performance</p>
+                        </div>
+                    </div>
+
+                    <!-- Relatório de Entregas - Performance (Script 376) -->
+                    <div class="rounded-lg border border-border bg-gray-50 shadow-sm" data-relatorio-container="grafico_entregas" data-relatorio-component="block_grafico_entregas">
+                        <div class="border-b border-border px-6 py-4 flex items-center justify-between bg-white rounded-t-lg">
+                            <div>
+                                <h3 class="flex items-center gap-2 text-lg font-semibold">
+                                    <i class="fas fa-truck-loading text-primary"></i>
+                                    Relatório de Performance
+                                </h3>
+                                <span id="relatorio-entregas-periodo" class="text-xs text-muted-foreground block mt-1">—</span>
+                            </div>
+                            <button onclick="toggleCardBody(this)" class="text-xs text-muted-foreground hover:text-foreground ml-2" title="Colapsar/Expandir">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </div>
+                        <div class="p-6 card-body">
+                            <div id="relatorio-entregas-loading" class="hidden text-center py-8">
+                                <i class="fas fa-spinner fa-spin text-2xl text-primary"></i>
+                                <p class="text-sm text-muted-foreground mt-2">Carregando dados de entregas...</p>
+                            </div>
+                            <div id="relatorio-entregas-error" class="hidden text-center py-8 text-red-600">
+                                <i class="fas fa-exclamation-circle text-2xl"></i>
+                                <p class="text-sm mt-2" id="relatorio-entregas-error-msg">Erro ao carregar</p>
+                                <button type="button" onclick="carregarGraficoEntregas()" class="mt-3 rounded-md bg-primary px-3 py-1.5 text-sm text-white hover:bg-primary/90">Tentar novamente</button>
+                            </div>
+                            <div id="relatorio-entregas-chart-wrap" class="hidden space-y-6">
+                                <!-- Velocímetros: No Prazo (positivo) e Fora do Prazo (crítico) -->
+                                <div class="grid gap-4 md:grid-cols-2" data-entregas-expand="Velocímetros No Prazo / Fora do Prazo">
+                                    <div class="rounded-lg border bg-muted/20 p-4">
+                                        <h4 class="text-sm font-medium text-emerald-700 mb-2">No Prazo</h4>
+                                        <div class="relative" data-gauge-wrapper data-gauge-height="200" style="height: 200px;">
+                                            <canvas id="chart-entregas-gauge-no-prazo"></canvas>
+                                        </div>
+                                        <p id="relatorio-entregas-no-prazo-info" class="text-xs text-muted-foreground mt-1 text-center">—</p>
+                                    </div>
+                                    <div class="rounded-lg border bg-muted/20 p-4">
+                                        <h4 class="text-sm font-medium text-red-700 mb-2">Fora do Prazo</h4>
+                                        <div class="relative" data-gauge-wrapper data-gauge-height="200" style="height: 200px;">
+                                            <canvas id="chart-entregas-gauge-fora-prazo"></canvas>
+                                        </div>
+                                        <p id="relatorio-entregas-fora-prazo-info" class="text-xs text-muted-foreground mt-1 text-center">—</p>
+                                    </div>
+                                </div>
+                                <!-- Gráfico pizza agregado -->
+                                <div data-entregas-expand="Distribuição">
+                                    <h4 class="text-sm font-medium mb-2">Distribuição (No Prazo / Fora do Prazo / Sem Previsão)</h4>
+                                    <div class="relative" style="height: 260px;">
+                                        <canvas id="chart-relatorio-entregas"></canvas>
+                                    </div>
+                                    <p id="relatorio-entregas-total" class="text-sm text-muted-foreground mt-2 text-center">Total: 0 entregas</p>
+                                    </div>
+                                </div>
+                                <!-- Filtros -->
+                                <div class="flex flex-wrap gap-4 items-center">
+                                    <div class="flex items-center gap-2">
+                                        <label class="text-sm text-muted-foreground">Filtrar por Agente:</label>
+                                        <select id="filtro-entregas-agente" onchange="aplicarFiltrosEntregas()" class="px-3 py-1.5 text-sm border rounded-md bg-background">
+                                            <option value="">Todos os Agentes</option>
+                                        </select>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <label class="text-sm text-muted-foreground">Filtrar por Cliente:</label>
+                                        <select id="filtro-entregas-cliente" onchange="aplicarFiltrosEntregas()" class="px-3 py-1.5 text-sm border rounded-md bg-background min-w-[180px]">
+                                            <option value="">Todos os Clientes</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <!-- Gráfico comparativo por cliente -->
+                                <div data-entregas-expand="Comparativo por Cliente" class="relative group">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <h4 class="text-sm font-medium">Comparativo por Cliente</h4>
+                                        <button type="button" onclick="abrirExpandEntregas(this)" class="text-xs text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity" title="Expandir"><i class="fas fa-expand"></i></button>
+                                    </div>
+                                    <div class="relative" style="height: 360px;">
+                                        <canvas id="chart-entregas-por-cliente"></canvas>
+                                    </div>
+                                </div>
+                                <!-- Gráfico ranking cliente por performance -->
+                                <div data-entregas-expand="Ranking de Clientes" class="relative group">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <h4 class="text-sm font-medium">Ranking de Clientes por Performance (% No Prazo)</h4>
+                                        <button type="button" onclick="abrirExpandEntregas(this)" class="text-xs text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity" title="Expandir"><i class="fas fa-expand"></i></button>
+                                    </div>
+                                    <div class="relative" style="height: 360px;">
+                                        <canvas id="chart-entregas-ranking-cliente"></canvas>
+                                    </div>
+                                </div>
+                                <!-- Resumo por Cliente (tabela, colapsável) -->
+                                <div id="entregas-resumo-cliente-wrap" data-entregas-expand="Resumo por Cliente" class="relative group">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <h4 class="text-sm font-medium">Resumo por Cliente</h4>
+                                        <div class="flex items-center gap-2">
+                                            <button type="button" onclick="abrirExpandEntregas(this)" class="text-xs text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity" title="Expandir"><i class="fas fa-expand"></i></button>
+                                            <button type="button" onclick="toggleEntregasResumoCliente()" id="btn-toggle-resumo-cliente" class="text-xs text-muted-foreground hover:text-foreground" title="Colapsar/Expandir">
+                                                <i class="fas fa-chevron-down"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="entregas-resumo-cliente-body">
+                                    <div class="overflow-x-auto max-h-60 rounded-md border">
+                                        <table class="w-full text-sm">
+                                            <thead class="bg-muted/50 sticky top-0">
+                                                <tr>
+                                                    <th class="px-3 py-2 text-left font-medium">Cliente</th>
+                                                    <th class="px-3 py-2 text-right font-medium">No Prazo</th>
+                                                    <th class="px-3 py-2 text-right font-medium">Fora do Prazo</th>
+                                                    <th class="px-3 py-2 text-right font-medium">Sem Previsão</th>
+                                                    <th class="px-3 py-2 text-right font-medium">Total</th>
+                                                    <th class="px-3 py-2 text-right font-medium">% No Prazo</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="relatorio-entregas-clientes-tbody" class="divide-y divide-border"></tbody>
+                                        </table>
+                                    </div>
+                                    </div>
+                                </div>
+                                <!-- Tabela por agente (colapsável) -->
+                                <div id="entregas-performance-agente-wrap" data-entregas-expand="Performance por Agente" class="relative group">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <h4 class="text-sm font-medium">Performance por Agente</h4>
+                                        <div class="flex items-center gap-2">
+                                            <button type="button" onclick="abrirExpandEntregas(this)" class="text-xs text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity" title="Expandir"><i class="fas fa-expand"></i></button>
+                                            <button type="button" onclick="toggleEntregasPerformanceAgente()" id="btn-toggle-performance-agente" class="text-xs text-muted-foreground hover:text-foreground" title="Colapsar/Expandir">
+                                                <i class="fas fa-chevron-down"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="entregas-performance-agente-body">
+                                        <div class="overflow-x-auto max-h-80 rounded-md border">
+                                            <table class="w-full text-sm">
+                                                <thead class="bg-muted/50 sticky top-0">
+                                                    <tr>
+                                                        <th class="px-3 py-2 text-left font-medium">Agente</th>
+                                                        <th class="px-3 py-2 text-right font-medium">No Prazo</th>
+                                                        <th class="px-3 py-2 text-right font-medium">Fora do Prazo</th>
+                                                        <th class="px-3 py-2 text-right font-medium">Sem Previsão</th>
+                                                        <th class="px-3 py-2 text-right font-medium">Total</th>
+                                                        <th class="px-3 py-2 text-right font-medium">% No Prazo</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="relatorio-entregas-agentes-tbody" class="divide-y divide-border"></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Modal Expandir (tabelas/gráficos) -->
+                            <div id="modal-entregas-expand" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/50" onclick="fecharModalExpandEntregas(event)">
+                                <div class="bg-background rounded-lg shadow-xl max-w-[95vw] max-h-[95vh] w-full overflow-hidden m-4 flex flex-col" onclick="event.stopPropagation()">
+                                    <div class="flex items-center justify-between px-6 py-4 border-b shrink-0">
+                                        <h3 class="text-lg font-semibold" id="modal-expand-titulo">—</h3>
+                                        <button type="button" onclick="fecharModalExpandEntregas()" class="text-muted-foreground hover:text-foreground"><i class="fas fa-times"></i></button>
+                                    </div>
+                                    <div id="modal-expand-body" class="overflow-auto flex-1 p-6 min-h-0"></div>
+                                </div>
+                            </div>
+                            <!-- Modal Minutas do Agente -->
+                            <div id="modal-entregas-minutas" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick="fecharModalMinutas(event)">
+                                <div class="bg-background rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden m-4" onclick="event.stopPropagation()">
+                                    <div class="flex items-center justify-between px-6 py-4 border-b">
+                                        <h3 class="text-lg font-semibold" id="modal-minutas-titulo">Minutas do Agente</h3>
+                                        <button type="button" onclick="fecharModalMinutas()" class="text-muted-foreground hover:text-foreground"><i class="fas fa-times"></i></button>
+                                    </div>
+                                    <div class="overflow-auto max-h-[60vh] p-4">
+                                        <table class="w-full text-sm">
+                                            <thead class="bg-muted/50 sticky top-0">
+                                                <tr>
+                                                    <th class="px-3 py-2 text-left font-medium">Nº Minuta</th>
+                                                    <th class="px-3 py-2 text-left font-medium">CTE</th>
+                                                    <th class="px-3 py-2 text-left font-medium">Ordem Coleta</th>
+                                                    <th class="px-3 py-2 text-left font-medium">Cliente</th>
+                                                    <th class="px-3 py-2 text-left font-medium">Agente</th>
+                                                    <th class="px-3 py-2 text-left font-medium">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="modal-minutas-tbody"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gráficos por Vendedor -->
+                    <div class="rounded-lg border bg-card shadow-sm" data-relatorio-container="graficos_vendedor" data-relatorio-component="block_graficos_vendedor">
+                        <div class="border-b px-6 py-4 flex items-center justify-between">
+                            <h3 class="flex items-center gap-2 text-lg font-semibold">
+                                <i class="fas fa-chart-bar text-primary"></i>
+                                Análise Detalhada por Vendedor
+                            </h3>
+                            <div class="flex items-center gap-2">
+                                <label class="text-sm text-muted-foreground">Filtrar por:</label>
+                                <select id="filtro-vendedor-grafico" onchange="filtrarGraficosPorVendedor()" class="px-3 py-1.5 text-sm border rounded-md bg-background">
+                                    <option value="">Todos os Vendedores</option>
+                                </select>
+                                <button onclick="toggleCardBody(this)" class="text-xs text-muted-foreground hover:text-foreground ml-2" title="Colapsar/Expandir">
+                                    <i class="fas fa-chevron-up"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-6 card-body">
+                            <div class="grid gap-6 md:grid-cols-2">
+                                <div class="space-y-2 chart-container" data-relatorio-component="grafico_resultado_vendedor" data-chart="resultado">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="text-sm font-medium">Resultado por Vendedor</h4>
+                                        <button class="text-xs text-muted-foreground hover:text-foreground" onclick="toggleChartExpand('resultado')">
+                                            <i class="fas fa-expand"></i>
+                                        </button>
+                                    </div>
+                                    <div class="relative chart-wrapper" style="height: 280px;">
+                                        <canvas id="chart-vendedores-resultado"></canvas>
+                                    </div>
+                                    <div id="chart-detail-resultado" class="hidden mt-4 p-4 bg-muted/30 rounded-lg"></div>
+                                </div>
+                                <div class="space-y-2 chart-container" data-relatorio-component="grafico_operacoes" data-chart="operacoes">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="text-sm font-medium">Distribuição de Operações</h4>
+                                        <button class="text-xs text-muted-foreground hover:text-foreground" onclick="toggleChartExpand('operacoes')">
+                                            <i class="fas fa-expand"></i>
+                                        </button>
+                                    </div>
+                                    <div class="relative chart-wrapper" style="height: 280px;">
+                                        <canvas id="chart-vendedores-operacoes"></canvas>
+                                    </div>
+                                    <div id="chart-detail-operacoes" class="hidden mt-4 p-4 bg-muted/30 rounded-lg"></div>
+                                </div>
+                                <div class="space-y-2 chart-container" data-relatorio-component="grafico_custos" data-chart="custos">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="text-sm font-medium">Custos vs Receita</h4>
+                                        <button class="text-xs text-muted-foreground hover:text-foreground" onclick="toggleChartExpand('custos')">
+                                            <i class="fas fa-expand"></i>
+                                        </button>
+                                    </div>
+                                    <div class="relative chart-wrapper" style="height: 280px;">
+                                        <canvas id="chart-vendedores-custos"></canvas>
+                                    </div>
+                                    <div id="chart-detail-custos" class="hidden mt-4 p-4 bg-muted/30 rounded-lg"></div>
+                                </div>
+                                <div class="space-y-2 chart-container" data-relatorio-component="grafico_margem" data-chart="margem">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="text-sm font-medium">Margem de Lucro (%)</h4>
+                                        <button class="text-xs text-muted-foreground hover:text-foreground" onclick="toggleChartExpand('margem')">
+                                            <i class="fas fa-expand"></i>
+                                        </button>
+                                    </div>
+                                    <div class="relative chart-wrapper" style="height: 280px;">
+                                        <canvas id="chart-vendedores-margem"></canvas>
+                                    </div>
+                                    <div id="chart-detail-margem" class="hidden mt-4 p-4 bg-muted/30 rounded-lg"></div>
+                                </div>
+                                <div class="space-y-2 chart-container" data-relatorio-component="grafico_velocimetro_margem" data-chart="gauge-margem">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="text-sm font-medium">Indicador: Margem (%)</h4>
+                                        <span data-gauge-info-for="chart-vendedores-gauge-margem" class="text-xs font-semibold text-muted-foreground">--</span>
+                                    </div>
+                                    <div class="relative chart-wrapper w-full max-w-[640px] mx-auto" data-gauge-wrapper data-gauge-height="280" style="height: 280px;">
+                                        <canvas id="chart-vendedores-gauge-margem" class="w-full h-full"></canvas>
+                                    </div>
+                                    <div data-gauge-detail-for="chart-vendedores-gauge-margem" class="hidden mt-3 rounded-md bg-muted/30 px-3 py-2 text-xs text-muted-foreground"></div>
+                                </div>
+                                <div class="space-y-2 chart-container" data-relatorio-component="grafico_velocimetro_ebtida" data-chart="gauge-ebtida">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="text-sm font-medium">Indicador: EBTIDA (%)</h4>
+                                        <span data-gauge-info-for="chart-vendedores-gauge-ebtida" class="text-xs font-semibold text-muted-foreground">--</span>
+                                    </div>
+                                    <div class="relative chart-wrapper w-full max-w-[640px] mx-auto" data-gauge-wrapper data-gauge-height="280" style="height: 280px;">
+                                        <canvas id="chart-vendedores-gauge-ebtida" class="w-full h-full"></canvas>
+                                    </div>
+                                    <div data-gauge-detail-for="chart-vendedores-gauge-ebtida" class="hidden mt-3 rounded-md bg-muted/30 px-3 py-2 text-xs text-muted-foreground"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Análise Detalhada: Custos vs Receita e EBTIDA -->
+                    <div class="rounded-lg border bg-card shadow-sm" data-relatorio-container="analise_financeira" data-relatorio-component="block_analise_financeira">
+                        <div class="border-b px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <h3 class="flex items-center gap-2 text-lg font-semibold">
+                                    <i class="fas fa-chart-pie text-primary"></i>
+                                    Análise Financeira Detalhada: Custos, Receita e EBTIDA
+                                </h3>
+                                <p class="text-xs text-muted-foreground mt-1">Análise comparativa de receita, custos operacionais, impostos e EBTIDA (Earnings Before Taxes, Interest, Depreciation and Amortization)</p>
+                            </div>
+                            <button onclick="toggleCardBody(this)" class="text-xs text-muted-foreground hover:text-foreground ml-2" title="Colapsar/Expandir">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </div>
+                        <div class="p-6 card-body hidden">
+                            <!-- Cards de Resumo EBTIDA -->
+                            <div class="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-6" data-relatorio-container="analise_financeira_cards">
+                                <div class="rounded-lg border bg-card p-4 shadow-sm" data-relatorio-component="analise_financeira_card_receita">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm text-muted-foreground">Receita Total</span>
+                                        <i class="fas fa-arrow-up text-emerald-500"></i>
+                                    </div>
+                                    <p id="analise-receita-total" class="text-2xl font-bold mt-2">R$ 0,00</p>
+                                </div>
+                                <div class="rounded-lg border bg-card p-4 shadow-sm" data-relatorio-component="analise_financeira_card_custos">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm text-muted-foreground">Custos Operacionais</span>
+                                        <i class="fas fa-arrow-down text-red-500"></i>
+                                    </div>
+                                    <p id="analise-custos-operacionais" class="text-2xl font-bold mt-2">R$ 0,00</p>
+                                </div>
+                                <div class="rounded-lg border bg-card p-4 shadow-sm" data-relatorio-component="analise_financeira_card_ebtida">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm text-muted-foreground">EBTIDA</span>
+                                        <i class="fas fa-calculator text-blue-500"></i>
+                                    </div>
+                                    <p id="analise-ebtida" class="text-2xl font-bold mt-2">R$ 0,00</p>
+                                    <p id="analise-ebtida-percentual" class="text-xs text-muted-foreground mt-1">0% da receita</p>
+                                </div>
+                                <div class="rounded-lg border bg-card p-4 shadow-sm" data-relatorio-component="analise_financeira_card_impostos">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm text-muted-foreground">Impostos</span>
+                                        <i class="fas fa-receipt text-orange-500"></i>
+                                    </div>
+                                    <p id="analise-impostos-total" class="text-2xl font-bold mt-2">R$ 0,00</p>
+                                    <p id="analise-impostos-percentual" class="text-xs text-muted-foreground mt-1">0% da receita</p>
+                                </div>
+                            </div>
+
+                            <!-- Gráficos de Análise -->
+                            <div class="grid gap-6 md:grid-cols-2 mb-6" data-relatorio-container="analise_financeira_graficos">
+                                <div class="space-y-2" data-relatorio-component="analise_financeira_grafico_composicao">
+                                    <h4 class="text-sm font-medium">Composição: Receita vs Custos vs Impostos</h4>
+                                    <div class="relative" style="height: 320px;">
+                                        <canvas id="chart-composicao-financeira"></canvas>
+                                    </div>
+                                </div>
+                                <div class="space-y-2 chart-container" data-relatorio-component="analise_financeira_grafico_ebtida" data-chart="ebtida">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="text-sm font-medium">EBTIDA por Vendedor</h4>
+                                        <button class="text-xs text-muted-foreground hover:text-foreground" onclick="toggleChartExpand('ebtida')">
+                                            <i class="fas fa-expand"></i>
+                                        </button>
+                                    </div>
+                                    <div class="relative chart-wrapper" style="height: 320px;">
+                                        <canvas id="chart-ebtida-vendedores"></canvas>
+                                    </div>
+                                    <div id="chart-detail-ebtida" class="hidden mt-4 p-4 bg-muted/30 rounded-lg"></div>
+                                </div>
+                            </div>
+
+                            <div class="grid gap-6 md:grid-cols-3 mb-6" data-relatorio-container="analise_financeira_velocimetros">
+                                <div class="space-y-2 chart-container" data-relatorio-component="grafico_velocimetro_custos" data-chart="gauge-custos">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="text-sm font-medium">Indicador: Custos (%)</h4>
+                                        <span data-gauge-info-for="chart-velocimetro-custos" class="text-xs font-semibold text-muted-foreground">--</span>
+                                    </div>
+                                    <div class="relative chart-wrapper w-full max-w-[640px] mx-auto" data-gauge-wrapper data-gauge-height="280" style="height: 280px;">
+                                        <canvas id="chart-velocimetro-custos" class="w-full h-full"></canvas>
+                                    </div>
+                                    <div data-gauge-detail-for="chart-velocimetro-custos" class="hidden mt-3 rounded-md bg-muted/30 px-3 py-2 text-xs text-muted-foreground"></div>
+                                </div>
+                                <div class="space-y-2 chart-container" data-relatorio-component="grafico_velocimetro_impostos" data-chart="gauge-impostos">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="text-sm font-medium">Indicador: Impostos (%)</h4>
+                                        <span data-gauge-info-for="chart-velocimetro-impostos" class="text-xs font-semibold text-muted-foreground">--</span>
+                                    </div>
+                                    <div class="relative chart-wrapper w-full max-w-[640px] mx-auto" data-gauge-wrapper data-gauge-height="280" style="height: 280px;">
+                                        <canvas id="chart-velocimetro-impostos" class="w-full h-full"></canvas>
+                                    </div>
+                                    <div data-gauge-detail-for="chart-velocimetro-impostos" class="hidden mt-3 rounded-md bg-muted/30 px-3 py-2 text-xs text-muted-foreground"></div>
+                                </div>
+                                <div class="space-y-2 chart-container" data-relatorio-component="grafico_velocimetro_margem_global" data-chart="gauge-margem-global">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="text-sm font-medium">Indicador: Margem (%)</h4>
+                                        <span data-gauge-info-for="chart-velocimetro-margem-global" class="text-xs font-semibold text-muted-foreground">--</span>
+                                    </div>
+                                    <div class="relative chart-wrapper w-full max-w-[640px] mx-auto" data-gauge-wrapper data-gauge-height="280" style="height: 280px;">
+                                        <canvas id="chart-velocimetro-margem-global" class="w-full h-full"></canvas>
+                                    </div>
+                                    <div data-gauge-detail-for="chart-velocimetro-margem-global" class="hidden mt-3 rounded-md bg-muted/30 px-3 py-2 text-xs text-muted-foreground"></div>
+                                </div>
+                            </div>
+
+                            <!-- Tabela Detalhada de Custos -->
+                            <div class="rounded-lg border bg-muted/30 p-4" data-relatorio-component="analise_financeira_tabela">
+                                <h4 class="text-sm font-semibold mb-4">Análise Detalhada de Custos e Margens</h4>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-sm">
+                                        <thead class="bg-muted/50">
+                                            <tr>
+                                                <th class="px-4 py-3 text-left font-medium">Métrica</th>
+                                                <th class="px-4 py-3 text-right font-medium">Valor</th>
+                                                <th class="px-4 py-3 text-right font-medium">% da Receita</th>
+                                                <th class="px-4 py-3 text-right font-medium">% do EBTIDA</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="analise-custos-tbody" class="divide-y divide-border">
+                                            <!-- Populado via JS -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ranking Vendedores -->
+                    <div class="rounded-lg border bg-card shadow-sm" data-relatorio-component="ranking_vendedores">
+                        <div class="border-b px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <h3 class="flex items-center gap-2 text-lg font-semibold">
+                                    <i class="fas fa-user-tie text-primary"></i>
+                                    Ranking de Vendedores
+                                </h3>
+                                <span class="text-xs text-muted-foreground">Clique em um vendedor para ver detalhes</span>
+                            </div>
+                            <button onclick="toggleCardBody(this)" class="text-xs text-muted-foreground hover:text-foreground ml-2" title="Colapsar/Expandir">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </div>
+                        <div id="relatorio-vendedores-list" class="divide-y divide-border card-body hidden">
+                            <!-- Populado via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Análise por Agente (Coleta/Entrega) -->
+                    <div class="rounded-lg border bg-card shadow-sm" data-relatorio-container="analise_agente" data-relatorio-component="block_analise_agente">
+                        <div class="border-b px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <h3 class="flex items-center gap-2 text-lg font-semibold">
+                                    <i class="fas fa-user-cog text-primary"></i>
+                                    Análise por Agente
+                                </h3>
+                                <span class="text-xs text-muted-foreground">Agrupamento por responsável (Coleta/Entrega/Transferência) e impacto no resultado</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="toggleCardBody(this)" class="text-xs text-muted-foreground hover:text-foreground ml-2" title="Colapsar/Expandir">
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto card-body hidden">
+                            <div class="p-4 border-b border-border bg-muted/10" data-relatorio-component="analise_agente_filtros">
+                                <div class="grid gap-4 md:grid-cols-3">
+                                    <div>
+                                        <p class="text-sm font-medium mb-2">Tipos (merge)</p>
+                                        <div class="flex flex-wrap gap-3 text-sm">
+                                            <label class="flex items-center gap-2 cursor-pointer">
+                                                <input type="checkbox" id="relatorio-agente-tipo-coleta" class="rounded border-input" checked>
+                                                <span>Coleta</span>
+                                            </label>
+                                            <label class="flex items-center gap-2 cursor-pointer">
+                                                <input type="checkbox" id="relatorio-agente-tipo-entrega" class="rounded border-input" checked>
+                                                <span>Entrega</span>
+                                            </label>
+                                            <label class="flex items-center gap-2 cursor-pointer">
+                                                <input type="checkbox" id="relatorio-agente-tipo-transf" class="rounded border-input">
+                                                <span>Transferência</span>
+                                            </label>
+                                        </div>
+                                        <p class="text-xs text-muted-foreground mt-2">Se marcar mais de um, os dados são somados por agente.</p>
+                                    </div>
+                                    <div class="relative">
+                                        <p class="text-sm font-medium mb-2">Agentes (multi)</p>
+                                        <button type="button" id="relatorio-agente-picker-btn"
+                                                class="w-full inline-flex items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-muted/50 transition-colors">
+                                            <span class="text-left">
+                                                Selecionar agentes
+                                                <span id="relatorio-agente-picker-count" class="ml-2 text-xs text-muted-foreground"></span>
+                                            </span>
+                                            <i class="fas fa-chevron-down text-xs text-muted-foreground"></i>
+                                        </button>
+                                        <p class="text-xs text-muted-foreground mt-2">Se nada estiver selecionado, mostra Top 12 por impacto.</p>
+
+                                        <!-- Popover de seleção -->
+                                        <div id="relatorio-agente-picker-pop"
+                                             class="hidden absolute z-50 mt-2 w-full rounded-md border border-border bg-card shadow-lg">
+                                            <div class="p-3 border-b border-border">
+                                                <label class="block text-sm font-medium text-foreground mb-2">
+                                                    Buscar agente
+                                                </label>
+                                                <div class="relative">
+                                                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm"></i>
+                                                    <input id="relatorio-agente-search" type="text" placeholder="Digite para filtrar..."
+                                                           class="w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                                                </div>
+                                                <div class="mt-3 flex gap-2">
+                                                    <button type="button" id="relatorio-agente-select-all"
+                                                            class="rounded-md border border-input bg-background px-3 py-2 text-xs font-medium hover:bg-muted/50 transition-colors">
+                                                        Selecionar visíveis
+                                                    </button>
+                                                    <button type="button" id="relatorio-agente-clear"
+                                                            class="rounded-md border border-input bg-background px-3 py-2 text-xs font-medium hover:bg-muted/50 transition-colors">
+                                                        Limpar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div id="relatorio-agente-list"
+                                                 class="max-h-60 overflow-auto p-3 text-sm space-y-1">
+                                                <div class="text-xs text-muted-foreground">Carregue o relatório para listar agentes.</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Detalhamento por agente (DRE) -->
+                            <div id="relatorio-agente-detail" class="hidden m-4 rounded-lg border bg-card shadow-sm" data-relatorio-component="analise_agente_detalhe">
+                                <div class="border-b px-4 py-3 flex items-center justify-between">
+                                    <h4 class="text-sm font-semibold">
+                                        Detalhes do Agente:
+                                        <span id="relatorio-agente-detail-title" class="font-bold"></span>
+                                    </h4>
+                                    <button type="button" onclick="fecharDetalhesAgente()" class="text-muted-foreground hover:text-foreground" title="Fechar">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <div class="p-4 grid gap-4 md:grid-cols-4">
+                                    <div class="rounded-md border bg-muted/10 p-3">
+                                        <p class="text-xs text-muted-foreground">Operações</p>
+                                        <p id="relatorio-agente-detail-ops" class="text-lg font-semibold">0</p>
+                                    </div>
+                                    <div class="rounded-md border bg-muted/10 p-3">
+                                        <p class="text-xs text-muted-foreground">R.O.L (Resultado Operação Líquido)</p>
+                                        <p id="relatorio-agente-detail-rol" class="text-lg font-semibold">R$ 0,00</p>
+                                    </div>
+                                    <div class="rounded-md border bg-muted/10 p-3">
+                                        <p class="text-xs text-muted-foreground">Impostos</p>
+                                        <p id="relatorio-agente-detail-impostos" class="text-lg font-semibold">R$ 0,00</p>
+                                    </div>
+                                    <div class="rounded-md border bg-muted/10 p-3">
+                                        <p class="text-xs text-muted-foreground">Lucro Líquido</p>
+                                        <p id="relatorio-agente-detail-lucroliq" class="text-lg font-semibold">R$ 0,00</p>
+                                    </div>
+                                </div>
+                                <div class="px-4 pb-4">
+                                    <div class="overflow-x-auto rounded-md border border-border">
+                                        <table class="w-full">
+                                            <thead class="bg-muted/50">
+                                                <tr>
+                                                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Minuta</th>
+                                                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Data</th>
+                                                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Cliente</th>
+                                                    <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Tipo</th>
+                                                    <th class="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Custo (tipo)</th>
+                                                    <th class="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">R.O.L</th>
+                                                    <th class="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Impostos</th>
+                                                    <th class="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Lucro Líquido</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="relatorio-agente-detail-tbody" class="divide-y divide-border"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="p-4 grid gap-4 lg:grid-cols-2">
+                                <div class="rounded-lg border bg-card p-4 overflow-hidden" data-relatorio-component="analise_agente_grafico_impacto">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <h4 class="text-sm font-semibold">Gráfico: Resultado x Custos x Impacto</h4>
+                                        <span id="relatorio-agente-chart-meta" class="text-xs text-muted-foreground"></span>
+                                    </div>
+                                    <div class="h-72 max-h-72">
+                                        <canvas id="chart-agentes-impacto" class="w-full h-full"></canvas>
+                                    </div>
+                                </div>
+                                <div class="rounded-lg border bg-card p-4" data-relatorio-component="analise_agente_ranking">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <h4 class="text-sm font-semibold">Ranking (Impacto = Resultado - Custos)</h4>
+                                        <button type="button" onclick="toggleRankingBody(this)" class="text-xs text-muted-foreground hover:text-foreground" title="Ocultar/Mostrar">
+                                            <i class="fas fa-chevron-down"></i>
+                                        </button>
+                                    </div>
+                                    <div id="ranking-body-container" class="hidden">
+                                        <div class="max-h-72 overflow-auto rounded-md border border-border">
+                                            <table class="w-full">
+                                                <thead class="bg-muted/50 sticky top-0">
+                                                    <tr>
+                                                        <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">#</th>
+                                                        <th class="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Agente</th>
+                                                        <th class="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Resultado</th>
+                                                        <th class="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Custos</th>
+                                                        <th class="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Impacto</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="relatorio-agentes-ranking-all" class="divide-y divide-border"></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <table class="w-full" data-relatorio-component="analise_agente_tabela">
+                                <thead class="bg-muted/50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Agente</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Operações</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Custo</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Resultado</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Impacto (Resultado - Custo)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="relatorio-agentes-tbody" class="divide-y divide-border">
+                                    <!-- Populado via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Análise DRE: ROL, Impostos e Lucro Líquido -->
+                    <div class="rounded-lg border bg-card shadow-sm" data-relatorio-container="analise_dre" data-relatorio-component="block_analise_dre">
+                        <div class="border-b px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <h3 class="flex items-center gap-2 text-lg font-semibold">
+                                    <i class="fas fa-chart-line text-primary"></i>
+                                    Análise DRE: ROL, Impostos e Lucro Líquido
+                                </h3>
+                                <span class="text-xs text-muted-foreground">Resultado Operacional Líquido, breakdown de impostos e lucro líquido</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="toggleCardBody(this)" class="text-xs text-muted-foreground hover:text-foreground ml-2" title="Colapsar/Expandir">
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto card-body hidden">
+                            <div class="p-6 space-y-6">
+                                <!-- Cards de Resumo -->
+                                <div class="grid gap-4 md:grid-cols-4" data-relatorio-container="dre_cards">
+                                    <div class="rounded-lg border bg-muted/10 p-4" data-relatorio-component="dre_card_rol">
+                                        <p class="text-xs text-muted-foreground mb-1">ROL (Resultado Operacional Líquido)</p>
+                                        <p id="dre-rol-total" class="text-2xl font-bold text-blue-600">R$ 0,00</p>
+                                        <p id="dre-rol-count" class="text-xs text-muted-foreground mt-1">0 operações</p>
+                                    </div>
+                                    <div class="rounded-lg border bg-muted/10 p-4" data-relatorio-component="dre_card_impostos">
+                                        <p class="text-xs text-muted-foreground mb-1">Impostos Total (26,5%)</p>
+                                        <p id="dre-impostos-total" class="text-2xl font-bold text-orange-600">R$ 0,00</p>
+                                        <p class="text-xs text-muted-foreground mt-1">
+                                            <span id="dre-impostos-cf">C.F: 15%</span> • 
+                                            <span id="dre-impostos-if">I.F: 8%</span> • 
+                                            <span id="dre-impostos-outros">Outros: 3.5%</span>
+                                        </p>
+                                    </div>
+                                    <div class="rounded-lg border bg-muted/10 p-4" data-relatorio-component="dre_card_lucro">
+                                        <p class="text-xs text-muted-foreground mb-1">Lucro Líquido</p>
+                                        <p id="dre-lucro-total" class="text-2xl font-bold text-emerald-600">R$ 0,00</p>
+                                        <p id="dre-lucro-percent" class="text-xs text-muted-foreground mt-1">0% do ROL</p>
+                                    </div>
+                                    <div class="rounded-lg border bg-muted/10 p-4" data-relatorio-component="dre_card_taxa">
+                                        <p class="text-xs text-muted-foreground mb-1">Taxa de Impostos</p>
+                                        <p id="dre-taxa-impostos" class="text-2xl font-bold text-red-600">26,5%</p>
+                                        <p class="text-xs text-muted-foreground mt-1">Fixo sobre o ROL</p>
+                                    </div>
+                                </div>
+
+                                <!-- Breakdown de Impostos -->
+                                <div class="grid gap-4 md:grid-cols-3" data-relatorio-container="dre_breakdown">
+                                    <div class="rounded-lg border bg-card p-4" data-relatorio-component="dre_breakdown_cf">
+                                        <h4 class="text-sm font-semibold mb-3 flex items-center gap-2">
+                                            <i class="fas fa-percent text-orange-500"></i>
+                                            Contribuição Social (C.F) - 15%
+                                        </h4>
+                                        <div class="space-y-2">
+                                            <div class="flex justify-between text-sm">
+                                                <span class="text-muted-foreground">Valor:</span>
+                                                <span id="dre-cf-valor" class="font-semibold">R$ 0,00</span>
+                                            </div>
+                                            <div class="w-full bg-muted rounded-full h-2">
+                                                <div id="dre-cf-bar" class="bg-orange-500 h-2 rounded-full" style="width: 0%"></div>
+                                            </div>
+                                            <p class="text-xs text-muted-foreground">15% do ROL</p>
+                                        </div>
+                                    </div>
+                                    <div class="rounded-lg border bg-card p-4" data-relatorio-component="dre_breakdown_if">
+                                        <h4 class="text-sm font-semibold mb-3 flex items-center gap-2">
+                                            <i class="fas fa-percent text-red-500"></i>
+                                            Imposto de Renda (I.F) - 8%
+                                        </h4>
+                                        <div class="space-y-2">
+                                            <div class="flex justify-between text-sm">
+                                                <span class="text-muted-foreground">Valor:</span>
+                                                <span id="dre-if-valor" class="font-semibold">R$ 0,00</span>
+                                            </div>
+                                            <div class="w-full bg-muted rounded-full h-2">
+                                                <div id="dre-if-bar" class="bg-red-500 h-2 rounded-full" style="width: 0%"></div>
+                                            </div>
+                                            <p class="text-xs text-muted-foreground">8% do ROL</p>
+                                        </div>
+                                    </div>
+                                    <div class="rounded-lg border bg-card p-4" data-relatorio-component="dre_breakdown_outros">
+                                        <h4 class="text-sm font-semibold mb-3 flex items-center gap-2">
+                                            <i class="fas fa-percent text-yellow-500"></i>
+                                            Outros Impostos - 3.5%
+                                        </h4>
+                                        <div class="space-y-2">
+                                            <div class="flex justify-between text-sm">
+                                                <span class="text-muted-foreground">Valor:</span>
+                                                <span id="dre-outros-valor" class="font-semibold">R$ 0,00</span>
+                                            </div>
+                                            <div class="w-full bg-muted rounded-full h-2">
+                                                <div id="dre-outros-bar" class="bg-yellow-500 h-2 rounded-full" style="width: 0%"></div>
+                                            </div>
+                                            <p class="text-xs text-muted-foreground">3.5% do ROL</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Gráficos Analíticos -->
+                                <div class="grid gap-6 md:grid-cols-2" data-relatorio-container="dre_graficos">
+                                    <div class="space-y-2 chart-container-dre" data-relatorio-component="dre_grafico_composicao" data-chart-dre="composicao">
+                                        <div class="flex items-center justify-between">
+                                            <h4 class="text-sm font-medium">Distribuição: ROL vs Impostos vs Lucro Líquido</h4>
+                                            <button class="text-xs text-muted-foreground hover:text-foreground" onclick="toggleChartExpandDRE('composicao')">
+                                                <i class="fas fa-expand"></i>
+                                            </button>
+                                        </div>
+                                        <div class="relative chart-wrapper" style="height: 280px;">
+                                            <canvas id="chart-dre-composicao"></canvas>
+                                        </div>
+                                    </div>
+                                    <div class="space-y-2 chart-container-dre" data-relatorio-component="dre_grafico_impostos" data-chart-dre="impostos">
+                                        <div class="flex items-center justify-between">
+                                            <h4 class="text-sm font-medium">Breakdown de Impostos</h4>
+                                            <button class="text-xs text-muted-foreground hover:text-foreground" onclick="toggleChartExpandDRE('impostos')">
+                                                <i class="fas fa-expand"></i>
+                                            </button>
+                                        </div>
+                                        <div class="relative chart-wrapper" style="height: 280px;">
+                                            <canvas id="chart-dre-impostos"></canvas>
+                                        </div>
+                                    </div>
+                                    <div class="space-y-2 chart-container-dre md:col-span-2" data-relatorio-component="dre_grafico_evolucao" data-chart-dre="evolucao">
+                                        <div class="flex items-center justify-between">
+                                            <h4 class="text-sm font-medium">Evolução: ROL → Impostos → Lucro Líquido</h4>
+                                            <button class="text-xs text-muted-foreground hover:text-foreground" onclick="toggleChartExpandDRE('evolucao')">
+                                                <i class="fas fa-expand"></i>
+                                            </button>
+                                        </div>
+                                        <div class="relative chart-wrapper" style="height: 280px;">
+                                            <canvas id="chart-dre-evolucao"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detalhes do vendedor -->
+                    <div id="relatorio-detail" class="hidden rounded-lg border bg-card shadow-sm">
+                        <div class="border-b px-6 py-4 flex items-center justify-between">
+                            <h3 class="flex items-center gap-2 text-lg font-semibold">
+                                <i class="fas fa-list text-primary"></i>
+                                <span id="relatorio-detail-title">Detalhes do Vendedor</span>
+                            </h3>
+                            <div class="flex items-center gap-2">
+                                <button onclick="exportarDetalhesVendedorExcel()" class="px-3 py-1.5 text-xs bg-emerald-600 text-white rounded-md hover:bg-emerald-700 flex items-center gap-1">
+                                    <i class="fas fa-file-excel"></i>
+                                    Exportar Excel
+                                </button>
+                                <button onclick="fecharDetalhesVendedor()" class="text-muted-foreground hover:text-foreground">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead class="bg-muted/50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Minuta</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Data</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Cliente</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Destino</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Valor</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Resultado</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground text-center">Qtd.</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="relatorio-detalhe-tbody" class="divide-y divide-border">
+                                    <!-- Populado via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Ranking Clientes -->
+                    <div class="rounded-lg border bg-card shadow-sm" data-relatorio-component="ranking_clientes">
+                        <div class="border-b px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <h3 class="flex items-center gap-2 text-lg font-semibold">
+                                    <i class="fas fa-handshake text-primary"></i>
+                                    Ranking de Clientes
+                                </h3>
+                                <span class="text-xs text-muted-foreground">Volume, resultado e frequência de operações</span>
+                            </div>
+                            <button onclick="toggleCardBody(this)" class="text-xs text-muted-foreground hover:text-foreground ml-2" title="Colapsar/Expandir">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto card-body hidden">
+                            <table class="w-full">
+                                <thead class="bg-muted/50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Cliente</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Operações</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Valor</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Resultado</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">% Frequência</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="relatorio-clientes-tbody" class="divide-y divide-border">
+                                    <!-- Populado via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Farol de Clientes: Melhores e Piores -->
+                    <div class="grid gap-4 md:grid-cols-2" data-relatorio-component="block_farol_clientes">
+                        <div class="rounded-lg border bg-card shadow-sm" data-relatorio-component="top_clientes">
+                            <div class="border-b px-6 py-4 flex items-center justify-between">
+                                <div>
+                                    <h3 class="flex items-center gap-2 text-lg font-semibold">
+                                        <i class="fas fa-trophy text-emerald-500"></i>
+                                        Top Clientes (Farol Verde)
+                                    </h3>
+                                    <p class="text-xs text-muted-foreground mt-1">Clientes com melhor performance e resultado</p>
+                                </div>
+                                <button onclick="toggleCardBody(this)" class="text-xs text-muted-foreground hover:text-foreground ml-2" title="Colapsar/Expandir">
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+                            </div>
+                            <div id="relatorio-top-clientes" class="divide-y divide-border card-body hidden">
+                                <!-- Populado via JS -->
+                            </div>
+                        </div>
+                        <div class="rounded-lg border bg-card shadow-sm" data-relatorio-component="clientes_risco">
+                            <div class="border-b px-6 py-4 flex items-center justify-between">
+                                <div>
+                                    <h3 class="flex items-center gap-2 text-lg font-semibold">
+                                        <i class="fas fa-exclamation-circle text-red-500"></i>
+                                        Clientes em Risco (Farol Vermelho)
+                                    </h3>
+                                    <p class="text-xs text-muted-foreground mt-1">Clientes com baixa performance ou prejuízo</p>
+                                </div>
+                                <button onclick="toggleCardBody(this)" class="text-xs text-muted-foreground hover:text-foreground ml-2" title="Colapsar/Expandir">
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+                            </div>
+                            <div id="relatorio-risco-clientes" class="divide-y divide-border card-body hidden">
+                                <!-- Populado via JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Análise de Churn: Morte Silenciosa -->
+                    <div class="rounded-lg border bg-card shadow-sm" data-relatorio-component="analise_churn">
+                        <div class="border-b px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <h3 class="flex items-center gap-2 text-lg font-semibold">
+                                    <i class="fas fa-user-slash text-orange-500"></i>
+                                    Análise de Churn - Morte Silenciosa
+                                </h3>
+                                <p class="text-xs text-muted-foreground mt-1">Clientes que reduziram drasticamente operações e seus vendedores responsáveis</p>
+                            </div>
+                            <button onclick="toggleCardBody(this)" class="text-xs text-muted-foreground hover:text-foreground ml-2" title="Colapsar/Expandir">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </div>
+                        <div class="p-6 card-body hidden">
+                            <div id="relatorio-churn-content">
+                                <!-- Populado via JS -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Modal de Detalhes do Churn -->
+                    <div id="churn-detail-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                        <div class="bg-card rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                            <div class="border-b px-6 py-4 flex items-center justify-between sticky top-0 bg-card">
+                                <h3 class="text-lg font-semibold flex items-center gap-2">
+                                    <i class="fas fa-chart-line text-orange-500"></i>
+                                    <span id="churn-detail-cliente-nome">Análise Detalhada de Churn</span>
+                                </h3>
+                                <button onclick="fecharDetalhesChurn()" class="text-muted-foreground hover:text-foreground">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div class="p-6" id="churn-detail-content">
+                                <!-- Conteúdo preenchido via JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Estado vazio -->
+                <div id="relatorio-empty" class="text-center py-12">
+                    <div class="rounded-full bg-muted w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-chart-area text-2xl text-muted-foreground"></i>
+                    </div>
+                    <h4 class="font-semibold mb-2">Relatório de Resultados</h4>
+                    <p class="text-sm text-muted-foreground mb-4">
+                        Informe um período e clique em "Gerar Análise" para visualizar os indicadores da controladoria.
+                    </p>
+                </div>
+
+                <!-- Estado de erro -->
+                <div id="relatorio-error" class="hidden text-center py-12">
+                    <div class="rounded-full bg-red-100 w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-plug text-2xl text-red-500"></i>
+                    </div>
+                    <h4 class="font-semibold mb-2 text-red-700">Erro ao carregar relatório</h4>
+                    <p id="relatorio-error-message" class="text-sm text-muted-foreground mb-4">
+                        Não foi possível conectar ao banco de dados.
+                    </p>
+                    <button onclick="buscarRelatorioResultados()" class="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90">
+                        <i class="fas fa-redo mr-2"></i>Tentar novamente
+                    </button>
+                </div>
+            </div>
+        </div>

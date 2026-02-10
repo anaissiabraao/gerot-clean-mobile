@@ -1,0 +1,69 @@
+{% extends "base_tailwind.html" %}
+
+{% block title %}{{ model.title }} • Modelo{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-background">
+  <header class="border-b bg-card shadow-sm">
+    <div class="container mx-auto px-4">
+      <div class="flex flex-col gap-4 py-5 lg:flex-row lg:items-center lg:justify-between">
+        <div class="flex items-center gap-3">
+          <div class="rounded-full bg-gradient-to-br from-slate-600 to-slate-900 p-3">
+            <i class="fas fa-code text-white text-xl"></i>
+          </div>
+          <div>
+            <p class="text-xs text-muted-foreground">Modelo (Laboratório)</p>
+            <h2 class="text-2xl font-bold text-foreground">{{ model.title }}</h2>
+            <p class="text-sm text-muted-foreground">{{ model.description or '' }}</p>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <a href="{{ url_for('agent_page') }}"
+             class="inline-flex items-center justify-center rounded-md border bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground">
+            <i class="fas fa-layer-group mr-2"></i>Biblioteca
+          </a>
+          <a href="{{ url_for('agent_lab_page') }}"
+             class="inline-flex items-center justify-center rounded-md bg-muted px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+            <i class="fas fa-flask mr-2"></i>Laboratório
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container mx-auto px-4 py-8">
+    <div class="rounded-lg border bg-card p-6 shadow-sm">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-lg font-semibold">Detalhes do modelo</h3>
+          <p class="text-sm text-muted-foreground mt-1">ID {{ model.id }} • Categoria {{ model.category }} • Base {{ model.database }} • Tipo {{ model.kind }}</p>
+        </div>
+        <span class="rounded-full px-2.5 py-1 text-xs font-medium {{ 'bg-green-100 text-green-800' if model.is_published else 'bg-amber-100 text-amber-800' }}">
+          {{ 'Publicado' if model.is_published else 'Rascunho' }}
+        </span>
+      </div>
+
+      <div class="mt-4 grid gap-4 lg:grid-cols-2">
+        <div class="rounded-md border bg-background p-4">
+          <p class="text-xs font-medium text-muted-foreground mb-2">Execução</p>
+          <p class="text-sm text-muted-foreground">A execução de modelos via UI será habilitada após autorização/publicação e integração com o executor genérico.</p>
+          <p class="text-sm text-muted-foreground mt-2">Por enquanto, use o Laboratório para publicar e a Biblioteca para executar as automações do catálogo.</p>
+        </div>
+        <div class="rounded-md border bg-background p-4">
+          <p class="text-xs font-medium text-muted-foreground mb-2">Conteúdo</p>
+          {% if model.kind == 'query' %}
+            <pre class="text-xs bg-black text-green-300 p-3 rounded-md overflow-auto max-h-56 whitespace-pre-wrap">{{ model.query or '' }}</pre>
+          {% else %}
+            <div class="text-sm">
+              <p><strong>Procedure:</strong> <span class="font-mono">{{ model.procedure }}</span></p>
+              <p class="mt-2"><strong>Params:</strong></p>
+              <pre class="text-xs bg-black text-green-300 p-3 rounded-md overflow-auto max-h-56 whitespace-pre-wrap">{{ (model.procedure_params or {}) | tojson }}</pre>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+{% endblock %}
+

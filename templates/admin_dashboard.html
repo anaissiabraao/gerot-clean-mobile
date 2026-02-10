@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeRot • Painel Administrativo</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #111c33;
+            --card-alt: #172544;
+            --primary: #60a5fa;
+            --primary-dark: #2563eb;
+            --accent: #a855f7;
+            --text: #f1f5f9;
+            --muted: #94a3b8;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --warning: #f97316;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            background: radial-gradient(circle at top, #1e293b, #020617 55%);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 2rem 1rem 4rem;
+        }
+
+        .layout {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        header h1 {
+            font-size: 1.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text);
+        }
+
+        header h1 span {
+            font-size: 1.25rem;
+            color: var(--muted);
+        }
+
+        header .actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            border: none;
+            border-radius: 999px;
+            padding: 0.65rem 1.25rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .btn-primary {
+            background: linear-gradient(120deg, var(--primary-dark), var(--accent));
+            color: #fff;
+        }
+
+        .btn-outline {
+            border: 1px solid var(--accent);
+            color: var(--accent);
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 25px rgba(15, 23, 42, 0.25);
+        }
+
+        .grid {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .stats {
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: 20px;
+            padding: 1.75rem;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 15px 35px rgba(2, 6, 23, 0.6);
+        }
+
+        .stat-card h3 {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--muted);
+        }
+
+        .stat-card .value {
+            font-size: 2.4rem;
+            font-weight: 700;
+            margin-top: 0.35rem;
+        }
+
+        .stat-card .hint {
+            margin-top: 0.4rem;
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+
+        .section {
+            background: var(--card);
+            border-radius: 24px;
+            padding: 1.75rem;
+            box-shadow: 0 18px 45px rgba(2, 6, 23, 0.75);
+        }
+
+        .section-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.25rem;
+        }
+
+        .section-title h2 {
+            font-size: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        select, input[type="checkbox"] {
+            accent-color: var(--primary-dark);
+        }
+
+        select {
+            background: var(--card-alt);
+            color: var(--text);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 0.65rem 1rem;
+            font-size: 1rem;
+            min-width: 240px;
+        }
+
+        .dash-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-top: 1.25rem;
+        }
+
+        .dash-card {
+            background: var(--card-alt);
+            border-radius: 18px;
+            padding: 1rem;
+            border: 1px solid transparent;
+            transition: border 0.2s ease, transform 0.2s ease;
+        }
+
+        .dash-card input {
+            display: none;
+        }
+
+        .dash-card label {
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .dash-card h4 {
+            font-size: 1.05rem;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            background: rgba(96, 165, 250, 0.15);
+            font-size: 0.8rem;
+        }
+
+        .dash-card input:checked + label .pill {
+            background: rgba(34, 197, 94, 0.2);
+            color: var(--success);
+        }
+
+        .dash-card input:checked + label h4 {
+            color: var(--primary);
+        }
+
+        .dash-card input:checked + label + .dash-card {
+            border-color: var(--primary);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 0.75rem 0.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+
+        th {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--muted);
+        }
+
+        .log-list {
+            margin-top: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.65rem;
+        }
+
+        .log-item {
+            background: var(--card-alt);
+            border-radius: 14px;
+            padding: 0.75rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 3px solid transparent;
+        }
+
+        .log-item.success { border-color: var(--success); }
+        .log-item.error { border-color: var(--danger); }
+
+        .flash-messages {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .flash {
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            background: rgba(15,23,42,0.85);
+            border: 1px solid rgba(255,255,255,0.08);
+            font-size: 0.95rem;
+        }
+
+        .tab-nav {
+            display: flex;
+            gap: 0.75rem;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.3);
+            padding-bottom: 0.5rem;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: var(--muted);
+            padding: 0.75rem 1rem;
+            font-weight: 600;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 720px) {
+            header { flex-direction: column; align-items: flex-start; }
+            select { width: 100%; }
+            .dash-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash" style="border-left:4px solid {{ '#22c55e' if category == 'success' else '#ef4444' if category == 'error' else '#f97316' }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <header>
+            <h1>GeRot <span>Painel do Administrador</span></h1>
+            <div class="actions">
+                <a class="btn btn-outline" href="{{ url_for('admin_live_users') }}" style="background: rgba(34, 197, 94, 0.1); border-color: #22c55e; color: #22c55e;">
+                    <i class="fas fa-satellite-dish"></i> Ao Vivo
+                </a>
+                <a class="btn btn-outline" href="{{ url_for('admin_add_dashboard') }}">
+                    <i class="fas fa-plus"></i> Adicionar Dashboard BI
+                </a>
+                <a class="btn btn-outline" href="{{ url_for('admin_assets') }}">
+                    <i class="fas fa-layer-group"></i> Biblioteca de Ativos
+                </a>
+                <a class="btn btn-outline" href="{{ url_for('admin_asset_assignments') }}">
+                    <i class="fas fa-sliders-h"></i> Atribuições de Ativos
+                </a>
+                <a class="btn btn-outline" href="{{ url_for('admin_users') }}">
+                    <i class="fas fa-users"></i> Gerenciar Usuários
+                </a>
+                <a class="btn btn-outline" href="{{ url_for('admin_environments') }}" style="background: rgba(168, 85, 247, 0.2); border-color: var(--accent);">
+                    <i class="fas fa-cube"></i> Ambientes 3D
+                </a>
+                <button class="btn btn-outline" onclick="openSchemaModal()" style="cursor: pointer;">
+                    <i class="fas fa-database"></i> Schema DB
+                </button>
+                <a class="btn btn-outline" href="{{ url_for('team_dashboard') }}">Ver janela de dashboards</a>
+                <a class="btn btn-primary" href="{{ url_for('logout') }}">Sair</a>
+            </div>
+        </header>
+
+        {% set is_metas = selected_tab == 'metas' %}
+        <nav class="tab-nav">
+            <button class="tab-btn {% if not is_metas %}active{% endif %}" data-admin-tab="overview">Visão geral</button>
+            <button class="tab-btn {% if is_metas %}active{% endif %}" data-admin-tab="metas">Metas e percentuais</button>
+        </nav>
+
+        <div id="admin-tab-overview" class="{% if is_metas %}hidden{% endif %}">
+        <section class="grid stats">
+            <article class="card stat-card">
+                <h3>Usuários ativos</h3>
+                <div class="value">{{ stats.total_users }}</div>
+                <p class="hint">{{ stats.total_admins }} administradores</p>
+            </article>
+            <article class="card stat-card">
+                <h3>Dashboards liberados</h3>
+                <div class="value">{{ stats.active_dashboards }}</div>
+                <p class="hint">{{ stats.total_assignments }} atribuições</p>
+            </article>
+            <article class="card stat-card">
+                <h3>Planner</h3>
+                {% if planner_enabled %}
+                    <div class="value" style="color: var(--success);">Ativo</div>
+                {% else %}
+                    <div class="value" style="color: var(--warning);">Pendente</div>
+                {% endif %}
+                <p class="hint">
+                    {% if stats.last_sync %}
+                        Último envio: {{ stats.last_sync }} ({{ stats.last_sync_status }})
+                    {% else %}
+                        Nenhuma sincronização registrada
+                    {% endif %}
+                </p>
+            </article>
+        </section>
+
+        <section class="section">
+            <div class="section-title">
+                <h2>🗂️ Configurar visibilidade</h2>
+            </div>
+            <p style="color: var(--muted); margin-bottom: 0.75rem;">
+                A configuração de visibilidade foi migrada para a nova tela de atribuições.
+            </p>
+            <a class="btn btn-primary" href="{{ url_for('admin_asset_assignments') }}">
+                Abrir atribuições de ativos
+            </a>
+        </section>
+
+        <section class="section">
+            <div class="section-title">
+                <h2>📒 Usuários x Dashboards</h2>
+                <form method="POST" action="{{ url_for('admin_planner_sync') }}" style="margin:0">
+                    <button class="btn btn-outline" {% if not planner_enabled %}disabled style="opacity:0.4;cursor:not-allowed;"{% endif %}>
+                        📤 Enviar agenda ao Planner
+                    </button>
+                </form>
+            </div>
+
+            <div class="table-wrapper" style="overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Usuário</th>
+                            <th>Tipo</th>
+                            <th>Dashboards liberados</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                            {% set info = user_dashboards.get(user.id, {"ids": [], "items": []}) %}
+                            <tr>
+                                <td>{{ user.nome_completo }}</td>
+                                <td>{{ 'Admin' if user.role == 'admin' else 'Usuário' }}</td>
+                                <td>
+                                    {% if info.get("items") %}
+                                        {% for dash in info["items"] %}
+                                            <span class="pill">{{ dash.title }}</span>
+                                        {% endfor %}
+                                    {% else %}
+                                        <span style="color: var(--muted);">Nenhum dashboard atribuído</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="section-title">
+                <h2>📝 Logs de sincronização</h2>
+            </div>
+            <div class="log-list">
+                {% if planner_logs %}
+                    {% for log in planner_logs %}
+                        <div class="log-item {{ log.status }}">
+                            <div>
+                                <strong>{{ log.user_name or '—' }}</strong>
+                                <p style="color: var(--muted); font-size:0.85rem;">
+                                    {{ log.dashboard_count or 0 }} dashboard(s) • {{ log.message }}
+                                </p>
+                            </div>
+                            <small style="color: var(--muted);">{{ log.created_at }}</small>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p style="color: var(--muted);">Nenhum histórico disponível.</p>
+                {% endif %}
+            </div>
+        </section>
+        </div>
+
+        <div id="admin-tab-metas" class="{% if not is_metas %}hidden{% endif %}">
+            <section class="section">
+                <div class="section-title">
+                    <h2>🎯 Metas do Relatório de Resultados</h2>
+                </div>
+                <form method="POST" action="{{ url_for('update_relatorio_meta_settings') }}" class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+                    <label>
+                        Meta Valor (R$)
+                        <input type="number" step="0.01" name="meta_valor" value="{{ relatorio_meta.meta_valor if relatorio_meta else 0 }}">
+                    </label>
+                    <label>
+                        Meta Percentual (%)
+                        <input type="number" step="0.01" name="meta_percentual" value="{{ relatorio_meta.meta_percentual if relatorio_meta else 0 }}">
+                    </label>
+                    <div style="grid-column: 1 / -1; color: var(--muted); font-size: 0.85rem;">
+                        Esses valores alimentam as metas nos gráficos de resultado e margem do Relatório de Resultados.
+                    </div>
+                    <div style="grid-column: 1 / -1; display: flex; justify-content: flex-end;">
+                        <button class="btn btn-primary" type="submit">Salvar metas</button>
+                    </div>
+                </form>
+            </section>
+        </div>
+    </div>
+
+    <div id="schemaModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center;">
+        <div style="background: #1a1a2e; padding: 1rem; border-radius: 12px; width: 95vw; height: 95vh; position: relative; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <h2 style="color: #fff; margin: 0; font-size: 1.2rem;">
+                    <i class="fas fa-database" style="color: #60a5fa;"></i> Supabase Public Schema
+                </h2>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <button onclick="zoomSchema(-0.2)" style="background: #374151; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 1rem;">
+                        <i class="fas fa-minus"></i>
+                    </button>
+                    <span id="zoomLevel" style="color: #9ca3af; min-width: 50px; text-align: center;">100%</span>
+                    <button onclick="zoomSchema(0.2)" style="background: #374151; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 1rem;">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <button onclick="resetZoom()" style="background: #374151; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; margin-left: 0.5rem;">
+                        Reset
+                    </button>
+                    <button onclick="closeSchemaModal()" style="background: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 1rem; margin-left: 1rem;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div id="svgContainer" style="flex: 1; overflow: auto; background: #0f0f1a; border-radius: 8px; cursor: grab;">
+                <object id="schemaSvg" type="image/svg+xml" data="{{ url_for('static', filename='supabase-public.svg') }}" style="width: 100%; height: auto; min-width: 1200px; transform-origin: top left; transition: transform 0.1s ease;">
+                    Seu navegador não suporta SVG
+                </object>
+            </div>
+            <p style="color: #6b7280; font-size: 0.8rem; margin-top: 0.5rem; text-align: center;">
+                Use a roda do mouse para zoom, arraste para navegar, ou use os botões acima.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        let currentZoom = 1;
+        
+        function openSchemaModal() {
+            document.getElementById('schemaModal').style.display = 'flex';
+            currentZoom = 1;
+            updateZoom();
+        }
+        
+        function closeSchemaModal() {
+            document.getElementById('schemaModal').style.display = 'none';
+        }
+        
+        function zoomSchema(delta) {
+            currentZoom = Math.max(0.2, Math.min(3, currentZoom + delta));
+            updateZoom();
+        }
+        
+        function resetZoom() {
+            currentZoom = 1;
+            updateZoom();
+            document.getElementById('svgContainer').scrollTo(0, 0);
+        }
+        
+        function updateZoom() {
+            const svg = document.getElementById('schemaSvg');
+            svg.style.transform = `scale(${currentZoom})`;
+            document.getElementById('zoomLevel').textContent = Math.round(currentZoom * 100) + '%';
+        }
+        
+        // Zoom com roda do mouse
+        document.getElementById('svgContainer')?.addEventListener('wheel', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                zoomSchema(e.deltaY > 0 ? -0.1 : 0.1);
+            }
+        });
+        
+        // Close on click outside
+        document.getElementById('schemaModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeSchemaModal();
+            }
+        });
+
+        const userSelector = document.getElementById('userSelector');
+        const formUserId = document.getElementById('formUserId');
+        if (userSelector && formUserId) {
+            userSelector.addEventListener('change', (event) => {
+                const selected = event.target.value;
+                formUserId.value = selected;
+                const params = new URLSearchParams(window.location.search);
+                params.set('user_id', selected);
+                window.location.search = params.toString();
+            });
+        }
+
+        function switchAdminTab(tab) {
+            const overview = document.getElementById('admin-tab-overview');
+            const metas = document.getElementById('admin-tab-metas');
+            const tabs = document.querySelectorAll('[data-admin-tab]');
+            const isMetas = tab === 'metas';
+            overview?.classList.toggle('hidden', isMetas);
+            metas?.classList.toggle('hidden', !isMetas);
+            tabs.forEach(btn => btn.classList.toggle('active', btn.dataset.adminTab === tab));
+            const params = new URLSearchParams(window.location.search);
+            params.set('tab', tab);
+            history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+        }
+
+        document.querySelectorAll('[data-admin-tab]').forEach(btn => {
+            btn.addEventListener('click', () => switchAdminTab(btn.dataset.adminTab));
+        });
+    </script>
+</body>
+</html>

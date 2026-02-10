@@ -1,0 +1,155 @@
+{% extends "base_tailwind.html" %}
+
+{% block title %}{% if asset %}Editar{% else %}Cadastrar{% endif %} Ativo - GeRot Admin{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-background">
+    <header class="border-b bg-card shadow-sm">
+        <div class="container mx-auto px-4">
+            <div class="flex h-16 items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center gap-2">
+                        <img src="{{ url_for('static', filename='portoex-logo.png') }}" alt="PortoEx" class="h-8 w-auto">
+                        <span class="text-xl font-bold text-primary border-l border-muted-foreground/30 pl-2 ml-2">GeRot</span>
+                    </div>
+                    <nav class="flex space-x-1">
+                        <a href="{{ url_for('admin_assets') }}" class="rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                            <i class="fas fa-arrow-left mr-2"></i>Voltar à Biblioteca
+                        </a>
+                    </nav>
+                </div>
+                <div class="flex items-center space-x-4 text-sm text-muted-foreground">
+                    <span>{{ session.nome_completo }}</span>
+                    <a href="{{ url_for('logout') }}" class="rounded-md bg-destructive px-3 py-2 text-sm font-medium text-white hover:bg-destructive/90 transition-colors">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8">
+        <div class="mx-auto max-w-4xl">
+            <div class="mb-6">
+                <h1 class="text-2xl font-bold text-foreground">
+                    {% if asset %}Editar{% else %}Cadastrar{% endif %} Ativo
+                </h1>
+                <p class="text-sm text-muted-foreground">
+                    Defina tipo, status e links seguros para exibição no painel de dashboards.
+                </p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="mb-6 space-y-3">
+                        {% for category, message in messages %}
+                            <div class="rounded-lg border px-4 py-3 {% if category == 'success' %}bg-green-50 border-green-200 text-green-800{% elif category == 'error' %}bg-red-50 border-red-200 text-red-800{% else %}bg-orange-50 border-orange-200 text-orange-800{% endif %}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <div class="rounded-xl border bg-card shadow-sm">
+                <form method="POST" class="p-6">
+                    {% if asset %}
+                        <input type="hidden" name="asset_id" value="{{ asset.id }}">
+                    {% endif %}
+
+                    <div class="space-y-6">
+                        <div class="grid gap-6 md:grid-cols-2">
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-foreground" for="nome">Nome do Ativo *</label>
+                                <input type="text" id="nome" name="nome" required
+                                       value="{{ asset.nome if asset else '' }}"
+                                       class="w-full rounded-md border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-foreground" for="tipo">Tipo *</label>
+                                <select id="tipo" name="tipo" required
+                                        class="w-full rounded-md border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
+                                    {% set tipo_val = asset.tipo if asset else '' %}
+                                    <option value="">Selecione...</option>
+                                    <option value="PBI" {% if tipo_val == 'PBI' %}selected{% endif %}>PBI</option>
+                                    <option value="interno" {% if tipo_val == 'interno' %}selected{% endif %}>interno</option>
+                                    <option value="grafico" {% if tipo_val == 'grafico' %}selected{% endif %}>gráfico</option>
+                                    <option value="rpa" {% if tipo_val == 'rpa' %}selected{% endif %}>rpa</option>
+                                    <option value="outro" {% if tipo_val == 'outro' %}selected{% endif %}>outro</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid gap-6 md:grid-cols-2">
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-foreground" for="categoria">Categoria</label>
+                                <input type="text" id="categoria" name="categoria"
+                                       value="{{ asset.categoria if asset else '' }}"
+                                       class="w-full rounded-md border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-foreground" for="status">Status *</label>
+                                {% set status_val = asset.status if asset else 'ativo' %}
+                                <select id="status" name="status" required
+                                        class="w-full rounded-md border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
+                                    <option value="ativo" {% if status_val == 'ativo' %}selected{% endif %}>ativo</option>
+                                    <option value="experimental" {% if status_val == 'experimental' %}selected{% endif %}>experimental</option>
+                                    <option value="legado" {% if status_val == 'legado' %}selected{% endif %}>legado</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-foreground" for="descricao">Descrição</label>
+                            <input type="text" id="descricao" name="descricao"
+                                   value="{{ asset.descricao if asset else '' }}"
+                                   class="w-full rounded-md border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
+                        </div>
+
+                        <div class="grid gap-6 md:grid-cols-2">
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-foreground" for="ordem_padrao">Ordem padrão</label>
+                                <input type="number" id="ordem_padrao" name="ordem_padrao" min="0"
+                                       value="{{ asset.ordem_padrao if asset else 0 }}"
+                                       class="w-full rounded-md border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-foreground" for="resource_url">URL / rota interna</label>
+                                <input type="text" id="resource_url" name="resource_url"
+                                       value="{{ asset.resource_url if asset else '' }}"
+                                       placeholder="/alguma/rota ou https://..."
+                                       class="w-full rounded-md border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-foreground" for="embed_code">Código de incorporação (PBI)</label>
+                            <textarea id="embed_code" name="embed_code" rows="5"
+                                      placeholder='<iframe src="https://app.powerbi.com/view?r=..."></iframe>'
+                                      class="w-full rounded-md border bg-background px-3 py-2 text-xs font-mono focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">{% if asset and asset.embed_url %}<iframe src="{{ asset.embed_url }}"></iframe>{% endif %}</textarea>
+                            <p class="text-xs text-muted-foreground">Obrigatório apenas para tipo PBI. Tokens sensíveis são bloqueados.</p>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-foreground" for="config_json">Configuração extra (JSON)</label>
+                            <textarea id="config_json" name="config_json" rows="4"
+                                      placeholder='{"available_chart_types":["bar","line","pie","table"]}'
+                                      class="w-full rounded-md border bg-background px-3 py-2 text-xs font-mono focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">{% if asset and asset.config %}{{ asset.config | tojson }}{% endif %}</textarea>
+                            <p class="text-xs text-muted-foreground">Use available_chart_types para definir tipos atribuíveis em ativos internos.</p>
+                        </div>
+
+                        <div class="flex items-center justify-end gap-3 border-t pt-4">
+                            <a href="{{ url_for('admin_assets') }}" class="rounded-lg border bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground">
+                                Cancelar
+                            </a>
+                            <button type="submit" class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary/90">
+                                <i class="fas fa-save mr-2"></i>Salvar Ativo
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

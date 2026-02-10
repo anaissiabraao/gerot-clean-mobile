@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeRot • Dashboards do Dia</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --background: #020617;
+            --card: #0f172a;
+            --card-alt: #111c33;
+            --text: #e2e8f0;
+            --muted: #94a3b8;
+            --primary: #38bdf8;
+            --primary-dark: #0ea5e9;
+            --accent: #a855f7;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            background: radial-gradient(circle at top, #1e1b4b, #020617 60%);
+            min-height: 100vh;
+            color: var(--text);
+            padding: 2rem 1rem 4rem;
+        }
+
+        .layout {
+            max-width: 1300px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        header h1 {
+            font-size: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        header h1 span {
+            font-size: 0.95rem;
+            color: var(--muted);
+            font-weight: 400;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            border: none;
+            border-radius: 999px;
+            padding: 0.6rem 1.2rem;
+            font-weight: 600;
+            cursor: pointer;
+            background: rgba(255,255,255,0.08);
+            color: var(--text);
+            text-decoration: none;
+            transition: transform 0.2s ease, background 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            background: rgba(255,255,255,0.16);
+        }
+        
+        .notification-bell {
+            position: relative;
+        }
+        
+        .notification-dot {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 10px;
+            height: 10px;
+            background: #ef4444;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .notification-panel {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: 100vh;
+            background: var(--card);
+            box-shadow: -4px 0 20px rgba(0,0,0,0.3);
+            transition: right 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .notification-panel.open {
+            right: 0;
+        }
+        
+        .notification-header {
+            padding: 1.5rem;
+            background: var(--card-alt);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .notification-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+        
+        .notification-item {
+            padding: 1rem;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .notification-item:hover {
+            background: rgba(255,255,255,0.08);
+        }
+        
+        .notification-item.unread {
+            border-left: 3px solid var(--primary);
+        }
+        
+        .notification-time {
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-top: 0.5rem;
+        }
+        
+        .notification-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+        
+        .notification-message {
+            font-size: 0.9rem;
+            color: var(--muted);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            background: rgba(56, 189, 248, 0.15);
+            color: var(--primary);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .hero {
+            background: var(--card);
+            border-radius: 24px;
+            padding: 1.75rem;
+            box-shadow: 0 25px 55px rgba(2, 6, 23, 0.8);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        /* Tabs Styles */
+        .tabs-nav {
+            display: flex;
+            gap: 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 1.5rem;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--muted);
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-btn:hover:not(.active) {
+            color: var(--text);
+        }
+
+        .tab-pane {
+            display: none;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        /* Simple Chat Styles */
+        .chat-container {
+            background: var(--card);
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(2, 6, 23, 0.75);
+            display: flex;
+            flex-direction: column;
+            height: 70vh;
+            min-height: 500px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .chat-container.expanded {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 9999;
+            border-radius: 0;
+        }
+
+        .chat-header {
+            padding: 1rem 1.5rem;
+            background: var(--card-alt);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .chat-input-area {
+            padding: 1rem 1.5rem;
+            background: var(--card-alt);
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .chat-form {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .chat-input {
+            flex: 1;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            color: var(--text);
+            resize: none;
+            height: 50px;
+            max-height: 150px;
+            font-family: inherit;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: rgba(255,255,255,0.08);
+        }
+
+        .chat-send-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            border: none;
+            background: var(--primary);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .chat-send-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .message {
+            max-width: 85%;
+            padding: 1rem;
+            border-radius: 12px;
+            line-height: 1.5;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: var(--primary);
+            color: white;
+            border-bottom-right-radius: 2px;
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+            background: var(--card-alt);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-bottom-left-radius: 2px;
+        }
+
+        .message.system {
+            align-self: center;
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            font-size: 0.85rem;
+            padding: 0.5rem 1rem;
+            border-radius: 999px;
+        }
+
+        /* Markdown Styles in Chat */
+        .message table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9em;
+        }
+        .message th, .message td {
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 0.5rem;
+            text-align: left;
+        }
+        .message th {
+            background: rgba(255,255,255,0.1);
+        }
+        .message pre {
+            background: rgba(0,0,0,0.3);
+            padding: 0.75rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 0.5rem 0;
+        }
+        .message code {
+            font-family: monospace;
+            background: rgba(0,0,0,0.3);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+        }
+
+        .hero p {
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .dashboard-card {
+            background: var(--card);
+            border-radius: 24px;
+            padding: 1.25rem;
+            box-shadow: 0 20px 40px rgba(2, 6, 23, 0.75);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .dashboard-card h2 {
+            font-size: 1.1rem;
+            margin-top: 0.5rem;
+        }
+
+        .dashboard-card p {
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        .iframe-wrapper {
+            background: var(--card-alt);
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.05);
+            position: relative;
+        }
+
+        .iframe-wrapper .expand-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+            z-index: 10;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .iframe-wrapper .expand-btn:hover {
+            background: rgba(0,0,0,0.9);
+        }
+
+        iframe {
+            width: 100%;
+            height: 360px;
+            border: none;
+            display: block;
+        }
+
+        /* Modal de tela inteira */
+        .fullscreen-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 9999;
+            flex-direction: column;
+        }
+
+        .fullscreen-modal.active {
+            display: flex;
+        }
+
+        .fullscreen-header {
+            padding: 1rem 2rem;
+            background: var(--card);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .fullscreen-header h2 {
+            color: var(--text);
+            font-size: 1.25rem;
+        }
+
+        .fullscreen-close {
+            background: var(--danger);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.5rem 1.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .fullscreen-close:hover {
+            background: #dc2626;
+        }
+
+        .fullscreen-iframe {
+            flex: 1;
+            width: 100%;
+            border: none;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 2rem;
+            background: var(--card);
+            border-radius: 24px;
+            color: var(--muted);
+            box-shadow: 0 20px 40px rgba(2, 6, 23, 0.75);
+        }
+
+        .empty-state h3 {
+            color: var(--text);
+            margin-bottom: 0.75rem;
+        }
+
+        @media (max-width: 768px) {
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <header>
+            <h1>
+                👋 Olá, {{ user }}
+                <span>Hoje é {{ today }}</span>
+            </h1>
+            <div class="header-actions">
+                <!-- Botões de Acesso Rápido -->
+                <button class="btn notification-bell" onclick="toggleNotifications()" title="Notificações">
+                    🔔 <span id="notificationCount" style="display: none;">(0)</span>
+                    <span class="notification-dot" id="notificationDot" style="display: none;"></span>
+                </button>
+                
+                <a class="btn" href="{{ url_for('cd_facilities') }}" title="Visualização 3D do CD" style="background: rgba(56, 189, 248, 0.2); border: 1px solid rgba(56, 189, 248, 0.3);">
+                    🎲 3D
+                </a>
+                <a class="btn" href="{{ url_for('cd_booking') }}" title="Agendar Sala de Reunião" style="background: rgba(168, 85, 247, 0.2); border: 1px solid rgba(168, 85, 247, 0.3);">
+                    📅 Agendar
+                </a>
+                
+                <a class="btn" href="{{ url_for('profile') }}" title="Meu Perfil">
+                    👤 Perfil
+                </a>
+                
+                {% if is_admin %}
+                    <a class="btn" href="{{ url_for('admin_dashboard') }}">
+                        ⚙️ Painel Admin
+                    </a>
+                    <a class="btn" href="{{ url_for('team_dashboard', all='0' if show_all else '1') }}">
+                        {% if show_all %}
+                            🔒 Ver apenas os meus
+                        {% else %}
+                            🌐 Ver todos os dashboards
+                        {% endif %}
+                    </a>
+                {% endif %}
+                <a class="btn" href="{{ url_for('logout') }}">Sair</a>
+            </div>
+        </header>
+
+        <div class="tabs-nav">
+            <button class="tab-btn active" onclick="openTab('dashboards')">📊 Dashboards</button>
+            <button class="tab-btn" onclick="openTab('chat')">🤖 Chat IA</button>
+        </div>
+
+        <div id="tab-dashboards" class="tab-pane active">
+            <section class="hero">
+                <div class="badge">agenda diária</div>
+                <p>
+                    Esta janela reúne os dashboards liberados para você acompanhar os indicadores do dia.
+                    Navegue pelos painéis, mantenha-se atualizado e compartilhe insights com o time.
+                </p>
+                <p style="color: var(--primary); font-weight: 600;">
+                    {% if assets %}
+                        {{ assets|length }} ativo(s) disponível(is) agora.
+                    {% else %}
+                        Nenhum ativo foi atribuído ainda.
+                    {% endif %}
+                </p>
+            </section>
+
+            {% if regular_assets %}
+                <section class="dashboard-grid">
+                    {% for asset in regular_assets %}
+                        {% set selected_types = asset.assignment_config.chart_types if asset.assignment_config and asset.assignment_config.chart_types else [] %}
+                        {% set selected_components = asset.assignment_config.components if asset.assignment_config and asset.assignment_config.components else [] %}
+                        <article class="dashboard-card">
+                            <div>
+                                <span class="badge">{{ asset.categoria or asset.tipo or 'Dashboard' }}</span>
+                                <h2>{{ asset.nome }}</h2>
+                                <p>{{ asset.descricao or 'Sem descrição disponível.' }}</p>
+                                {% if asset.tipo == 'interno' and selected_components %}
+                                    <div style="margin-top:0.5rem; display:flex; flex-wrap:wrap; gap:0.4rem;">
+                                        {% for comp in selected_components %}
+                                            {% set ns = namespace(label=comp) %}
+                                            {% if asset.asset_config and asset.asset_config.available_components %}
+                                                {% for opt in asset.asset_config.available_components %}
+                                                    {% if opt.key == comp %}
+                                                        {% set ns.label = opt.label %}
+                                                    {% endif %}
+                                                {% endfor %}
+                                            {% endif %}
+                                            <span class="badge" style="background: rgba(148, 163, 184, 0.2); color: var(--muted);">{{ ns.label }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="iframe-wrapper">
+                                {% if asset.tipo == 'PBI' and asset.embed_url %}
+                                    <button class="expand-btn" onclick="expandFullscreen('{{ asset.nome }}', '{{ asset.embed_url }}')">
+                                        <span>⛶</span> Tela Inteira
+                                    </button>
+                                    <iframe 
+                                        title="{{ asset.nome }}" 
+                                        src="{{ asset.embed_url }}" 
+                                        allowfullscreen="true">
+                                    </iframe>
+                                {% elif asset.tipo == 'grafico' and asset.asset_config and asset.asset_config.chart %}
+                                    <div style="padding: 1rem;">
+                                        <canvas id="chart-{{ asset.id }}" data-chart='{{ asset.asset_config.chart | tojson | safe }}'></canvas>
+                                    </div>
+                                {% elif asset.tipo == 'interno' and asset.asset_config and asset.asset_config.embed_mode and selected_components and asset.resource_url %}
+                                    <div style="padding: 0;">
+                                        <iframe
+                                            src="{{ asset.resource_url }}&embed=1&components={{ selected_components | join(',') }}"
+                                            style="width:100%; height:720px; border:0;"
+                                            loading="lazy"
+                                            allowfullscreen="true"></iframe>
+                                    </div>
+                                {% else %}
+                                    <div style="padding: 1rem; color: var(--muted);">
+                                        {% if asset.resource_url %}
+                                            <a class="btn btn-outline" href="{{ asset.resource_url }}" target="_blank">Abrir ativo</a>
+                                        {% else %}
+                                            Link indisponível
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </article>
+                    {% endfor %}
+                </section>
+            {% elif not internal_assets %}
+                <div class="empty-state">
+                    <h3>Nenhum ativo disponível</h3>
+                    <p>Peça para um administrador liberar os ativos que você precisa acompanhar.</p>
+                </div>
+            {% endif %}
+
+            {% if internal_assets %}
+                <div style="display:flex; justify-content:space-between; align-items:center; margin:1.5rem 0 0.75rem;">
+                    <h3 style="margin:0;">Painéis internos atribuídos</h3>
+                    <span style="font-size:0.85rem; color: var(--muted);">{{ internal_assets|length }} painel(is)</span>
+                </div>
+                <section class="dashboard-grid" style="grid-template-columns: 1fr;">
+                    {% for asset in internal_assets %}
+                        {% set selected_components = asset.assignment_config.components if asset.assignment_config and asset.assignment_config.components else [] %}
+                        <article class="dashboard-card" style="padding: 1.75rem; border-radius: 18px; box-shadow: var(--shadow-sm);">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; padding-bottom:1rem; border-bottom:1px solid var(--border);">
+                                <div>
+                                <span class="badge">{{ asset.categoria or asset.tipo or 'Interno' }}</span>
+                                    {% if not (asset.asset_config and asset.asset_config.legacy_view == 'relatorio_resultados') %}
+                                        <h2 style="margin-top:0.4rem;">{{ asset.nome }}</h2>
+                                        <p>{{ asset.descricao }}</p>
+                                    {% endif %}
+                                    {% if selected_components %}
+                                        <div id="component-tags-{{ asset.id }}" style="margin-top:0.75rem; display:none; flex-wrap:wrap; gap:0.4rem;">
+                                            {% for comp in selected_components %}
+                                                {% set ns = namespace(label=comp) %}
+                                                {% if asset.asset_config and asset.asset_config.available_components %}
+                                                    {% for opt in asset.asset_config.available_components %}
+                                                        {% if opt.key == comp %}
+                                                            {% set ns.label = opt.label %}
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                {% endif %}
+                                                <span class="badge" style="background: rgba(148, 163, 184, 0.2); color: var(--muted);">{{ ns.label }}</span>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div style="display:flex; align-items:center; gap:0.75rem;">
+                                    <button class="btn btn-outline" data-action="toggle-components" data-target="component-tags-{{ asset.id }}" style="padding:0.4rem 0.8rem;">
+                                        Blocos
+                                    </button>
+                                    <button class="btn btn-outline" data-action="toggle-controls" data-target="internal-embed-{{ asset.id }}" style="padding:0.4rem 0.8rem;">
+                                        Controles
+                                    </button>
+                                    <span style="font-size:0.8rem; color: var(--muted);">Blocos atribuídos: {{ selected_components|length }}</span>
+                                </div>
+                            </div>
+                            {% if asset.asset_config and asset.asset_config.legacy_view == 'relatorio_resultados' %}
+                                <div class="iframe-wrapper" style="margin-top:1rem;" data-relatorio-scope data-components="{{ selected_components | join(',') }}">
+                                    {% set relatorio_mode = 'dashboard' %}
+                                    {% include "partials/relatorio_block.html" %}
+                                </div>
+                            {% else %}
+                                <div class="iframe-wrapper" style="margin-top:1rem; display:flex; align-items:center; justify-content:center; min-height:240px; color: var(--muted);">
+                                    Conteúdo interno indisponível sem modo embed.
+                                </div>
+                            {% endif %}
+                        </article>
+                    {% endfor %}
+                </section>
+            {% endif %}
+        </div>
+
+        <div id="tab-chat" class="tab-pane">
+            <div class="chat-container" id="chatContainer">
+                <div class="chat-header">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                            🤖
+                        </div>
+                        <div>
+                            <h3 class="font-semibold">Assistente GeRot</h3>
+                            <p class="text-xs text-muted">IA integrada aos dados</p>
+                        </div>
+                    </div>
+                    <button class="btn" onclick="toggleChatFullscreen()" style="padding: 0.4rem 0.8rem; font-size: 0.9rem;">
+                        <span id="chatExpandIcon">⛶</span> Expandir
+                    </button>
+                </div>
+                
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message assistant">
+                        Olá! Sou o assistente virtual do GeRot. Como posso ajudar você hoje com seus dados e relatórios?
+                    </div>
+                </div>
+                
+                <div class="chat-input-area">
+                    <form class="chat-form" onsubmit="sendDashboardMessage(event)">
+                        <textarea id="dashboardChatInput" class="chat-input" placeholder="Digite sua mensagem..." rows="1" onkeydown="handleDashboardChatKey(event)"></textarea>
+                        <button type="submit" class="chat-send-btn">
+                            ➤
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de tela inteira -->
+    <div id="fullscreenModal" class="fullscreen-modal">
+        <div class="fullscreen-header">
+            <h2 id="fullscreenTitle"></h2>
+            <button class="fullscreen-close" onclick="closeFullscreen()">
+                <span>✕</span> Fechar
+            </button>
+        </div>
+        <iframe id="fullscreenIframe" class="fullscreen-iframe" allowfullscreen="true"></iframe>
+    </div>
+    
+    <!-- Notification Panel -->
+    <div class="notification-panel" id="notificationPanel">
+        <div class="notification-header">
+            <h3 style="margin: 0; font-size: 1.2rem;">Notificações</h3>
+            <button class="btn" onclick="toggleNotifications()" style="padding: 0.4rem 0.8rem;">
+                ✕
+            </button>
+        </div>
+        <div class="notification-list" id="notificationList">
+            <!-- Notificações serão inseridas aqui -->
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='relatorio.js') }}"></script>
+    <script>
+        let notifications = [];
+        let notificationPanel = document.getElementById('notificationPanel');
+        let notificationList = document.getElementById('notificationList');
+        let notificationCount = document.getElementById('notificationCount');
+        let notificationDot = document.getElementById('notificationDot');
+        
+        // --- Tabs Logic ---
+        function openTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-pane').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            
+            // Show selected tab
+            document.getElementById('tab-' + tabName).classList.add('active');
+            
+            // Activate button
+            // Find button with onclick="openTab('tabName')"
+            const btns = document.getElementsByClassName('tab-btn');
+            for(let btn of btns) {
+                if(btn.getAttribute('onclick') === `openTab('${tabName}')`) {
+                    btn.classList.add('active');
+                }
+            }
+        }
+
+        // --- Chat Logic ---
+        let dashboardChatId = null;
+
+        function toggleChatFullscreen() {
+            const container = document.getElementById('chatContainer');
+            const icon = document.getElementById('chatExpandIcon');
+            container.classList.toggle('expanded');
+            if (container.classList.contains('expanded')) {
+                icon.innerText = '✕';
+                document.body.style.overflow = 'hidden';
+            } else {
+                icon.innerText = '⛶';
+                document.body.style.overflow = '';
+            }
+        }
+
+        function handleDashboardChatKey(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendDashboardMessage(e);
+            }
+        }
+
+        async function sendDashboardMessage(e) {
+            e.preventDefault();
+            const input = document.getElementById('dashboardChatInput');
+            const message = input.value.trim();
+            const container = document.getElementById('chatMessages');
+            
+            if (!message) return;
+            
+            // User Message
+            appendDashboardMessage('user', message);
+            input.value = '';
+            input.disabled = true;
+            
+            // Scroll
+            container.scrollTop = container.scrollHeight;
+
+            try {
+                const response = await fetch('/api/agent/chat/message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        conversation_id: dashboardChatId,
+                        message: message
+                    })
+                });
+                let data = null;
+                const ct = (response.headers.get('content-type') || '').toLowerCase();
+                if (ct.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    const text = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${text.slice(0, 300)}`);
+                }
+                
+                if (data.error) {
+                    appendDashboardMessage('system', 'Erro: ' + data.error);
+                } else {
+                    if (data.conversation_id) {
+                        dashboardChatId = data.conversation_id;
+                    }
+                    appendDashboardMessage('assistant', data.response);
+                }
+            } catch (err) {
+                appendDashboardMessage('system', 'Erro: ' + (err?.message || 'Erro de conexão. Tente novamente.'));
+            } finally {
+                input.disabled = false;
+                input.focus();
+                container.scrollTop = container.scrollHeight;
+            }
+        }
+
+        function appendDashboardMessage(role, content) {
+            const container = document.getElementById('chatMessages');
+            const div = document.createElement('div');
+            div.className = `message ${role}`;
+            
+            if (role === 'assistant') {
+                // Use marked.js for rendering Markdown
+                div.innerHTML = marked.parse(content);
+            } else {
+                div.textContent = content;
+            }
+            
+            container.appendChild(div);
+        }
+
+        function toggleNotifications() {
+            notificationPanel.classList.toggle('open');
+            if (notificationPanel.classList.contains('open')) {
+                markAllAsRead();
+            }
+        }
+        
+        function checkNotifications() {
+            // Verificar notificações no localStorage
+            const storedNotifications = JSON.parse(localStorage.getItem('booking_notifications') || '[]');
+            
+            // Filtrar notificações dos últimos 24 horas
+            const now = new Date();
+            const recentNotifications = storedNotifications.filter(n => {
+                const notifTime = new Date(n.timestamp);
+                const hoursDiff = (now - notifTime) / (1000 * 60 * 60);
+                return hoursDiff < 24;
+            });
+            
+            // Atualizar lista de notificações
+            if (recentNotifications.length > 0) {
+                notifications = recentNotifications;
+                displayNotifications();
+                updateNotificationBadge();
+            }
+            
+            // Limpar notificações antigas do localStorage
+            localStorage.setItem('booking_notifications', JSON.stringify(recentNotifications));
+        }
+        
+        function displayNotifications() {
+            if (notifications.length === 0) {
+                notificationList.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: var(--muted);">
+                        <p>Nenhuma notificação no momento</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            notifications.forEach((notif, index) => {
+                const time = new Date(notif.timestamp);
+                const timeStr = formatTime(time);
+                const isUnread = !notif.read;
+                
+                let title = '';
+                let message = '';
+                
+                if (notif.type === 'new_booking') {
+                    title = '📅 Novo Agendamento';
+                    message = `${notif.data.title} - Sala ${formatRoomName(notif.data.room)} às ${notif.data.start_time}`;
+                }
+                
+                html += `
+                    <div class="notification-item ${isUnread ? 'unread' : ''}" onclick="viewNotification(${index})">
+                        <div class="notification-title">${title}</div>
+                        <div class="notification-message">${message}</div>
+                        <div class="notification-time">${timeStr}</div>
+                    </div>
+                `;
+            });
+            
+            notificationList.innerHTML = html;
+        }
+        
+        function formatTime(date) {
+            const now = new Date();
+            const diff = Math.floor((now - date) / 1000); // diferença em segundos
+            
+            if (diff < 60) return 'Agora mesmo';
+            if (diff < 3600) return `Há ${Math.floor(diff / 60)} minutos`;
+            if (diff < 86400) return `Há ${Math.floor(diff / 3600)} horas`;
+            return date.toLocaleDateString('pt-BR');
+        }
+        
+        // Room names loaded from API (no hardcode)
+        let roomNamesMap = {};
+        
+        async function loadRoomNames() {
+            try {
+                const response = await fetch('/api/rooms');
+                if (response.ok) {
+                    const data = await response.json();
+                    roomNamesMap = {};
+                    (data.rooms || []).forEach(room => {
+                        roomNamesMap[room.id] = room.name || room.nome;
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao carregar nomes de salas:', error);
+            }
+        }
+        
+        function formatRoomName(room) {
+            // Use API data, fallback to formatted room ID
+            if (roomNamesMap[room]) {
+                return roomNamesMap[room];
+            }
+            // Fallback: format room ID nicely
+            return room.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+            return formatRoomName(room);
+        }
+        
+        // Load room names on page load
+        loadRoomNames();
+        
+        function updateNotificationBadge() {
+            const unreadCount = notifications.filter(n => !n.read).length;
+            
+            if (unreadCount > 0) {
+                notificationCount.textContent = `(${unreadCount})`;
+                notificationCount.style.display = 'inline';
+                notificationDot.style.display = 'block';
+            } else {
+                notificationCount.style.display = 'none';
+                notificationDot.style.display = 'none';
+            }
+        }
+        
+        function viewNotification(index) {
+            notifications[index].read = true;
+            localStorage.setItem('booking_notifications', JSON.stringify(notifications));
+            displayNotifications();
+            updateNotificationBadge();
+            
+            // Redirecionar para a página de agendamentos
+            window.location.href = '/cd/booking';
+        }
+        
+        function markAllAsRead() {
+            notifications.forEach(n => n.read = true);
+            localStorage.setItem('booking_notifications', JSON.stringify(notifications));
+            displayNotifications();
+            updateNotificationBadge();
+        }
+        
+        // Verificar notificações ao carregar
+        document.addEventListener('DOMContentLoaded', function() {
+            checkNotifications();
+            // Verificar a cada 30 segundos
+            setInterval(checkNotifications, 30000);
+        });
+        
+        function expandFullscreen(title, url) {
+            document.getElementById('fullscreenTitle').textContent = title;
+            document.getElementById('fullscreenIframe').src = url;
+            document.getElementById('fullscreenModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeFullscreen() {
+            document.getElementById('fullscreenModal').classList.remove('active');
+            document.getElementById('fullscreenIframe').src = '';
+            document.body.style.overflow = '';
+        }
+
+        function initAssetCharts() {
+            if (typeof Chart === 'undefined') return;
+            document.querySelectorAll('[data-chart]').forEach((node) => {
+                try {
+                    const raw = node.getAttribute('data-chart');
+                    if (!raw) return;
+                    const cfg = JSON.parse(raw);
+                    const overrideType = node.getAttribute('data-chart-type');
+                    if (overrideType) {
+                        cfg.type = overrideType;
+                    }
+                    const data = {
+                        labels: cfg.labels || [],
+                        datasets: [{
+                            label: cfg.label || 'Série',
+                            data: cfg.data || [],
+                            backgroundColor: cfg.backgroundColor || 'rgba(56, 189, 248, 0.4)',
+                            borderColor: cfg.borderColor || 'rgba(56, 189, 248, 1)',
+                            borderWidth: 1,
+                        }]
+                    };
+                    new Chart(node.getContext('2d'), {
+                        type: cfg.type || 'bar',
+                        data,
+                        options: cfg.options || { responsive: true, plugins: { legend: { display: false } } },
+                    });
+                } catch (err) {
+                    console.warn('Falha ao renderizar gráfico interno', err);
+                }
+            });
+        }
+
+        const relatorioLegacyMap = {
+            cards_resumo: ['card_operacoes', 'card_frete', 'card_valor_nf', 'card_resultado', 'card_ticket_medio'],
+            cards_impostos: ['card_impostos', 'card_prejuizos', 'card_margem'],
+            analise_financeira: [
+                'analise_financeira_card_receita',
+                'analise_financeira_card_custos',
+                'analise_financeira_card_ebtida',
+                'analise_financeira_card_impostos',
+                'analise_financeira_grafico_composicao',
+                'analise_financeira_grafico_ebtida',
+                'analise_financeira_tabela'
+            ],
+            analise_financeira_cards: [
+                'analise_financeira_card_receita',
+                'analise_financeira_card_custos',
+                'analise_financeira_card_ebtida',
+                'analise_financeira_card_impostos'
+            ],
+            analise_financeira_graficos: [
+                'analise_financeira_grafico_composicao',
+                'analise_financeira_grafico_ebtida'
+            ],
+            graficos_vendedor: [
+                'grafico_resultado_vendedor',
+                'grafico_operacoes',
+                'grafico_custos',
+                'grafico_margem'
+            ],
+            analise_agente: [
+                'analise_agente_filtros',
+                'analise_agente_detalhe',
+                'analise_agente_grafico_impacto',
+                'analise_agente_ranking',
+                'analise_agente_tabela'
+            ],
+            analise_dre: [
+                'dre_card_rol',
+                'dre_card_impostos',
+                'dre_card_lucro',
+                'dre_card_taxa',
+                'dre_breakdown_cf',
+                'dre_breakdown_if',
+                'dre_breakdown_outros',
+                'dre_grafico_composicao',
+                'dre_grafico_impostos',
+                'dre_grafico_evolucao'
+            ],
+            dre_cards: ['dre_card_rol', 'dre_card_impostos', 'dre_card_lucro', 'dre_card_taxa'],
+            dre_breakdown: ['dre_breakdown_cf', 'dre_breakdown_if', 'dre_breakdown_outros'],
+            dre_graficos: ['dre_grafico_composicao', 'dre_grafico_impostos', 'dre_grafico_evolucao']
+        };
+
+        function applyRelatorioComponentFilter(scope) {
+            const raw = scope.getAttribute('data-components') || '';
+            const keys = raw.split(',').map((c) => c.trim()).filter(Boolean);
+            if (!keys.length) return;
+            const expanded = new Set();
+            keys.forEach((key) => {
+                const mapped = relatorioLegacyMap[key];
+                if (mapped) mapped.forEach((m) => expanded.add(m));
+                else expanded.add(key);
+            });
+            scope.querySelectorAll('[data-relatorio-component]').forEach((el) => {
+                const key = el.getAttribute('data-relatorio-component');
+                if (!expanded.has(key)) {
+                    el.classList.add('hidden');
+                }
+            });
+            scope.querySelectorAll('[data-relatorio-container]').forEach((el) => {
+                const hasVisibleChild = el.querySelector('[data-relatorio-component]:not(.hidden)');
+                if (!hasVisibleChild) el.classList.add('hidden');
+            });
+        }
+
+        function initRelatorioDashboardBlocks() {
+            document.querySelectorAll('[data-relatorio-scope]').forEach((scope) => {
+                applyRelatorioComponentFilter(scope);
+            });
+        }
+
+        function initRelatorioControlToggles() {
+            document.querySelectorAll('[data-action="toggle-controls"]').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const scope = btn.closest('article')?.querySelector('[data-relatorio-scope]');
+                    if (!scope) return;
+                    const filter = scope.querySelector('[data-relatorio-filter]');
+                    if (filter) filter.classList.toggle('hidden');
+                });
+            });
+        }
+
+        function initComponentTagsToggle() {
+            document.querySelectorAll('[data-action="toggle-components"]').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const targetId = btn.getAttribute('data-target');
+                    const tags = targetId ? document.getElementById(targetId) : null;
+                    if (!tags) return;
+                    tags.style.display = tags.style.display === 'none' ? 'flex' : 'none';
+                });
+            });
+        }
+
+        function initFullChatDefaultMessage() {
+            const container = document.getElementById('chatMessages');
+            if (!container || container.children.length > 0) return;
+            container.insertAdjacentHTML('beforeend', `
+                <div class="message assistant">
+                    Olá! Sou o assistente virtual do GeRot. Como posso ajudar você hoje com seus dados e relatórios?
+                </div>
+            `);
+        }
+
+        // Fechar com ESC
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeFullscreen();
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initAssetCharts();
+            initRelatorioDashboardBlocks();
+            initRelatorioControlToggles();
+            initComponentTagsToggle();
+            initFullChatDefaultMessage();
+            if (document.querySelector('[data-relatorio-scope]') && typeof buscarRelatorioResultados === 'function') {
+                buscarRelatorioResultados();
+            }
+        });
+    </script>
+</body>
+</html>

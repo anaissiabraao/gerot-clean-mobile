@@ -1,0 +1,3366 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório Completo Brudam - 24/12/2025</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a1628 0%, #1a2942 25%, #8b3a00 75%, #ff8c00 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: #1a1a2e;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 1.8em;
+            margin-bottom: 8px;
+            font-weight: 400;
+        }
+        
+        .header p {
+            font-size: 0.95em;
+            opacity: 0.9;
+            margin: 3px 0;
+        }
+        
+        .tabs {
+            display: flex;
+            background: #2c3e5e;
+            border-bottom: 1px solid #ff8c00;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+        
+        .tab {
+            padding: 15px 25px;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            font-size: 16px;
+            font-weight: 500;
+            color: #b8c1d9;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .tab.active {
+            background: #1a1a2e;
+            color: #ff8c00;
+            border-bottom: 3px solid #ff8c00;
+        }
+        
+        .tab:hover {
+            background: #0f1823;
+            color: #ffa726;
+        }
+        
+        
+        .client-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 30px;
+            justify-content: center;
+        }
+        
+        .client-btn {
+            padding: 10px 20px;
+            border: 2px solid #3a4a5e;
+            background: #16213e;
+            color: #b8c1d9;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .client-btn:hover {
+            border-color: #ff8c00;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 140, 0, 0.3);
+        }
+        
+        .client-btn.selected {
+            border-color: #ff8c00;
+            background: #2a3a5a;
+            color: #ff8c00;
+        }
+        
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.9);
+        }
+        
+        .modal-content {
+            margin: 2% auto;
+            padding: 20px;
+            width: 95%;
+            height: 90%;
+        }
+        
+        .modal canvas {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        
+        .close {
+            color: white;
+            float: right;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: #fd7e14;
+        }
+        
+        .expand-btn {
+            background: #fd7e14;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 15px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .expand-btn:hover {
+            background: #e67212;
+            transform: scale(1.05);
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 30px;
+            background: #1a1a2e;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .chart-container {
+            background: #16213e;
+            margin-bottom: 30px;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            border: 1px solid #2a3a5a;
+        }
+        
+        .chart-title {
+            font-size: 1.5em;
+            color: #ff8c00;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .data-table th,
+        .data-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #2a3a5a;
+            color: #b8c1d9;
+        }
+        
+        .data-table th {
+            background: #0f1823;
+            font-weight: 600;
+            color: #ff8c00;
+        }
+        
+        .data-table tr:hover {
+            background: #1f2d42;
+        }
+        
+        .data-table td strong {
+            color: #ffa726;
+        }
+        
+        .footer {
+            background: #0f2027;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            font-size: 0.9em;
+        }
+        
+        #modalTableContent {
+            overflow-x: auto;
+            background: #16213e;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        
+        #modalTableContent table {
+            width: 100%;
+            font-size: 1.2em;
+        }
+        
+        #modalTableContent table th,
+        #modalTableContent table td {
+            color: #b8c1d9;
+        }
+        
+        #modalTableContent table th {
+            color: #ff8c00;
+        }
+        
+        #modalTableContent table td strong {
+            color: #ffa726;
+        }
+        
+        .comparativo-layout {
+            position: relative;
+        }
+        
+        .client-selector-sidebar {
+            position: fixed;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 180px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 12px;
+            background: rgba(22, 33, 62, 0.95);
+            border-radius: 12px;
+            border: 2px solid #ff8c00;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            backdrop-filter: blur(10px);
+        }
+        
+        .client-selector-sidebar h3 {
+            color: #ff8c00;
+            margin-bottom: 10px;
+            font-size: 0.95em;
+            text-align: center;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ff8c00;
+        }
+        
+        .client-selector-sidebar .client-btn {
+            flex-direction: row;
+            padding: 8px 10px;
+            text-align: left;
+            font-size: 0.75em;
+            gap: 8px;
+            min-height: auto;
+            justify-content: flex-start;
+        }
+        
+        
+        .comparativo-content {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Relatório Completo Brudam</h1>
+            <p>Período: 01/12/2025 a 24/12/2025</p>
+            <p>Gerado em: 24/12/2025 às 11:08:44</p>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('geral')">📊 Visão Geral</button>
+            <button class="tab" onclick="showTab('comparativo')">📈 Comparativo</button>
+            <button class="tab" onclick="showTab('samsonite')">🏢 SAMSONITE</button>
+            <button class="tab" onclick="showTab('itapoa_terminais_portuari')">🏢 ITAPOA TERMINAIS PORTUARI</button>
+            <button class="tab" onclick="showTab('forte')">🏢 FORTE</button>
+            <button class="tab" onclick="showTab('ansell')">🏢 ANSELL</button>
+            <button class="tab" onclick="showTab('comexport')">🏢 COMEXPORT</button>
+            <button class="tab" onclick="showTab('mattel')">🏢 MATTEL</button>
+            <button class="tab" onclick="showTab('ventuno')">🏢 VENTUNO</button>
+            <button class="tab" onclick="showTab('hercules')">🏢 HERCULES</button>
+            <button class="tab" onclick="showTab('lojas_avenida_s.a')">🏢 LOJAS AVENIDA S.A</button>
+            <button class="tab" onclick="showTab('batiki_com_import_export')">🏢 BATIKI COM IMPORT EXPORT</button>
+            <button class="tab" onclick="showTab('seger_comercial_importado')">🏢 SEGER COMERCIAL IMPORTADO</button>
+            <button class="tab" onclick="showTab('ac_comercial')">🏢 AC COMERCIAL</button>
+            <button class="tab" onclick="showTab('bertolucci')">🏢 BERTOLUCCI</button>
+            <button class="tab" onclick="showTab('stratus_comercial_textil')">🏢 STRATUS COMERCIAL TEXTIL</button>
+            <button class="tab" onclick="showTab('itacorda_industria_e_come')">🏢 ITACORDA INDUSTRIA E COME</button>
+            <button class="tab" onclick="showTab('sko_comercio,_importacao')">🏢 SKO COMERCIO, IMPORTACAO</button>
+            <button class="tab" onclick="showTab('braft_do_brasil_importaca')">🏢 BRAFT DO BRASIL IMPORTACA</button>
+            <button class="tab" onclick="showTab('tecadi_armazens_gerais_lt')">🏢 TECADI ARMAZENS GERAIS LT</button>
+            <button class="tab" onclick="showTab('clif')">🏢 CLIF</button>
+            <button class="tab" onclick="showTab('cks_international_comerci')">🏢 CKS INTERNATIONAL COMERCI</button>
+            <button class="tab" onclick="showTab('bsg_bijou_brasil_comercio')">🏢 BSG BIJOU BRASIL COMERCIO</button>
+            <button class="tab" onclick="showTab('hgs_gas_e_agua_do_brasil')">🏢 HGS GAS E AGUA DO BRASIL</button>
+            <button class="tab" onclick="showTab('winwin_textilcomercio_e_i')">🏢 WINWIN TEXTILCOMERCIO E I</button>
+            <button class="tab" onclick="showTab('timbro')">🏢 TIMBRO</button>
+            <button class="tab" onclick="showTab('geo_agri_tecnologia_agric')">🏢 GEO AGRI TECNOLOGIA AGRIC</button>
+            <button class="tab" onclick="showTab('foton_motor_do_brasil_ven')">🏢 FOTON MOTOR DO BRASIL VEN</button>
+            <button class="tab" onclick="showTab('fita_up_ltda')">🏢 FITA UP LTDA</button>
+            <button class="tab" onclick="showTab('totality_comercio_tecnico')">🏢 TOTALITY COMERCIO TECNICO</button>
+            <button class="tab" onclick="showTab('mrceglia_importacao_e_ser')">🏢 MRCEGLIA IMPORTACAO E SER</button>
+        </div>
+        
+        <!-- Aba Visão Geral -->
+        <div id="geral" class="tab-content active">
+            <div class="chart-container">
+                <h2 class="chart-title">📊 Gráfico - Total por Categoria</h2>
+                <canvas id="chartGeralAbertoEntregues" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">📊 Resumo Geral Completo</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>411 (12.53%)</td>
+                            <td>2439 (74.34%)</td>
+                            <td>2850 (86.86%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>2 (0.06%)</td>
+                            <td>83 (2.53%)</td>
+                            <td>85 (2.59%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>113 (3.44%)</td>
+                            <td>104 (3.17%)</td>
+                            <td>217 (6.61%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>103 (3.14%)</td>
+                            <td>26 (0.79%)</td>
+                            <td>129 (3.93%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>629 (19.17%)</td>
+                            <td>2652 (80.83%)</td>
+                            <td>3281 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Aba Comparativo -->
+        <div id="comparativo" class="tab-content">
+            <div class="comparativo-layout">
+                <div class="client-selector-sidebar">
+                    <h3>Selecionar Clientes</h3>
+                    <button class="client-btn selected" data-client="SAMSONITE" onclick="toggleClient(this)">🏢 SAMSONITE</button>
+                    <button class="client-btn selected" data-client="ITAPOA TERMINAIS PORTUARI" onclick="toggleClient(this)">🏢 ITAPOA TERMINAIS PORTUARI</button>
+                    <button class="client-btn selected" data-client="FORTE" onclick="toggleClient(this)">🏢 FORTE</button>
+                    <button class="client-btn selected" data-client="ANSELL" onclick="toggleClient(this)">🏢 ANSELL</button>
+                    <button class="client-btn selected" data-client="COMEXPORT" onclick="toggleClient(this)">🏢 COMEXPORT</button>
+                    <button class="client-btn selected" data-client="MATTEL" onclick="toggleClient(this)">🏢 MATTEL</button>
+                    <button class="client-btn selected" data-client="VENTUNO" onclick="toggleClient(this)">🏢 VENTUNO</button>
+                    <button class="client-btn selected" data-client="HERCULES" onclick="toggleClient(this)">🏢 HERCULES</button>
+                    <button class="client-btn selected" data-client="LOJAS AVENIDA S.A" onclick="toggleClient(this)">🏢 LOJAS AVENIDA S.A</button>
+                    <button class="client-btn selected" data-client="BATIKI COM IMPORT EXPORT" onclick="toggleClient(this)">🏢 BATIKI COM IMPORT EXPORT</button>
+                    <button class="client-btn selected" data-client="SEGER COMERCIAL IMPORTADO" onclick="toggleClient(this)">🏢 SEGER COMERCIAL IMPORTADO</button>
+                    <button class="client-btn selected" data-client="AC COMERCIAL" onclick="toggleClient(this)">🏢 AC COMERCIAL</button>
+                    <button class="client-btn selected" data-client="BERTOLUCCI" onclick="toggleClient(this)">🏢 BERTOLUCCI</button>
+                    <button class="client-btn selected" data-client="STRATUS COMERCIAL TEXTIL" onclick="toggleClient(this)">🏢 STRATUS COMERCIAL TEXTIL</button>
+                    <button class="client-btn selected" data-client="ITACORDA INDUSTRIA E COME" onclick="toggleClient(this)">🏢 ITACORDA INDUSTRIA E COME</button>
+                    <button class="client-btn selected" data-client="SKO COMERCIO, IMPORTACAO" onclick="toggleClient(this)">🏢 SKO COMERCIO, IMPORTACAO</button>
+                    <button class="client-btn selected" data-client="BRAFT DO BRASIL IMPORTACA" onclick="toggleClient(this)">🏢 BRAFT DO BRASIL IMPORTACA</button>
+                    <button class="client-btn selected" data-client="TECADI ARMAZENS GERAIS LT" onclick="toggleClient(this)">🏢 TECADI ARMAZENS GERAIS LT</button>
+                    <button class="client-btn selected" data-client="CLIF" onclick="toggleClient(this)">🏢 CLIF</button>
+                    <button class="client-btn selected" data-client="CKS INTERNATIONAL COMERCI" onclick="toggleClient(this)">🏢 CKS INTERNATIONAL COMERCI</button>
+                    <button class="client-btn selected" data-client="BSG BIJOU BRASIL COMERCIO" onclick="toggleClient(this)">🏢 BSG BIJOU BRASIL COMERCIO</button>
+                    <button class="client-btn selected" data-client="HGS GAS E AGUA DO BRASIL" onclick="toggleClient(this)">🏢 HGS GAS E AGUA DO BRASIL</button>
+                    <button class="client-btn selected" data-client="WINWIN TEXTILCOMERCIO E I" onclick="toggleClient(this)">🏢 WINWIN TEXTILCOMERCIO E I</button>
+                    <button class="client-btn selected" data-client="TIMBRO" onclick="toggleClient(this)">🏢 TIMBRO</button>
+                    <button class="client-btn selected" data-client="GEO AGRI TECNOLOGIA AGRIC" onclick="toggleClient(this)">🏢 GEO AGRI TECNOLOGIA AGRIC</button>
+                    <button class="client-btn selected" data-client="FOTON MOTOR DO BRASIL VEN" onclick="toggleClient(this)">🏢 FOTON MOTOR DO BRASIL VEN</button>
+                    <button class="client-btn selected" data-client="FITA UP LTDA" onclick="toggleClient(this)">🏢 FITA UP LTDA</button>
+                    <button class="client-btn selected" data-client="TOTALITY COMERCIO TECNICO" onclick="toggleClient(this)">🏢 TOTALITY COMERCIO TECNICO</button>
+                    <button class="client-btn selected" data-client="MRCEGLIA IMPORTACAO E SER" onclick="toggleClient(this)">🏢 MRCEGLIA IMPORTACAO E SER</button>
+                </div>
+                
+                <div class="comparativo-content">
+                    <div class="chart-container">
+                        <h2 class="chart-title">📈 Gráfico Comparativo - Dentro vs Fora do Prazo</h2>
+                        <button class="expand-btn" onclick="expandChart('chartComparativo')">🔍 Expandir Gráfico</button>
+                        <canvas id="chartComparativo" width="400" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">📊 Quadro Comparativo - Melhor ao Pior Resultado</h2>
+                <button class="expand-btn" onclick="expandTable()">🔍 Expandir Tabela</button>
+                <table class="data-table" id="comparativoTable">
+                    <thead>
+                        <tr>
+                            <th>Posição</th>
+                            <th>Cliente</th>
+                            <th>DENTRO DO PRAZO</th>
+                            <th>DENTRO DO PRAZO - INEF. CLIENTE</th>
+                            <th>FORA DO PRAZO</th>
+                            <th>FORA DO PRAZO - INEF. CLIENTE</th>
+                            <th>TOTAL</th>
+                            <th>% Dentro do Prazo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="comparativoTableBody">
+                        <tr>
+                            <td><strong>1º</strong></td>
+                            <td><strong>LOJAS AVENIDA S.A</strong></td>
+                            <td>9</td>
+                            <td>0</td>
+                            <td>0</td>
+                            <td>0</td>
+                            <td>9</td>
+                            <td><strong>100.0%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>2º</strong></td>
+                            <td><strong>CLIF</strong></td>
+                            <td>33</td>
+                            <td>0</td>
+                            <td>0</td>
+                            <td>0</td>
+                            <td>33</td>
+                            <td><strong>100.0%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>3º</strong></td>
+                            <td><strong>HGS GAS E AGUA DO BRASIL</strong></td>
+                            <td>1</td>
+                            <td>0</td>
+                            <td>0</td>
+                            <td>0</td>
+                            <td>1</td>
+                            <td><strong>100.0%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>4º</strong></td>
+                            <td><strong>TIMBRO</strong></td>
+                            <td>1</td>
+                            <td>0</td>
+                            <td>0</td>
+                            <td>0</td>
+                            <td>1</td>
+                            <td><strong>100.0%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>5º</strong></td>
+                            <td><strong>GEO AGRI TECNOLOGIA AGRIC</strong></td>
+                            <td>3</td>
+                            <td>0</td>
+                            <td>0</td>
+                            <td>0</td>
+                            <td>3</td>
+                            <td><strong>100.0%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>6º</strong></td>
+                            <td><strong>FITA UP LTDA</strong></td>
+                            <td>3</td>
+                            <td>0</td>
+                            <td>0</td>
+                            <td>0</td>
+                            <td>3</td>
+                            <td><strong>100.0%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>7º</strong></td>
+                            <td><strong>TOTALITY COMERCIO TECNICO</strong></td>
+                            <td>1</td>
+                            <td>0</td>
+                            <td>0</td>
+                            <td>0</td>
+                            <td>1</td>
+                            <td><strong>100.0%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>8º</strong></td>
+                            <td><strong>MRCEGLIA IMPORTACAO E SER</strong></td>
+                            <td>18</td>
+                            <td>1</td>
+                            <td>0</td>
+                            <td>0</td>
+                            <td>19</td>
+                            <td><strong>100.0%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>9º</strong></td>
+                            <td><strong>STRATUS COMERCIAL TEXTIL</strong></td>
+                            <td>49</td>
+                            <td>0</td>
+                            <td>1</td>
+                            <td>0</td>
+                            <td>50</td>
+                            <td><strong>98.0%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>10º</strong></td>
+                            <td><strong>MATTEL</strong></td>
+                            <td>34</td>
+                            <td>0</td>
+                            <td>0</td>
+                            <td>1</td>
+                            <td>35</td>
+                            <td><strong>97.1%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>11º</strong></td>
+                            <td><strong>ITAPOA TERMINAIS PORTUARI</strong></td>
+                            <td>17</td>
+                            <td>0</td>
+                            <td>1</td>
+                            <td>0</td>
+                            <td>18</td>
+                            <td><strong>94.4%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>12º</strong></td>
+                            <td><strong>VENTUNO</strong></td>
+                            <td>32</td>
+                            <td>0</td>
+                            <td>2</td>
+                            <td>0</td>
+                            <td>34</td>
+                            <td><strong>94.1%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>13º</strong></td>
+                            <td><strong>SAMSONITE</strong></td>
+                            <td>484</td>
+                            <td>10</td>
+                            <td>8</td>
+                            <td>30</td>
+                            <td>532</td>
+                            <td><strong>92.9%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>14º</strong></td>
+                            <td><strong>FORTE</strong></td>
+                            <td>291</td>
+                            <td>1</td>
+                            <td>23</td>
+                            <td>0</td>
+                            <td>315</td>
+                            <td><strong>92.7%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>15º</strong></td>
+                            <td><strong>BSG BIJOU BRASIL COMERCIO</strong></td>
+                            <td>162</td>
+                            <td>0</td>
+                            <td>12</td>
+                            <td>1</td>
+                            <td>175</td>
+                            <td><strong>92.6%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>16º</strong></td>
+                            <td><strong>COMEXPORT</strong></td>
+                            <td>33</td>
+                            <td>2</td>
+                            <td>3</td>
+                            <td>0</td>
+                            <td>38</td>
+                            <td><strong>92.1%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>17º</strong></td>
+                            <td><strong>SEGER COMERCIAL IMPORTADO</strong></td>
+                            <td>56</td>
+                            <td>0</td>
+                            <td>4</td>
+                            <td>1</td>
+                            <td>61</td>
+                            <td><strong>91.8%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>18º</strong></td>
+                            <td><strong>BRAFT DO BRASIL IMPORTACA</strong></td>
+                            <td>118</td>
+                            <td>0</td>
+                            <td>10</td>
+                            <td>1</td>
+                            <td>129</td>
+                            <td><strong>91.5%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>19º</strong></td>
+                            <td><strong>CKS INTERNATIONAL COMERCI</strong></td>
+                            <td>153</td>
+                            <td>1</td>
+                            <td>12</td>
+                            <td>7</td>
+                            <td>173</td>
+                            <td><strong>89.0%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>20º</strong></td>
+                            <td><strong>BATIKI COM IMPORT EXPORT</strong></td>
+                            <td>75</td>
+                            <td>0</td>
+                            <td>10</td>
+                            <td>0</td>
+                            <td>85</td>
+                            <td><strong>88.2%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>21º</strong></td>
+                            <td><strong>TECADI ARMAZENS GERAIS LT</strong></td>
+                            <td>21</td>
+                            <td>1</td>
+                            <td>3</td>
+                            <td>0</td>
+                            <td>25</td>
+                            <td><strong>88.0%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>22º</strong></td>
+                            <td><strong>AC COMERCIAL</strong></td>
+                            <td>7</td>
+                            <td>0</td>
+                            <td>0</td>
+                            <td>1</td>
+                            <td>8</td>
+                            <td><strong>87.5%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>23º</strong></td>
+                            <td><strong>HERCULES</strong></td>
+                            <td>115</td>
+                            <td>16</td>
+                            <td>6</td>
+                            <td>14</td>
+                            <td>151</td>
+                            <td><strong>86.8%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>24º</strong></td>
+                            <td><strong>ANSELL</strong></td>
+                            <td>334</td>
+                            <td>37</td>
+                            <td>18</td>
+                            <td>41</td>
+                            <td>430</td>
+                            <td><strong>86.3%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>25º</strong></td>
+                            <td><strong>ITACORDA INDUSTRIA E COME</strong></td>
+                            <td>72</td>
+                            <td>3</td>
+                            <td>12</td>
+                            <td>11</td>
+                            <td>98</td>
+                            <td><strong>76.5%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>26º</strong></td>
+                            <td><strong>SKO COMERCIO, IMPORTACAO</strong></td>
+                            <td>115</td>
+                            <td>0</td>
+                            <td>35</td>
+                            <td>2</td>
+                            <td>152</td>
+                            <td><strong>75.7%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>27º</strong></td>
+                            <td><strong>BERTOLUCCI</strong></td>
+                            <td>3</td>
+                            <td>0</td>
+                            <td>1</td>
+                            <td>1</td>
+                            <td>5</td>
+                            <td><strong>60.0%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>28º</strong></td>
+                            <td><strong>FOTON MOTOR DO BRASIL VEN</strong></td>
+                            <td>3</td>
+                            <td>0</td>
+                            <td>3</td>
+                            <td>0</td>
+                            <td>6</td>
+                            <td><strong>50.0%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>29º</strong></td>
+                            <td><strong>WINWIN TEXTILCOMERCIO E I</strong></td>
+                            <td>1</td>
+                            <td>0</td>
+                            <td>1</td>
+                            <td>1</td>
+                            <td>3</td>
+                            <td><strong>33.3%</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Modal para expandir gráficos -->
+        <div id="chartModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal()">×</span>
+                <canvas id="modalChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- Modal para expandir tabela -->
+        <div id="tableModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeTableModal()">×</span>
+                <div id="modalTableContent"></div>
+            </div>
+        </div>
+
+        <!-- Aba SAMSONITE -->
+        <div id="samsonite" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 SAMSONITE - Análise Completa</h2>
+                <canvas id="chartsamsonite" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 SAMSONITE</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>106 (19.92%)</td>
+                            <td>378 (71.05%)</td>
+                            <td>484 (90.98%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>10 (1.88%)</td>
+                            <td>10 (1.88%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>6 (1.13%)</td>
+                            <td>2 (0.38%)</td>
+                            <td>8 (1.50%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>25 (4.70%)</td>
+                            <td>5 (0.94%)</td>
+                            <td>30 (5.64%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>137 (25.75%)</td>
+                            <td>395 (74.25%)</td>
+                            <td>532 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba ITAPOA TERMINAIS PORTUARI -->
+        <div id="itapoa_terminais_portuari" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 ITAPOA TERMINAIS PORTUARI - Análise Completa</h2>
+                <canvas id="chartitapoa_terminais_portuari" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 ITAPOA TERMINAIS PORTUARI</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>1 (5.56%)</td>
+                            <td>16 (88.89%)</td>
+                            <td>17 (94.44%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>1 (5.56%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>1 (5.56%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>2 (11.11%)</td>
+                            <td>16 (88.89%)</td>
+                            <td>18 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba FORTE -->
+        <div id="forte" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 FORTE - Análise Completa</h2>
+                <canvas id="chartforte" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 FORTE</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>39 (12.38%)</td>
+                            <td>252 (80.00%)</td>
+                            <td>291 (92.38%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>1 (0.32%)</td>
+                            <td>1 (0.32%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>4 (1.27%)</td>
+                            <td>19 (6.03%)</td>
+                            <td>23 (7.30%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>43 (13.65%)</td>
+                            <td>272 (86.35%)</td>
+                            <td>315 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba ANSELL -->
+        <div id="ansell" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 ANSELL - Análise Completa</h2>
+                <canvas id="chartansell" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 ANSELL</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>75 (17.44%)</td>
+                            <td>259 (60.23%)</td>
+                            <td>334 (77.67%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>1 (0.23%)</td>
+                            <td>36 (8.37%)</td>
+                            <td>37 (8.60%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>10 (2.33%)</td>
+                            <td>8 (1.86%)</td>
+                            <td>18 (4.19%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>35 (8.14%)</td>
+                            <td>6 (1.40%)</td>
+                            <td>41 (9.53%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>121 (28.14%)</td>
+                            <td>309 (71.86%)</td>
+                            <td>430 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba COMEXPORT -->
+        <div id="comexport" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 COMEXPORT - Análise Completa</h2>
+                <canvas id="chartcomexport" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 COMEXPORT</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>0 (0.00%)</td>
+                            <td>33 (86.84%)</td>
+                            <td>33 (86.84%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>2 (5.26%)</td>
+                            <td>2 (5.26%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>0 (0.00%)</td>
+                            <td>3 (7.89%)</td>
+                            <td>3 (7.89%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>0 (0.00%)</td>
+                            <td>38 (100.00%)</td>
+                            <td>38 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba MATTEL -->
+        <div id="mattel" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 MATTEL - Análise Completa</h2>
+                <canvas id="chartmattel" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 MATTEL</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>5 (14.29%)</td>
+                            <td>29 (82.86%)</td>
+                            <td>34 (97.14%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>1 (2.86%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>1 (2.86%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>6 (17.14%)</td>
+                            <td>29 (82.86%)</td>
+                            <td>35 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba VENTUNO -->
+        <div id="ventuno" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 VENTUNO - Análise Completa</h2>
+                <canvas id="chartventuno" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 VENTUNO</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>0 (0.00%)</td>
+                            <td>32 (94.12%)</td>
+                            <td>32 (94.12%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>0 (0.00%)</td>
+                            <td>2 (5.88%)</td>
+                            <td>2 (5.88%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>0 (0.00%)</td>
+                            <td>34 (100.00%)</td>
+                            <td>34 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba HERCULES -->
+        <div id="hercules" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 HERCULES - Análise Completa</h2>
+                <canvas id="charthercules" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 HERCULES</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>34 (22.52%)</td>
+                            <td>81 (53.64%)</td>
+                            <td>115 (76.16%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>16 (10.60%)</td>
+                            <td>16 (10.60%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>3 (1.99%)</td>
+                            <td>3 (1.99%)</td>
+                            <td>6 (3.97%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>11 (7.28%)</td>
+                            <td>3 (1.99%)</td>
+                            <td>14 (9.27%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>48 (31.79%)</td>
+                            <td>103 (68.21%)</td>
+                            <td>151 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba LOJAS AVENIDA S.A -->
+        <div id="lojas_avenida_s.a" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 LOJAS AVENIDA S.A - Análise Completa</h2>
+                <canvas id="chartlojas_avenida_s.a" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 LOJAS AVENIDA S.A</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>0 (0.00%)</td>
+                            <td>9 (100.00%)</td>
+                            <td>9 (100.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>0 (0.00%)</td>
+                            <td>9 (100.00%)</td>
+                            <td>9 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba BATIKI COM IMPORT EXPORT -->
+        <div id="batiki_com_import_export" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 BATIKI COM IMPORT EXPORT - Análise Completa</h2>
+                <canvas id="chartbatiki_com_import_export" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 BATIKI COM IMPORT EXPORT</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>19 (22.35%)</td>
+                            <td>56 (65.88%)</td>
+                            <td>75 (88.24%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>5 (5.88%)</td>
+                            <td>5 (5.88%)</td>
+                            <td>10 (11.76%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>24 (28.24%)</td>
+                            <td>61 (71.76%)</td>
+                            <td>85 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba SEGER COMERCIAL IMPORTADO -->
+        <div id="seger_comercial_importado" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 SEGER COMERCIAL IMPORTADO - Análise Completa</h2>
+                <canvas id="chartseger_comercial_importado" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 SEGER COMERCIAL IMPORTADO</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>32 (52.46%)</td>
+                            <td>24 (39.34%)</td>
+                            <td>56 (91.80%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>2 (3.28%)</td>
+                            <td>2 (3.28%)</td>
+                            <td>4 (6.56%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>1 (1.64%)</td>
+                            <td>1 (1.64%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>34 (55.74%)</td>
+                            <td>27 (44.26%)</td>
+                            <td>61 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba AC COMERCIAL -->
+        <div id="ac_comercial" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 AC COMERCIAL - Análise Completa</h2>
+                <canvas id="chartac_comercial" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 AC COMERCIAL</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>1 (12.50%)</td>
+                            <td>6 (75.00%)</td>
+                            <td>7 (87.50%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>1 (12.50%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>1 (12.50%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>2 (25.00%)</td>
+                            <td>6 (75.00%)</td>
+                            <td>8 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba BERTOLUCCI -->
+        <div id="bertolucci" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 BERTOLUCCI - Análise Completa</h2>
+                <canvas id="chartbertolucci" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 BERTOLUCCI</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>0 (0.00%)</td>
+                            <td>3 (60.00%)</td>
+                            <td>3 (60.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>1 (20.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>1 (20.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>1 (20.00%)</td>
+                            <td>1 (20.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>1 (20.00%)</td>
+                            <td>4 (80.00%)</td>
+                            <td>5 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba STRATUS COMERCIAL TEXTIL -->
+        <div id="stratus_comercial_textil" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 STRATUS COMERCIAL TEXTIL - Análise Completa</h2>
+                <canvas id="chartstratus_comercial_textil" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 STRATUS COMERCIAL TEXTIL</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>0 (0.00%)</td>
+                            <td>49 (98.00%)</td>
+                            <td>49 (98.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>0 (0.00%)</td>
+                            <td>1 (2.00%)</td>
+                            <td>1 (2.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>0 (0.00%)</td>
+                            <td>50 (100.00%)</td>
+                            <td>50 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba ITACORDA INDUSTRIA E COME -->
+        <div id="itacorda_industria_e_come" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 ITACORDA INDUSTRIA E COME - Análise Completa</h2>
+                <canvas id="chartitacorda_industria_e_come" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 ITACORDA INDUSTRIA E COME</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>24 (24.49%)</td>
+                            <td>48 (48.98%)</td>
+                            <td>72 (73.47%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>3 (3.06%)</td>
+                            <td>3 (3.06%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>11 (11.22%)</td>
+                            <td>1 (1.02%)</td>
+                            <td>12 (12.24%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>11 (11.22%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>11 (11.22%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>46 (46.94%)</td>
+                            <td>52 (53.06%)</td>
+                            <td>98 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba SKO COMERCIO, IMPORTACAO -->
+        <div id="sko_comercio,_importacao" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 SKO COMERCIO, IMPORTACAO - Análise Completa</h2>
+                <canvas id="chartsko_comercio,_importacao" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 SKO COMERCIO, IMPORTACAO</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>0 (0.00%)</td>
+                            <td>115 (75.66%)</td>
+                            <td>115 (75.66%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>18 (11.84%)</td>
+                            <td>17 (11.18%)</td>
+                            <td>35 (23.03%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>2 (1.32%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>2 (1.32%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>20 (13.16%)</td>
+                            <td>132 (86.84%)</td>
+                            <td>152 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba BRAFT DO BRASIL IMPORTACA -->
+        <div id="braft_do_brasil_importaca" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 BRAFT DO BRASIL IMPORTACA - Análise Completa</h2>
+                <canvas id="chartbraft_do_brasil_importaca" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 BRAFT DO BRASIL IMPORTACA</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>11 (8.53%)</td>
+                            <td>107 (82.95%)</td>
+                            <td>118 (91.47%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>10 (7.75%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>10 (7.75%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>1 (0.78%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>1 (0.78%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>22 (17.05%)</td>
+                            <td>107 (82.95%)</td>
+                            <td>129 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba TECADI ARMAZENS GERAIS LT -->
+        <div id="tecadi_armazens_gerais_lt" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 TECADI ARMAZENS GERAIS LT - Análise Completa</h2>
+                <canvas id="charttecadi_armazens_gerais_lt" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 TECADI ARMAZENS GERAIS LT</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>6 (24.00%)</td>
+                            <td>15 (60.00%)</td>
+                            <td>21 (84.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>1 (4.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>1 (4.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>2 (8.00%)</td>
+                            <td>1 (4.00%)</td>
+                            <td>3 (12.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>9 (36.00%)</td>
+                            <td>16 (64.00%)</td>
+                            <td>25 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba CLIF -->
+        <div id="clif" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 CLIF - Análise Completa</h2>
+                <canvas id="chartclif" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 CLIF</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>0 (0.00%)</td>
+                            <td>33 (100.00%)</td>
+                            <td>33 (100.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>0 (0.00%)</td>
+                            <td>33 (100.00%)</td>
+                            <td>33 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba CKS INTERNATIONAL COMERCI -->
+        <div id="cks_international_comerci" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 CKS INTERNATIONAL COMERCI - Análise Completa</h2>
+                <canvas id="chartcks_international_comerci" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 CKS INTERNATIONAL COMERCI</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>10 (5.78%)</td>
+                            <td>143 (82.66%)</td>
+                            <td>153 (88.44%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>1 (0.58%)</td>
+                            <td>1 (0.58%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>4 (2.31%)</td>
+                            <td>8 (4.62%)</td>
+                            <td>12 (6.94%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>7 (4.05%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>7 (4.05%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>21 (12.14%)</td>
+                            <td>152 (87.86%)</td>
+                            <td>173 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba BSG BIJOU BRASIL COMERCIO -->
+        <div id="bsg_bijou_brasil_comercio" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 BSG BIJOU BRASIL COMERCIO - Análise Completa</h2>
+                <canvas id="chartbsg_bijou_brasil_comercio" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 BSG BIJOU BRASIL COMERCIO</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>3 (1.71%)</td>
+                            <td>159 (90.86%)</td>
+                            <td>162 (92.57%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>8 (4.57%)</td>
+                            <td>4 (2.29%)</td>
+                            <td>12 (6.86%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>1 (0.57%)</td>
+                            <td>1 (0.57%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>11 (6.29%)</td>
+                            <td>164 (93.71%)</td>
+                            <td>175 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba HGS GAS E AGUA DO BRASIL -->
+        <div id="hgs_gas_e_agua_do_brasil" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 HGS GAS E AGUA DO BRASIL - Análise Completa</h2>
+                <canvas id="charthgs_gas_e_agua_do_brasil" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 HGS GAS E AGUA DO BRASIL</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>0 (0.00%)</td>
+                            <td>1 (100.00%)</td>
+                            <td>1 (100.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>0 (0.00%)</td>
+                            <td>1 (100.00%)</td>
+                            <td>1 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba WINWIN TEXTILCOMERCIO E I -->
+        <div id="winwin_textilcomercio_e_i" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 WINWIN TEXTILCOMERCIO E I - Análise Completa</h2>
+                <canvas id="chartwinwin_textilcomercio_e_i" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 WINWIN TEXTILCOMERCIO E I</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>0 (0.00%)</td>
+                            <td>1 (33.33%)</td>
+                            <td>1 (33.33%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>0 (0.00%)</td>
+                            <td>1 (33.33%)</td>
+                            <td>1 (33.33%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>1 (33.33%)</td>
+                            <td>1 (33.33%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>0 (0.00%)</td>
+                            <td>3 (100.00%)</td>
+                            <td>3 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba TIMBRO -->
+        <div id="timbro" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 TIMBRO - Análise Completa</h2>
+                <canvas id="charttimbro" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 TIMBRO</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>1 (100.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>1 (100.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>1 (100.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>1 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba GEO AGRI TECNOLOGIA AGRIC -->
+        <div id="geo_agri_tecnologia_agric" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 GEO AGRI TECNOLOGIA AGRIC - Análise Completa</h2>
+                <canvas id="chartgeo_agri_tecnologia_agric" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 GEO AGRI TECNOLOGIA AGRIC</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>2 (66.67%)</td>
+                            <td>1 (33.33%)</td>
+                            <td>3 (100.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>2 (66.67%)</td>
+                            <td>1 (33.33%)</td>
+                            <td>3 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba FOTON MOTOR DO BRASIL VEN -->
+        <div id="foton_motor_do_brasil_ven" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 FOTON MOTOR DO BRASIL VEN - Análise Completa</h2>
+                <canvas id="chartfoton_motor_do_brasil_ven" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 FOTON MOTOR DO BRASIL VEN</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>0 (0.00%)</td>
+                            <td>3 (50.00%)</td>
+                            <td>3 (50.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>1 (16.67%)</td>
+                            <td>2 (33.33%)</td>
+                            <td>3 (50.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>1 (16.67%)</td>
+                            <td>5 (83.33%)</td>
+                            <td>6 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba FITA UP LTDA -->
+        <div id="fita_up_ltda" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 FITA UP LTDA - Análise Completa</h2>
+                <canvas id="chartfita_up_ltda" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 FITA UP LTDA</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>0 (0.00%)</td>
+                            <td>3 (100.00%)</td>
+                            <td>3 (100.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>0 (0.00%)</td>
+                            <td>3 (100.00%)</td>
+                            <td>3 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba TOTALITY COMERCIO TECNICO -->
+        <div id="totality_comercio_tecnico" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 TOTALITY COMERCIO TECNICO - Análise Completa</h2>
+                <canvas id="charttotality_comercio_tecnico" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 TOTALITY COMERCIO TECNICO</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>0 (0.00%)</td>
+                            <td>1 (100.00%)</td>
+                            <td>1 (100.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>0 (0.00%)</td>
+                            <td>1 (100.00%)</td>
+                            <td>1 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aba MRCEGLIA IMPORTACAO E SER -->
+        <div id="mrceglia_importacao_e_ser" class="tab-content">
+            <div class="chart-container">
+                <h2 class="chart-title">📈 MRCEGLIA IMPORTACAO E SER - Análise Completa</h2>
+                <canvas id="chartmrceglia_importacao_e_ser" width="400" height="200"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">🏢 MRCEGLIA IMPORTACAO E SER</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Em Aberto</th>
+                            <th>Entregues</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DENTRO DO PRAZO</td>
+                            <td>5 (26.32%)</td>
+                            <td>13 (68.42%)</td>
+                            <td>18 (94.74%)</td>
+                        </tr>
+                        <tr>
+                            <td>DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>1 (5.26%)</td>
+                            <td>1 (5.26%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>SEM PREVISÃO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>PRAZO CONGELADO</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                            <td>0 (0.00%)</td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td>5 (26.32%)</td>
+                            <td>14 (73.68%)</td>
+                            <td>19 (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Relatório Completo - Sistema Brudam</p>
+            <p>Dados coletados em 24/12/2025 às 11:08:44</p>
+        </div>
+    </div>
+    
+    <script>
+        // Variáveis globais
+        let comparativoChart = null;
+        const selectedClients = new Set(["SAMSONITE", "ITAPOA TERMINAIS PORTUARI", "FORTE", "ANSELL", "COMEXPORT", "MATTEL", "VENTUNO", "HERCULES", "LOJAS AVENIDA S.A", "BATIKI COM IMPORT EXPORT", "SEGER COMERCIAL IMPORTADO", "AC COMERCIAL", "BERTOLUCCI", "STRATUS COMERCIAL TEXTIL", "ITACORDA INDUSTRIA E COME", "SKO COMERCIO, IMPORTACAO", "BRAFT DO BRASIL IMPORTACA", "TECADI ARMAZENS GERAIS LT", "CLIF", "CKS INTERNATIONAL COMERCI", "BSG BIJOU BRASIL COMERCIO", "HGS GAS E AGUA DO BRASIL", "WINWIN TEXTILCOMERCIO E I", "TIMBRO", "GEO AGRI TECNOLOGIA AGRIC", "FOTON MOTOR DO BRASIL VEN", "FITA UP LTDA", "TOTALITY COMERCIO TECNICO", "MRCEGLIA IMPORTACAO E SER"]);
+        
+        function showTab(tabName) {
+            // Esconder todas as abas
+            const tabs = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Remover classe active de todos os botões
+            const buttons = document.querySelectorAll('.tab');
+            buttons.forEach(button => button.classList.remove('active'));
+            
+            // Mostrar aba selecionada
+            document.getElementById(tabName).classList.add('active');
+            
+            // Adicionar classe active ao botão clicado
+            event.target.classList.add('active');
+        }
+        
+        function toggleClient(button) {
+            const cliente = button.getAttribute('data-client');
+            
+            if (selectedClients.has(cliente)) {
+                selectedClients.delete(cliente);
+                button.classList.remove('selected');
+            } else {
+                selectedClients.add(cliente);
+                button.classList.add('selected');
+            }
+            
+            updateComparativoChart();
+        }
+        
+        function expandChart(chartId) {
+            const modal = document.getElementById('chartModal');
+            const ctx = document.getElementById('modalChart').getContext('2d');
+            
+            // Limpar chart anterior se existir
+            if (window.modalChartInstance) {
+                window.modalChartInstance.destroy();
+            }
+            
+            // Obter dados filtrados
+            const filteredData = comparativoData.filter(d => selectedClients.has(d.cliente));
+            
+            // Criar novo gráfico no modal
+            window.modalChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: filteredData.map(d => d.cliente),
+                    datasets: [{
+                        label: 'Dentro do Prazo',
+                        data: filteredData.map(d => d.dentro_prazo),
+                        backgroundColor: 'rgba(46, 204, 113, 0.8)',
+                        borderColor: 'rgb(46, 204, 113)',
+                        borderWidth: 2
+                    }, {
+                        label: 'Dentro do Prazo - Inef. Cliente',
+                        data: filteredData.map(d => d.dentro_inef),
+                        backgroundColor: 'rgba(52, 152, 219, 0.8)',
+                        borderColor: 'rgb(52, 152, 219)',
+                        borderWidth: 2
+                    }, {
+                        label: 'Fora do Prazo',
+                        data: filteredData.map(d => d.fora_prazo),
+                        backgroundColor: 'rgba(231, 76, 60, 0.8)',
+                        borderColor: 'rgb(231, 76, 60)',
+                        borderWidth: 2
+                    }, {
+                        label: 'Fora do Prazo - Inef. Cliente',
+                        data: filteredData.map(d => d.fora_inef),
+                        backgroundColor: 'rgba(192, 57, 43, 0.8)',
+                        borderColor: 'rgb(192, 57, 43)',
+                        borderWidth: 2
+                    }, {
+                        label: 'Total',
+                        data: filteredData.map(d => d.total),
+                        backgroundColor: 'rgba(149, 165, 166, 0.8)',
+                        borderColor: 'rgb(149, 165, 166)',
+                        borderWidth: 2,
+                        type: 'line'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                color: '#ffffff'
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Comparativo Completo por Cliente',
+                            color: '#ffffff',
+                            font: {
+                                size: 18
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#ffffff'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#ffffff'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            modal.style.display = 'block';
+        }
+        
+        function closeModal() {
+            document.getElementById('chartModal').style.display = 'none';
+        }
+        
+        function expandTable() {
+            const modal = document.getElementById('tableModal');
+            const table = document.getElementById('comparativoTable').cloneNode(true);
+            document.getElementById('modalTableContent').innerHTML = '';
+            document.getElementById('modalTableContent').appendChild(table);
+            modal.style.display = 'block';
+        }
+        
+        function closeTableModal() {
+            document.getElementById('tableModal').style.display = 'none';
+        }
+        
+        // Fechar modal ao clicar fora
+        window.onclick = function(event) {
+            const chartModal = document.getElementById('chartModal');
+            const tableModal = document.getElementById('tableModal');
+            if (event.target == chartModal) {
+                chartModal.style.display = 'none';
+            }
+            if (event.target == tableModal) {
+                tableModal.style.display = 'none';
+            }
+        }
+        
+        // Função para criar gráficos de barras com linha de total
+        function createBarChartWithTotal(ctx, title, dentroPrazo, dentroInef, foraPrazo, foraInef, semPrevisao, prazoCongelado, total) {
+            return new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['DENTRO DO PRAZO', 'DENTRO DO PRAZO - INEF.', 'FORA DO PRAZO', 'FORA DO PRAZO - INEF.', 'SEM PREVISÃO', 'PRAZO CONGELADO'],
+                    datasets: [{
+                        label: 'Quantidade',
+                        data: [dentroPrazo, dentroInef, foraPrazo, foraInef, semPrevisao, prazoCongelado],
+                        backgroundColor: function(context) {
+                            const label = context.chart.data.labels[context.dataIndex];
+                            if (label.includes('FORA DO PRAZO')) return 'rgba(231, 76, 60, 0.8)';
+                            if (label.includes('DENTRO DO PRAZO')) return 'rgba(46, 204, 113, 0.8)';
+                            if (label.includes('SEM PREVISÃO')) return 'rgba(149, 165, 166, 0.8)';
+                            if (label.includes('PRAZO CONGELADO')) return 'rgba(52, 152, 219, 0.8)';
+                            return 'rgba(149, 165, 166, 0.8)';
+                        },
+                        borderColor: function(context) {
+                            const label = context.chart.data.labels[context.dataIndex];
+                            if (label.includes('FORA DO PRAZO')) return 'rgb(231, 76, 60)';
+                            if (label.includes('DENTRO DO PRAZO')) return 'rgb(46, 204, 113)';
+                            if (label.includes('SEM PREVISÃO')) return 'rgb(149, 165, 166)';
+                            if (label.includes('PRAZO CONGELADO')) return 'rgb(52, 152, 219)';
+                            return 'rgb(149, 165, 166)';
+                        },
+                        borderWidth: 2
+                    }, {
+                        label: 'Total',
+                        data: [total, total, total, total, total, total],
+                        type: 'line',
+                        borderColor: 'rgb(255, 140, 0)',
+                        backgroundColor: 'rgba(255, 140, 0, 0.1)',
+                        borderWidth: 3,
+                        pointRadius: 0,
+                        borderDash: [5, 5],
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                color: '#ffffff'
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: title,
+                            color: '#ffffff',
+                            font: {
+                                size: 16
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#ffffff'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxRotation: 0,
+                                minRotation: 0,
+                                color: '#ffffff'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Função para criar gráficos
+        function createCharts() {
+            // Dados para os gráficos
+            const comparativoData = [{"cliente": "LOJAS AVENIDA S.A", "dentro_prazo": 9, "dentro_inef": 0, "fora_prazo": 0, "fora_inef": 0, "total": 9, "percentual_dentro": 100.0}, {"cliente": "CLIF", "dentro_prazo": 33, "dentro_inef": 0, "fora_prazo": 0, "fora_inef": 0, "total": 33, "percentual_dentro": 100.0}, {"cliente": "HGS GAS E AGUA DO BRASIL", "dentro_prazo": 1, "dentro_inef": 0, "fora_prazo": 0, "fora_inef": 0, "total": 1, "percentual_dentro": 100.0}, {"cliente": "TIMBRO", "dentro_prazo": 1, "dentro_inef": 0, "fora_prazo": 0, "fora_inef": 0, "total": 1, "percentual_dentro": 100.0}, {"cliente": "GEO AGRI TECNOLOGIA AGRIC", "dentro_prazo": 3, "dentro_inef": 0, "fora_prazo": 0, "fora_inef": 0, "total": 3, "percentual_dentro": 100.0}, {"cliente": "FITA UP LTDA", "dentro_prazo": 3, "dentro_inef": 0, "fora_prazo": 0, "fora_inef": 0, "total": 3, "percentual_dentro": 100.0}, {"cliente": "TOTALITY COMERCIO TECNICO", "dentro_prazo": 1, "dentro_inef": 0, "fora_prazo": 0, "fora_inef": 0, "total": 1, "percentual_dentro": 100.0}, {"cliente": "MRCEGLIA IMPORTACAO E SER", "dentro_prazo": 18, "dentro_inef": 1, "fora_prazo": 0, "fora_inef": 0, "total": 19, "percentual_dentro": 100.0}, {"cliente": "STRATUS COMERCIAL TEXTIL", "dentro_prazo": 49, "dentro_inef": 0, "fora_prazo": 1, "fora_inef": 0, "total": 50, "percentual_dentro": 98.0}, {"cliente": "MATTEL", "dentro_prazo": 34, "dentro_inef": 0, "fora_prazo": 0, "fora_inef": 1, "total": 35, "percentual_dentro": 97.14285714285714}, {"cliente": "ITAPOA TERMINAIS PORTUARI", "dentro_prazo": 17, "dentro_inef": 0, "fora_prazo": 1, "fora_inef": 0, "total": 18, "percentual_dentro": 94.44444444444444}, {"cliente": "VENTUNO", "dentro_prazo": 32, "dentro_inef": 0, "fora_prazo": 2, "fora_inef": 0, "total": 34, "percentual_dentro": 94.11764705882352}, {"cliente": "SAMSONITE", "dentro_prazo": 484, "dentro_inef": 10, "fora_prazo": 8, "fora_inef": 30, "total": 532, "percentual_dentro": 92.85714285714286}, {"cliente": "FORTE", "dentro_prazo": 291, "dentro_inef": 1, "fora_prazo": 23, "fora_inef": 0, "total": 315, "percentual_dentro": 92.6984126984127}, {"cliente": "BSG BIJOU BRASIL COMERCIO", "dentro_prazo": 162, "dentro_inef": 0, "fora_prazo": 12, "fora_inef": 1, "total": 175, "percentual_dentro": 92.57142857142857}, {"cliente": "COMEXPORT", "dentro_prazo": 33, "dentro_inef": 2, "fora_prazo": 3, "fora_inef": 0, "total": 38, "percentual_dentro": 92.10526315789474}, {"cliente": "SEGER COMERCIAL IMPORTADO", "dentro_prazo": 56, "dentro_inef": 0, "fora_prazo": 4, "fora_inef": 1, "total": 61, "percentual_dentro": 91.80327868852459}, {"cliente": "BRAFT DO BRASIL IMPORTACA", "dentro_prazo": 118, "dentro_inef": 0, "fora_prazo": 10, "fora_inef": 1, "total": 129, "percentual_dentro": 91.47286821705426}, {"cliente": "CKS INTERNATIONAL COMERCI", "dentro_prazo": 153, "dentro_inef": 1, "fora_prazo": 12, "fora_inef": 7, "total": 173, "percentual_dentro": 89.01734104046243}, {"cliente": "BATIKI COM IMPORT EXPORT", "dentro_prazo": 75, "dentro_inef": 0, "fora_prazo": 10, "fora_inef": 0, "total": 85, "percentual_dentro": 88.23529411764706}, {"cliente": "TECADI ARMAZENS GERAIS LT", "dentro_prazo": 21, "dentro_inef": 1, "fora_prazo": 3, "fora_inef": 0, "total": 25, "percentual_dentro": 88.0}, {"cliente": "AC COMERCIAL", "dentro_prazo": 7, "dentro_inef": 0, "fora_prazo": 0, "fora_inef": 1, "total": 8, "percentual_dentro": 87.5}, {"cliente": "HERCULES", "dentro_prazo": 115, "dentro_inef": 16, "fora_prazo": 6, "fora_inef": 14, "total": 151, "percentual_dentro": 86.75496688741721}, {"cliente": "ANSELL", "dentro_prazo": 334, "dentro_inef": 37, "fora_prazo": 18, "fora_inef": 41, "total": 430, "percentual_dentro": 86.27906976744187}, {"cliente": "ITACORDA INDUSTRIA E COME", "dentro_prazo": 72, "dentro_inef": 3, "fora_prazo": 12, "fora_inef": 11, "total": 98, "percentual_dentro": 76.53061224489795}, {"cliente": "SKO COMERCIO, IMPORTACAO", "dentro_prazo": 115, "dentro_inef": 0, "fora_prazo": 35, "fora_inef": 2, "total": 152, "percentual_dentro": 75.6578947368421}, {"cliente": "BERTOLUCCI", "dentro_prazo": 3, "dentro_inef": 0, "fora_prazo": 1, "fora_inef": 1, "total": 5, "percentual_dentro": 60.0}, {"cliente": "FOTON MOTOR DO BRASIL VEN", "dentro_prazo": 3, "dentro_inef": 0, "fora_prazo": 3, "fora_inef": 0, "total": 6, "percentual_dentro": 50.0}, {"cliente": "WINWIN TEXTILCOMERCIO E I", "dentro_prazo": 1, "dentro_inef": 0, "fora_prazo": 1, "fora_inef": 1, "total": 3, "percentual_dentro": 33.33333333333333}];
+            window.comparativoData = comparativoData;
+            
+            // Calcular totais para o gráfico geral
+            let totalDentroPrazo = 0;
+            let totalDentroInef = 0;
+            let totalForaPrazo = 0;
+            let totalForaInef = 0;
+            let totalSemPrevisao = 0;
+            let totalPrazoCongelado = 0;
+            let totalGeral = 0;
+
+            // Gráfico Resumo Geral - Total por Categoria
+            const ctxGeralAbertoEntregues = document.getElementById('chartGeralAbertoEntregues');
+            if (ctxGeralAbertoEntregues) {
+                createBarChartWithTotal(
+                    ctxGeralAbertoEntregues.getContext('2d'),
+                    'Visão Geral - Total por Categoria',
+                    2850,
+                    85,
+                    217,
+                    129,
+                    0,
+                    0,
+                    3281
+                );
+            }
+            
+            // Gráfico Comparativo Geral
+            const ctxComparativo = document.getElementById('chartComparativo');
+            if (ctxComparativo) {
+                comparativoChart = new Chart(ctxComparativo.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: comparativoData.map(d => d.cliente),
+                        datasets: [{
+                            label: 'Dentro do Prazo',
+                            data: comparativoData.map(d => d.dentro_prazo),
+                            backgroundColor: 'rgba(46, 204, 113, 0.8)',
+                            borderColor: 'rgb(46, 204, 113)',
+                            borderWidth: 2
+                        }, {
+                            label: 'Dentro do Prazo - Inef. Cliente',
+                            data: comparativoData.map(d => d.dentro_inef),
+                            backgroundColor: 'rgba(52, 152, 219, 0.8)',
+                            borderColor: 'rgb(52, 152, 219)',
+                            borderWidth: 2
+                        }, {
+                            label: 'Fora do Prazo',
+                            data: comparativoData.map(d => d.fora_prazo),
+                            backgroundColor: 'rgba(231, 76, 60, 0.8)',
+                            borderColor: 'rgb(231, 76, 60)',
+                            borderWidth: 2
+                        }, {
+                            label: 'Fora do Prazo - Inef. Cliente',
+                            data: comparativoData.map(d => d.fora_inef),
+                            backgroundColor: 'rgba(192, 57, 43, 0.8)',
+                            borderColor: 'rgb(192, 57, 43)',
+                            borderWidth: 2
+                        }, {
+                            label: 'Total',
+                            data: comparativoData.map(d => d.total),
+                            backgroundColor: 'rgba(149, 165, 166, 0.8)',
+                            borderColor: 'rgb(149, 165, 166)',
+                            borderWidth: 2,
+                            type: 'line'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    color: '#ffffff'
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Comparativo Completo por Cliente',
+                                color: '#ffffff'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    color: '#ffffff'
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: '#ffffff'
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            window.updateComparativoChart = function() {
+                if (!comparativoChart) return;
+                
+                const filteredData = comparativoData.filter(d => selectedClients.has(d.cliente));
+                
+                comparativoChart.data.labels = filteredData.map(d => d.cliente);
+                comparativoChart.data.datasets[0].data = filteredData.map(d => d.dentro_prazo);
+                comparativoChart.data.datasets[1].data = filteredData.map(d => d.dentro_inef);
+                comparativoChart.data.datasets[2].data = filteredData.map(d => d.fora_prazo);
+                comparativoChart.data.datasets[3].data = filteredData.map(d => d.fora_inef);
+                comparativoChart.data.datasets[4].data = filteredData.map(d => d.total);
+                comparativoChart.update();
+            }
+            
+            // Gráficos individuais para cada cliente
+
+            // Gráfico para SAMSONITE
+            const ctxsamsonite = document.getElementById('chartsamsonite');
+            if (ctxsamsonite) {
+                createBarChartWithTotal(
+                    ctxsamsonite.getContext('2d'),
+                    'SAMSONITE - Análise Completa',
+                    484, 10, 8, 30, 0, 0, 532
+                );
+            }
+
+            // Gráfico para ITAPOA TERMINAIS PORTUARI
+            const ctxitapoa_terminais_portuari = document.getElementById('chartitapoa_terminais_portuari');
+            if (ctxitapoa_terminais_portuari) {
+                createBarChartWithTotal(
+                    ctxitapoa_terminais_portuari.getContext('2d'),
+                    'ITAPOA TERMINAIS PORTUARI - Análise Completa',
+                    17, 0, 1, 0, 0, 0, 18
+                );
+            }
+
+            // Gráfico para FORTE
+            const ctxforte = document.getElementById('chartforte');
+            if (ctxforte) {
+                createBarChartWithTotal(
+                    ctxforte.getContext('2d'),
+                    'FORTE - Análise Completa',
+                    291, 1, 23, 0, 0, 0, 315
+                );
+            }
+
+            // Gráfico para ANSELL
+            const ctxansell = document.getElementById('chartansell');
+            if (ctxansell) {
+                createBarChartWithTotal(
+                    ctxansell.getContext('2d'),
+                    'ANSELL - Análise Completa',
+                    334, 37, 18, 41, 0, 0, 430
+                );
+            }
+
+            // Gráfico para COMEXPORT
+            const ctxcomexport = document.getElementById('chartcomexport');
+            if (ctxcomexport) {
+                createBarChartWithTotal(
+                    ctxcomexport.getContext('2d'),
+                    'COMEXPORT - Análise Completa',
+                    33, 2, 3, 0, 0, 0, 38
+                );
+            }
+
+            // Gráfico para MATTEL
+            const ctxmattel = document.getElementById('chartmattel');
+            if (ctxmattel) {
+                createBarChartWithTotal(
+                    ctxmattel.getContext('2d'),
+                    'MATTEL - Análise Completa',
+                    34, 0, 0, 1, 0, 0, 35
+                );
+            }
+
+            // Gráfico para VENTUNO
+            const ctxventuno = document.getElementById('chartventuno');
+            if (ctxventuno) {
+                createBarChartWithTotal(
+                    ctxventuno.getContext('2d'),
+                    'VENTUNO - Análise Completa',
+                    32, 0, 2, 0, 0, 0, 34
+                );
+            }
+
+            // Gráfico para HERCULES
+            const ctxhercules = document.getElementById('charthercules');
+            if (ctxhercules) {
+                createBarChartWithTotal(
+                    ctxhercules.getContext('2d'),
+                    'HERCULES - Análise Completa',
+                    115, 16, 6, 14, 0, 0, 151
+                );
+            }
+
+            // Gráfico para LOJAS AVENIDA S.A
+            const ctxlojas_avenida_s.a = document.getElementById('chartlojas_avenida_s.a');
+            if (ctxlojas_avenida_s.a) {
+                createBarChartWithTotal(
+                    ctxlojas_avenida_s.a.getContext('2d'),
+                    'LOJAS AVENIDA S.A - Análise Completa',
+                    9, 0, 0, 0, 0, 0, 9
+                );
+            }
+
+            // Gráfico para BATIKI COM IMPORT EXPORT
+            const ctxbatiki_com_import_export = document.getElementById('chartbatiki_com_import_export');
+            if (ctxbatiki_com_import_export) {
+                createBarChartWithTotal(
+                    ctxbatiki_com_import_export.getContext('2d'),
+                    'BATIKI COM IMPORT EXPORT - Análise Completa',
+                    75, 0, 10, 0, 0, 0, 85
+                );
+            }
+
+            // Gráfico para SEGER COMERCIAL IMPORTADO
+            const ctxseger_comercial_importado = document.getElementById('chartseger_comercial_importado');
+            if (ctxseger_comercial_importado) {
+                createBarChartWithTotal(
+                    ctxseger_comercial_importado.getContext('2d'),
+                    'SEGER COMERCIAL IMPORTADO - Análise Completa',
+                    56, 0, 4, 1, 0, 0, 61
+                );
+            }
+
+            // Gráfico para AC COMERCIAL
+            const ctxac_comercial = document.getElementById('chartac_comercial');
+            if (ctxac_comercial) {
+                createBarChartWithTotal(
+                    ctxac_comercial.getContext('2d'),
+                    'AC COMERCIAL - Análise Completa',
+                    7, 0, 0, 1, 0, 0, 8
+                );
+            }
+
+            // Gráfico para BERTOLUCCI
+            const ctxbertolucci = document.getElementById('chartbertolucci');
+            if (ctxbertolucci) {
+                createBarChartWithTotal(
+                    ctxbertolucci.getContext('2d'),
+                    'BERTOLUCCI - Análise Completa',
+                    3, 0, 1, 1, 0, 0, 5
+                );
+            }
+
+            // Gráfico para STRATUS COMERCIAL TEXTIL
+            const ctxstratus_comercial_textil = document.getElementById('chartstratus_comercial_textil');
+            if (ctxstratus_comercial_textil) {
+                createBarChartWithTotal(
+                    ctxstratus_comercial_textil.getContext('2d'),
+                    'STRATUS COMERCIAL TEXTIL - Análise Completa',
+                    49, 0, 1, 0, 0, 0, 50
+                );
+            }
+
+            // Gráfico para ITACORDA INDUSTRIA E COME
+            const ctxitacorda_industria_e_come = document.getElementById('chartitacorda_industria_e_come');
+            if (ctxitacorda_industria_e_come) {
+                createBarChartWithTotal(
+                    ctxitacorda_industria_e_come.getContext('2d'),
+                    'ITACORDA INDUSTRIA E COME - Análise Completa',
+                    72, 3, 12, 11, 0, 0, 98
+                );
+            }
+
+            // Gráfico para SKO COMERCIO, IMPORTACAO
+            const ctxsko_comercio,_importacao = document.getElementById('chartsko_comercio,_importacao');
+            if (ctxsko_comercio,_importacao) {
+                createBarChartWithTotal(
+                    ctxsko_comercio,_importacao.getContext('2d'),
+                    'SKO COMERCIO, IMPORTACAO - Análise Completa',
+                    115, 0, 35, 2, 0, 0, 152
+                );
+            }
+
+            // Gráfico para BRAFT DO BRASIL IMPORTACA
+            const ctxbraft_do_brasil_importaca = document.getElementById('chartbraft_do_brasil_importaca');
+            if (ctxbraft_do_brasil_importaca) {
+                createBarChartWithTotal(
+                    ctxbraft_do_brasil_importaca.getContext('2d'),
+                    'BRAFT DO BRASIL IMPORTACA - Análise Completa',
+                    118, 0, 10, 1, 0, 0, 129
+                );
+            }
+
+            // Gráfico para TECADI ARMAZENS GERAIS LT
+            const ctxtecadi_armazens_gerais_lt = document.getElementById('charttecadi_armazens_gerais_lt');
+            if (ctxtecadi_armazens_gerais_lt) {
+                createBarChartWithTotal(
+                    ctxtecadi_armazens_gerais_lt.getContext('2d'),
+                    'TECADI ARMAZENS GERAIS LT - Análise Completa',
+                    21, 1, 3, 0, 0, 0, 25
+                );
+            }
+
+            // Gráfico para CLIF
+            const ctxclif = document.getElementById('chartclif');
+            if (ctxclif) {
+                createBarChartWithTotal(
+                    ctxclif.getContext('2d'),
+                    'CLIF - Análise Completa',
+                    33, 0, 0, 0, 0, 0, 33
+                );
+            }
+
+            // Gráfico para CKS INTERNATIONAL COMERCI
+            const ctxcks_international_comerci = document.getElementById('chartcks_international_comerci');
+            if (ctxcks_international_comerci) {
+                createBarChartWithTotal(
+                    ctxcks_international_comerci.getContext('2d'),
+                    'CKS INTERNATIONAL COMERCI - Análise Completa',
+                    153, 1, 12, 7, 0, 0, 173
+                );
+            }
+
+            // Gráfico para BSG BIJOU BRASIL COMERCIO
+            const ctxbsg_bijou_brasil_comercio = document.getElementById('chartbsg_bijou_brasil_comercio');
+            if (ctxbsg_bijou_brasil_comercio) {
+                createBarChartWithTotal(
+                    ctxbsg_bijou_brasil_comercio.getContext('2d'),
+                    'BSG BIJOU BRASIL COMERCIO - Análise Completa',
+                    162, 0, 12, 1, 0, 0, 175
+                );
+            }
+
+            // Gráfico para HGS GAS E AGUA DO BRASIL
+            const ctxhgs_gas_e_agua_do_brasil = document.getElementById('charthgs_gas_e_agua_do_brasil');
+            if (ctxhgs_gas_e_agua_do_brasil) {
+                createBarChartWithTotal(
+                    ctxhgs_gas_e_agua_do_brasil.getContext('2d'),
+                    'HGS GAS E AGUA DO BRASIL - Análise Completa',
+                    1, 0, 0, 0, 0, 0, 1
+                );
+            }
+
+            // Gráfico para WINWIN TEXTILCOMERCIO E I
+            const ctxwinwin_textilcomercio_e_i = document.getElementById('chartwinwin_textilcomercio_e_i');
+            if (ctxwinwin_textilcomercio_e_i) {
+                createBarChartWithTotal(
+                    ctxwinwin_textilcomercio_e_i.getContext('2d'),
+                    'WINWIN TEXTILCOMERCIO E I - Análise Completa',
+                    1, 0, 1, 1, 0, 0, 3
+                );
+            }
+
+            // Gráfico para TIMBRO
+            const ctxtimbro = document.getElementById('charttimbro');
+            if (ctxtimbro) {
+                createBarChartWithTotal(
+                    ctxtimbro.getContext('2d'),
+                    'TIMBRO - Análise Completa',
+                    1, 0, 0, 0, 0, 0, 1
+                );
+            }
+
+            // Gráfico para GEO AGRI TECNOLOGIA AGRIC
+            const ctxgeo_agri_tecnologia_agric = document.getElementById('chartgeo_agri_tecnologia_agric');
+            if (ctxgeo_agri_tecnologia_agric) {
+                createBarChartWithTotal(
+                    ctxgeo_agri_tecnologia_agric.getContext('2d'),
+                    'GEO AGRI TECNOLOGIA AGRIC - Análise Completa',
+                    3, 0, 0, 0, 0, 0, 3
+                );
+            }
+
+            // Gráfico para FOTON MOTOR DO BRASIL VEN
+            const ctxfoton_motor_do_brasil_ven = document.getElementById('chartfoton_motor_do_brasil_ven');
+            if (ctxfoton_motor_do_brasil_ven) {
+                createBarChartWithTotal(
+                    ctxfoton_motor_do_brasil_ven.getContext('2d'),
+                    'FOTON MOTOR DO BRASIL VEN - Análise Completa',
+                    3, 0, 3, 0, 0, 0, 6
+                );
+            }
+
+            // Gráfico para FITA UP LTDA
+            const ctxfita_up_ltda = document.getElementById('chartfita_up_ltda');
+            if (ctxfita_up_ltda) {
+                createBarChartWithTotal(
+                    ctxfita_up_ltda.getContext('2d'),
+                    'FITA UP LTDA - Análise Completa',
+                    3, 0, 0, 0, 0, 0, 3
+                );
+            }
+
+            // Gráfico para TOTALITY COMERCIO TECNICO
+            const ctxtotality_comercio_tecnico = document.getElementById('charttotality_comercio_tecnico');
+            if (ctxtotality_comercio_tecnico) {
+                createBarChartWithTotal(
+                    ctxtotality_comercio_tecnico.getContext('2d'),
+                    'TOTALITY COMERCIO TECNICO - Análise Completa',
+                    1, 0, 0, 0, 0, 0, 1
+                );
+            }
+
+            // Gráfico para MRCEGLIA IMPORTACAO E SER
+            const ctxmrceglia_importacao_e_ser = document.getElementById('chartmrceglia_importacao_e_ser');
+            if (ctxmrceglia_importacao_e_ser) {
+                createBarChartWithTotal(
+                    ctxmrceglia_importacao_e_ser.getContext('2d'),
+                    'MRCEGLIA IMPORTACAO E SER - Análise Completa',
+                    18, 1, 0, 0, 0, 0, 19
+                );
+            }
+        }
+        
+        // Aguardar carregamento da página e criar gráficos
+        document.addEventListener('DOMContentLoaded', function() {
+            createCharts();
+        });
+    </script>
+</body>
+</html>

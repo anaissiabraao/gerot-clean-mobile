@@ -1,0 +1,51 @@
+.git
+.gitignore
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.log
+env/
+venv/
+.venv/
+.idea/
+.vscode/
+node_modules/
+# Excluir arquivos grandes desnecessários
+*.md
+*.bat
+*.sh
+docling-main/
+agent_local/
+batch/
+scripts/
+*.txt
+!requirements.txt
+# Excluir logs e temporários
+*.log
+logs/
+tmp/
+temp/
+# Excluir documentação
+docs/
+*.pdf
+# Excluir backups
+*.bak
+*.backup
+# Excluir arquivos de desenvolvimento
+.env.example
+.env.local
+*.dev
+# Excluir arquivos de teste
+test/
+tests/
+*_test.py
+*_tests.py
+# Excluir Dockerfiles não usados
+Dockerfile.optimized
+fly.toml
+render.yaml
+railway-rag.json
+railway-env-vars.txt
+

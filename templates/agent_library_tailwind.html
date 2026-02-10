@@ -1,0 +1,411 @@
+{% extends "base_tailwind.html" %}
+
+{% block title %}Biblioteca de Automações{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-background">
+  <header class="border-b bg-card shadow-sm">
+    <div class="container mx-auto px-4">
+      <div class="flex flex-col gap-4 py-5 lg:flex-row lg:items-center lg:justify-between">
+        <div class="flex items-center gap-3">
+          <div class="rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 p-3">
+            <i class="fas fa-layer-group text-white text-xl"></i>
+          </div>
+          <div>
+            <h2 class="text-2xl font-bold text-foreground">Biblioteca de Automações</h2>
+            <p class="text-sm text-muted-foreground">Execute RPAs com feedback em tempo real e relatórios padronizados</p>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-3 sm:items-end">
+          <!-- Atalhos -->
+          <div class="flex flex-wrap items-center justify-end gap-2">
+            <a href="{{ url_for('index') }}"
+               class="inline-flex items-center justify-center rounded-md border bg-background px-3 py-2 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground">
+              <i class="fas fa-home mr-2"></i>Início
+            </a>
+            <a href="{{ url_for('team_dashboard') }}"
+               class="inline-flex items-center justify-center rounded-md border bg-background px-3 py-2 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground">
+              <i class="fas fa-chart-bar mr-2"></i>Dashboards
+            </a>
+            <a href="{{ url_for('agent_page_legacy') }}"
+               class="inline-flex items-center justify-center rounded-md border bg-background px-3 py-2 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground">
+              <i class="fas fa-history mr-2"></i>Legado
+            </a>
+            {% if session.role == 'admin' %}
+            <a href="{{ url_for('agent_lab_page') }}"
+               class="inline-flex items-center justify-center rounded-md border bg-background px-3 py-2 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground">
+              <i class="fas fa-flask mr-2"></i>Laboratório
+            </a>
+            {% endif %}
+            <a href="{{ url_for('logout') }}"
+               class="inline-flex items-center justify-center rounded-md bg-destructive px-3 py-2 text-xs font-medium text-white hover:bg-destructive/90 transition-colors">
+              <i class="fas fa-sign-out-alt mr-2"></i>Sair
+            </a>
+          </div>
+
+          <!-- Busca / filtro -->
+          <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div class="relative w-full sm:w-96">
+              <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+              <input id="automationSearch" type="text" placeholder="Buscar automações..."
+                     class="w-full rounded-md border border-input bg-background pl-10 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+            </div>
+            <select id="automationCategory"
+                    class="w-full sm:w-60 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+              <option value="">Todas as categorias</option>
+              <option value="Fiscal">Fiscal</option>
+              <option value="Controladoria">Controladoria</option>
+              <option value="Logística">Logística</option>
+              <option value="Financeiro">Financeiro</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container mx-auto px-4 py-8">
+    {% if automations %}
+      <div id="automationGrid" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {% for a in automations %}
+          <div class="automation-card rounded-lg border bg-card p-6 shadow-sm hover:shadow-md transition-shadow"
+               data-name="{{ a.name|lower }}" data-desc="{{ a.description|lower }}" data-category="{{ a.category }}">
+            <div class="flex items-start justify-between gap-3">
+              <div class="rounded-lg bg-primary/10 p-3 text-primary">
+                {% if a.category == 'Fiscal' %}
+                  <i class="fas fa-receipt text-xl"></i>
+                {% elif a.category == 'Financeiro' %}
+                  <i class="fas fa-coins text-xl"></i>
+                {% elif a.category == 'Controladoria' %}
+                  <i class="fas fa-chart-line text-xl"></i>
+                {% else %}
+                  <i class="fas fa-truck text-xl"></i>
+                {% endif %}
+              </div>
+              <span class="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                {{ a.category }}
+              </span>
+            </div>
+
+            <h3 class="mt-4 text-lg font-semibold leading-tight">{{ a.name }}</h3>
+            <p class="mt-2 text-sm text-muted-foreground line-clamp-3">{{ a.description }}</p>
+
+            <div class="mt-4 space-y-3">
+              {% if a.params and a.params|length > 0 %}
+                <div class="grid gap-3 md:grid-cols-2">
+                  {% for p in a.params %}
+                    <div class="md:col-span-1 {% if p.type == 'text' %}md:col-span-2{% endif %}">
+                      <label class="block text-xs font-medium text-muted-foreground mb-1">
+                        {{ p.label }}{% if p.required %} *{% endif %}
+                      </label>
+
+                      {% if p.type == 'date' %}
+                        <input type="date"
+                               class="automation-param w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                               data-key="{{ p.key }}" data-required="{{ 'true' if p.required else 'false' }}" />
+                      {% elif p.type == 'number' %}
+                        <input type="number"
+                               placeholder="{{ p.placeholder or '' }}"
+                               class="automation-param w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                               data-key="{{ p.key }}" data-required="{{ 'true' if p.required else 'false' }}" />
+                      {% elif p.type == 'select' %}
+                        <select class="automation-param w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                data-key="{{ p.key }}" data-required="{{ 'true' if p.required else 'false' }}"
+                                data-default="{{ p.default or '' }}">
+                          {% if p.options %}
+                            {% for opt in p.options %}
+                              <option value="{{ opt.value }}">{{ opt.label }}</option>
+                            {% endfor %}
+                          {% endif %}
+                        </select>
+                      {% else %}
+                        <input type="text"
+                               placeholder="{{ p.placeholder or '' }}"
+                               class="automation-param w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                               data-key="{{ p.key }}" data-required="{{ 'true' if p.required else 'false' }}" />
+                      {% endif %}
+
+                      {% if p.help_text %}
+                        <p class="mt-1 text-xs text-muted-foreground">{{ p.help_text }}</p>
+                      {% endif %}
+                    </div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+
+              <button type="button"
+                      onclick="window.location.href = '/agent/automation/{{ a.id }}'"
+                      class="w-full inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors">
+                <i class="fas fa-arrow-right"></i>
+                Abrir
+              </button>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="rounded-lg border bg-card p-10 text-center">
+        <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+          <i class="fas fa-inbox text-2xl text-muted-foreground"></i>
+        </div>
+        <h3 class="text-lg font-semibold">Nenhuma automação disponível</h3>
+        <p class="mt-2 text-sm text-muted-foreground">Revise o catálogo no backend (`automate/automation_catalog.py`).</p>
+      </div>
+    {% endif %}
+  </main>
+</div>
+
+<!-- Modal de Execução (reutilizável) -->
+<div id="runModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50">
+  <div class="bg-card rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[85vh] overflow-hidden border">
+    <div class="flex items-center justify-between border-b px-6 py-4">
+      <div>
+        <h3 id="runModalTitle" class="text-lg font-semibold">Executando</h3>
+        <p id="runModalSubtitle" class="text-xs text-muted-foreground mt-1">Acompanhe o progresso e os logs em tempo real</p>
+      </div>
+      <button id="runModalClose" class="text-muted-foreground hover:text-foreground">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <div class="grid gap-0 lg:grid-cols-3">
+      <div class="border-b lg:border-b-0 lg:border-r p-6 space-y-4">
+        <div>
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-medium text-muted-foreground">Status</span>
+            <span id="runStateBadge" class="text-xs rounded-full px-2 py-1 bg-muted text-muted-foreground">—</span>
+          </div>
+          <div class="mt-2 h-2 w-full rounded-full bg-muted overflow-hidden">
+            <div id="runProgressBar" class="h-2 bg-primary w-0 transition-all"></div>
+          </div>
+          <p id="runProgressText" class="mt-2 text-xs text-muted-foreground">Aguardando…</p>
+        </div>
+
+        <div>
+          <p class="text-xs font-medium text-muted-foreground mb-2">Etapas</p>
+          <ol id="runSteps" class="space-y-2 text-sm"></ol>
+        </div>
+
+        <div class="pt-2 border-t">
+          <div class="flex gap-2">
+            <a id="runHtmlLink" href="#" target="_blank"
+               class="hidden flex-1 inline-flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted/50 transition-colors">
+              <i class="fas fa-file-alt"></i> HTML
+            </a>
+            <a id="runPdfLink" href="#" target="_blank"
+               class="hidden flex-1 inline-flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted/50 transition-colors">
+              <i class="fas fa-file-pdf"></i> PDF
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-2 p-6 space-y-4 overflow-auto max-h-[70vh]">
+        <div>
+          <p class="text-xs font-medium text-muted-foreground mb-2">Logs</p>
+          <pre id="runLogs" class="text-xs bg-black text-white p-3 rounded-md overflow-auto max-h-56 whitespace-pre-wrap font-mono" style="color:#fff;"></pre>
+        </div>
+
+        <div id="runResultBox" class="hidden">
+          <p class="text-xs font-medium text-muted-foreground mb-2">Resultado</p>
+          <div class="rounded-md border bg-background p-4">
+            <div class="grid gap-3 sm:grid-cols-3">
+              <div>
+                <p class="text-xs text-muted-foreground">Registros</p>
+                <p id="runRowCount" class="text-lg font-semibold">—</p>
+              </div>
+              <div>
+                <p class="text-xs text-muted-foreground">Mensagem</p>
+                <p id="runMessage" class="text-sm">—</p>
+              </div>
+              <div>
+                <p class="text-xs text-muted-foreground">Run ID</p>
+                <p id="runIdText" class="text-sm font-mono">—</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="border-t px-6 py-4 flex justify-end gap-2">
+      <button id="runModalCancel"
+              class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent transition-colors">
+        Fechar
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // --- Filtros (busca + categoria) ---
+  const searchEl = document.getElementById('automationSearch');
+  const catEl = document.getElementById('automationCategory');
+  const cards = Array.from(document.querySelectorAll('.automation-card'));
+
+  function applyFilters() {
+    const q = (searchEl.value || '').trim().toLowerCase();
+    const cat = (catEl.value || '').trim();
+    cards.forEach(card => {
+      const name = card.dataset.name || '';
+      const desc = card.dataset.desc || '';
+      const c = card.dataset.category || '';
+      const matchText = !q || name.includes(q) || desc.includes(q);
+      const matchCat = !cat || c === cat;
+      card.style.display = (matchText && matchCat) ? '' : 'none';
+    });
+  }
+  searchEl?.addEventListener('input', applyFilters);
+  catEl?.addEventListener('change', applyFilters);
+
+  // defaults em selects
+  document.querySelectorAll('select.automation-param[data-default]').forEach(sel => {
+    const def = sel.getAttribute('data-default');
+    if (def) sel.value = def;
+  });
+
+  // Nota: execução agora acontece nas páginas dedicadas (/agent/automation/<id>).
+  const modal = document.getElementById('runModal');
+  const titleEl = document.getElementById('runModalTitle');
+  const closeBtn = document.getElementById('runModalClose');
+  const cancelBtn = document.getElementById('runModalCancel');
+  const badgeEl = document.getElementById('runStateBadge');
+  const barEl = document.getElementById('runProgressBar');
+  const progressTextEl = document.getElementById('runProgressText');
+  const stepsEl = document.getElementById('runSteps');
+  const logsEl = document.getElementById('runLogs');
+  const resultBox = document.getElementById('runResultBox');
+  const rowCountEl = document.getElementById('runRowCount');
+  const msgEl = document.getElementById('runMessage');
+  const runIdEl = document.getElementById('runIdText');
+  const htmlLink = document.getElementById('runHtmlLink');
+  const pdfLink = document.getElementById('runPdfLink');
+
+  let pollTimer = null;
+  let activeRunId = null;
+
+  function setBadge(state) {
+    badgeEl.textContent = state || '—';
+    badgeEl.className = 'text-xs rounded-full px-2 py-1 ' + (
+      state === 'completed' ? 'bg-green-100 text-green-800' :
+      state === 'failed' ? 'bg-red-100 text-red-800' :
+      (state === 'running' || state === 'processing') ? 'bg-blue-100 text-blue-800' :
+      'bg-muted text-muted-foreground'
+    );
+  }
+
+  function openModal(title) {
+    titleEl.textContent = title || 'Executando';
+    logsEl.textContent = '';
+    stepsEl.innerHTML = '';
+    resultBox.classList.add('hidden');
+    htmlLink.classList.add('hidden');
+    pdfLink.classList.add('hidden');
+    barEl.style.width = '0%';
+    progressTextEl.textContent = 'Aguardando…';
+    setBadge('');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+
+  function closeModal() {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = null;
+    activeRunId = null;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+
+  closeBtn?.addEventListener('click', closeModal);
+  cancelBtn?.addEventListener('click', closeModal);
+  modal?.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+  function gatherParams(cardEl) {
+    const params = {};
+    const inputs = Array.from(cardEl.querySelectorAll('.automation-param'));
+    for (const input of inputs) {
+      const key = input.dataset.key;
+      const required = input.dataset.required === 'true';
+      const value = (input.value ?? '').toString().trim();
+      if (required && !value) {
+        throw new Error(`Preencha: ${key}`);
+      }
+      if (value) params[key] = value;
+    }
+    return params;
+  }
+
+  async function startRun(automationId, params) {
+    const resp = await fetch('/api/agent/library/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ automation_id: automationId, params })
+    });
+    const data = await resp.json();
+    if (!resp.ok || !data.success) {
+      throw new Error(data.error || 'Falha ao iniciar execução');
+    }
+    return data.run_id;
+  }
+
+  function renderSteps(steps) {
+    stepsEl.innerHTML = '';
+    (steps || []).forEach(s => {
+      const li = document.createElement('li');
+      const color =
+        s.status === 'done' ? 'text-green-700' :
+        s.status === 'active' ? 'text-blue-700' :
+        s.status === 'error' ? 'text-red-700' :
+        'text-muted-foreground';
+      const icon =
+        s.status === 'done' ? 'fa-check-circle' :
+        s.status === 'active' ? 'fa-spinner fa-spin' :
+        s.status === 'error' ? 'fa-times-circle' :
+        'fa-circle';
+      li.className = 'flex items-center gap-2 ' + color;
+      li.innerHTML = `<i class="fas ${icon}"></i><span>${s.label}</span>`;
+      stepsEl.appendChild(li);
+    });
+  }
+
+  async function poll() {
+    if (!activeRunId) return;
+    const resp = await fetch(`/api/agent/library/run/${encodeURIComponent(activeRunId)}`);
+    const data = await resp.json();
+    if (!resp.ok || !data.success) {
+      progressTextEl.textContent = data.error || 'Erro ao buscar status';
+      return;
+    }
+    setBadge(data.state);
+    const pct = (data.progress && typeof data.progress.percent === 'number') ? data.progress.percent : 0;
+    barEl.style.width = `${pct}%`;
+    progressTextEl.textContent = data.progress?.text || '—';
+    renderSteps(data.steps);
+    if (Array.isArray(data.logs)) {
+      logsEl.textContent = data.logs.join('\n');
+    }
+    runIdEl.textContent = data.run_id || activeRunId;
+
+    if (data.artifacts?.html_url) {
+      htmlLink.href = data.artifacts.html_url;
+      htmlLink.classList.remove('hidden');
+    }
+    if (data.artifacts?.pdf_url) {
+      pdfLink.href = data.artifacts.pdf_url;
+      pdfLink.classList.remove('hidden');
+    }
+
+    if (data.state === 'completed' || data.state === 'failed') {
+      resultBox.classList.remove('hidden');
+      rowCountEl.textContent = (data.result?.row_count ?? '—').toString();
+      msgEl.textContent = data.state === 'completed' ? 'Concluído com sucesso' : (data.result?.error || 'Falha na execução');
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = null;
+    }
+  }
+
+  // (Modal mantido por compatibilidade visual; pode ser removido depois de consolidarmos o layout.)
+</script>
+{% endblock %}
+

@@ -1,24 +1,41 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Prisma
+prisma/migrations/
+
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# Certificados
+certs/*.pfx
+certs/*.p12
+certs/*.cer
+certs/*.key
+*.pfx
+*.p12
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# OS
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build
+dist/
+build/
+
+# Railway
+.railway/
