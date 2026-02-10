@@ -1,0 +1,40 @@
+.app-shell {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 2rem 1rem 3rem;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: clamp(1.4rem, 2.6vw, 2rem);
+}
+
+.app-header p {
+  margin-top: 0.6rem;
+  color: #475569;
+}
+
+.cards-grid {
+  margin-top: 1.4rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.next-steps {
+  margin-top: 1.2rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.next-steps h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.next-steps ul {
+  margin: 0.75rem 0 0;
+  padding-left: 1.2rem;
+}
