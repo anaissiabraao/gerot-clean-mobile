@@ -18,6 +18,22 @@ export function AuthProvider({ children }) {
         setLoading(false)
         return
       }
+
+      if (env.forceLogin && env.backendUrl) {
+        try {
+          await fetch(`${env.apiBaseUrl}/logout`, {
+            method: 'POST',
+            credentials: 'include',
+          })
+        } catch {
+          // ignore
+        }
+
+        const next = encodeURIComponent(window.location.origin + window.location.pathname + window.location.search)
+        window.location.replace(`${env.backendUrl}/login?next=${next}`)
+        return
+      }
+
       try {
         const data = await httpGet(api.session)
         if (!cancelled) {
@@ -26,7 +42,11 @@ export function AuthProvider({ children }) {
       } catch (err) {
         if (!cancelled) {
           setUser(null)
-          if (env.backendUrl && (err.message?.includes('401') || err.message?.includes('Não autenticado'))) {
+          if (
+            env.backendUrl &&
+            env.redirectToBackendLogin &&
+            (err.message?.includes('401') || err.message?.includes('Não autenticado'))
+          ) {
             const next = encodeURIComponent(window.location.origin + window.location.pathname + window.location.search)
             window.location.replace(`${env.backendUrl}/login?next=${next}`)
             return

@@ -19,6 +19,7 @@ const env = {
   healthEndpoint: import.meta.env.VITE_HEALTH_ENDPOINT ?? '/api/agent/health',
   requestTimeoutMs: Number(import.meta.env.VITE_REQUEST_TIMEOUT_MS ?? 10000),
   redirectToBackendLogin: String(import.meta.env.VITE_REDIRECT_TO_BACKEND_LOGIN ?? 'false').toLowerCase() === 'true',
+  forceLogin: String(import.meta.env.VITE_FORCE_LOGIN ?? 'false').toLowerCase() === 'true',
 }
 
 export default env

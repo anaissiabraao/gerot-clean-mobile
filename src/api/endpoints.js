@@ -8,7 +8,7 @@ const api = {
   health: '/api/agent/health',
 
   // Sessão (SPA: checar auth e redirecionar ao login do backend)
-  session: '/api/session',
+  session: '/api/me',
   teamDashboard: '/api/team-dashboard',
 
   // RAG
