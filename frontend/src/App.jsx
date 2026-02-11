@@ -30,6 +30,23 @@ function App() {
         }
 
         const apiBase = env.apiBaseUrl || env.backendUrl
+
+        if (env.forceLogin) {
+          try {
+            await fetch(`${apiBase}/logout`, {
+              method: 'POST',
+              credentials: 'include',
+            })
+          } catch {
+            // ignore
+          }
+
+          setIsAuthenticated(false)
+          setAuthChecked(true)
+          window.location.replace(`${env.backendUrl}/login`)
+          return
+        }
+
         const resp = await fetch(`${apiBase}/api/me`, {
           method: 'GET',
           credentials: 'include',
