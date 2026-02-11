@@ -21,6 +21,18 @@ export function parsePossiblyGzippedJson(request) {
   }
 }
 
+export function parseJsonFromBuffer(buf, contentEncoding) {
+  if (!buf) return null
+  try {
+    const inBuf = Buffer.isBuffer(buf) ? buf : Buffer.from(buf)
+    const encoding = (contentEncoding || '').toString().toLowerCase()
+    const outBuf = encoding === 'gzip' ? gunzipSync(inBuf) : inBuf
+    return JSON.parse(outBuf.toString('utf-8'))
+  } catch {
+    return null
+  }
+}
+
 export function clampInt(value, min, max, fallback) {
   const n = Number.parseInt(value, 10)
   if (Number.isNaN(n)) return fallback

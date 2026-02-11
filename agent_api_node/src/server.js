@@ -1,11 +1,10 @@
 import 'dotenv/config'
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
-import rawBody from '@fastify/raw-body'
 
 import { createPool, withTx } from './db.js'
 import { verifyAgentApiKey } from './auth.js'
-import { clampInt, jsonResponse, parsePossiblyGzippedJson } from './utils.js'
+import { clampInt, jsonResponse, parseJsonFromBuffer } from './utils.js'
 
 const app = Fastify({
   logger: true,
@@ -16,12 +15,18 @@ await app.register(cors, {
   origin: true,
 })
 
-await app.register(rawBody, {
-  field: 'rawBody',
-  global: false,
-  encoding: false,
-  runFirst: true,
-})
+app.addContentTypeParser(
+  'application/json',
+  { parseAs: 'buffer', bodyLimit: Number.parseInt(process.env.BODY_LIMIT_BYTES || `${20 * 1024 * 1024}`, 10) },
+  (req, body, done) => {
+    const parsed = parseJsonFromBuffer(body, req.headers['content-encoding'])
+    if (parsed === null) {
+      done(new Error('Invalid JSON'))
+      return
+    }
+    done(null, parsed)
+  },
+)
 
 const pool = createPool()
 
@@ -301,14 +306,14 @@ app.post('/api/agent/dashboard/:dashId/progress', async (req, reply) => {
   }
 })
 
-app.post('/api/agent/dashboard/:dashId/result', { config: { rawBody: true } }, async (req, reply) => {
+app.post('/api/agent/dashboard/:dashId/result', async (req, reply) => {
   const dashId = Number.parseInt(req.params.dashId, 10)
   if (!Number.isFinite(dashId)) {
     return jsonResponse(reply, 400, { error: 'dash_id inválido' })
   }
 
-  const data = parsePossiblyGzippedJson(req)
-  if (!data) {
+  const data = req.body
+  if (!data || typeof data !== 'object') {
     return jsonResponse(reply, 400, { error: 'Dados inválidos' })
   }
 
