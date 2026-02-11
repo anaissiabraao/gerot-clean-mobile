@@ -20,6 +20,19 @@ Por padrao, o app abre na porta `5173`.
 - Para consumir backend sem proxy, configure `VITE_API_BASE_URL`.
 - Para redirecionar automaticamente da raiz do front para o login legado, use `VITE_REDIRECT_TO_BACKEND_LOGIN=true`.
 
+## Deploy no Railway (Vite/React, sem Caddy)
+
+Para o Lovable poder fazer updates, o front **precisa** ser servido como app Vite/React (build + `vite preview`), nao como estatico via Caddy.
+
+1. No Railway, no servico do **front**:
+   - **Root Directory**: `frontend` (raiz do app = pasta deste projeto).
+   - **Build**: Nixpacks detecta Node; roda `npm install` e `npm run build`.
+   - **Start**: `npm run start` (usa `vite preview` para servir `dist/` na porta `PORT`).
+2. Se o servico foi criado com Caddy/template estatico, altere para **Node** (ou use o `frontend/railway.json` deste repo).
+3. Variaveis de ambiente: `VITE_BACKEND_URL`, `VITE_REDIRECT_TO_BACKEND_LOGIN`, etc. (veja `.env.example`).
+
+Assim o deploy fica 100% Vite/React e compativel com o Lovable.
+
 ## Estrutura inicial
 
 - `src/config`: configuracoes de ambiente.
