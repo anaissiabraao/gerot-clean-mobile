@@ -10,6 +10,10 @@ Quando o serviço **front** usa **Root Directory = `/`** (raiz), o Railway usa o
 
 ---
 
+**Dockerfile do backend:** Na raiz o Dockerfile do backend foi renomeado para **`Dockerfile.backend`** para o serviço **front** (Root = `/`) não ser detectado como build com Dockerfile. O serviço **backend** usa `railway.json` com `dockerfilePath`: `Dockerfile.backend`.
+
+---
+
 ## 1. Config do front na raiz (obrigatório quando Root = `/`)
 
 Foi criado na raiz o arquivo **`railway.front.json`**, com build **Nixpacks** e start **`npm run start`** (Vite preview).
@@ -17,8 +21,8 @@ Foi criado na raiz o arquivo **`railway.front.json`**, com build **Nixpacks** e 
 No Railway, no serviço **front**:
 
 1. **Settings** → **Config-as-code** → **Railway Config File**.
-2. Em **Add File Path** (ou “Config file path”), defina: **`railway.front.json`**.
-3. Salve. Assim o serviço front passa a usar esse config em vez do `railway.json` (backend).
+2. Em **Add File Path** (ou “Config file path”), defina: **`railway.front.json`** (sem barra no início). Errado: `/railway.front.json`. Certo: `railway.front.json`.
+3. Salve e faça um novo deploy.
 
 Resumo:
 
@@ -30,6 +34,38 @@ Resumo:
 | Start | `npm run start` (lê do `railway.front.json`) |
 
 Sem o **Railway Config File** apontando para `railway.front.json`, o front continua usando o `railway.json` da raiz (backend) e o deploy roda Gunicorn/Flask.
+
+---
+
+## 1.1 Se o build ainda mostrar "Using Detected Dockerfile" (erro "npm could not be found")
+
+O Railway pode **detectar o Dockerfile na raiz** e usá-lo antes de aplicar o `railway.front.json`. Nesse caso é preciso **sobrescrever no dashboard**:
+
+No serviço **front** → **Settings**:
+
+1. **Build** → **Builder**  
+   Troque de **Dockerfile** para **Nixpacks**.  
+   Assim o build passa a usar Node/npm (package.json na raiz) em vez do Dockerfile (Python).
+
+2. **Deploy** → **Custom Start Command**  
+   Defina: **`npm run start`**  
+   (sobrescreve o comando do railway.json da raiz).
+
+Depois disso, faça um novo deploy. O build deve mostrar Nixpacks e o container vai ter Node/npm; o start será `npm run start` (Vite preview).
+
+**Se o build continuar usando o Dockerfile** mesmo com Builder = Nixpacks, o Railway pode estar ignorando o builder quando existe Dockerfile na raiz. Nesse caso use a opção **1.2** abaixo.
+
+---
+
+## 1.2 Alternativa: Root Directory = `frontend` (sem Dockerfile na pasta)
+
+Se mesmo com Nixpacks + `railway.front.json` o build continuar usando o Dockerfile (porque o Railway detecta o Dockerfile na raiz e prioriza ele):
+
+1. No serviço **front** → **Settings** → **Source**.
+2. Em **Root Directory**, troque de `/` para **`frontend`**.
+3. O serviço passará a usar **`frontend/railway.json`** (Nixpacks + `npm run start`) e **não verá** o Dockerfile da raiz.
+
+Desvantagem: o Lovable edita a **raiz**; a pasta **`frontend/`** precisa estar em sync com a raiz (copiar `index.html`, `package.json`, `vite.config.js`, `src/`, `public/` da raiz para `frontend/` após cada update do Lovable, ou usar um script/GitHub Action para isso). Ou você mantém o front na raiz e usa esta opção só se a 1.1 não resolver.
 
 ---
 
