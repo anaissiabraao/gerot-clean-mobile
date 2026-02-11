@@ -1794,7 +1794,7 @@ def import_users_from_excel() -> None:
 with app.app_context():
     try:
         ensure_schema()
-        # ensure_agent_tables() # Pode não estar definida neste arquivo, comentar se der erro
+        ensure_agent_tables()
         seed_dashboards()
         normalize_roles()
         # import_users_from_excel() # Pode ser pesado para rodar em todo restart
