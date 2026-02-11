@@ -57,9 +57,9 @@ export default {
         sm: 'calc(var(--radius) - 4px)',
       },
       boxShadow: {
-        card: '0 1px 3px 0 hsl(var(--foreground) / 0.04), 0 1px 2px -1px hsl(var(--foreground) / 0.04)',
-        'card-hover': '0 4px 12px -2px hsl(var(--foreground) / 0.08)',
-        'card-lg': '0 8px 24px -4px hsl(var(--foreground) / 0.08)',
+        card: '0 1px 3px 0 rgba(0,0,0,0.04), 0 1px 2px -1px rgba(0,0,0,0.04)',
+        'card-hover': '0 4px 12px -2px rgba(0,0,0,0.08)',
+        'card-lg': '0 8px 24px -4px rgba(0,0,0,0.08)',
       },
       keyframes: {
         'fade-in': {
