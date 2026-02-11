@@ -15,7 +15,7 @@ export default function Indicadores() {
   const [filters, setFilters] = useState({
     data_inicio: '',
     data_fim: '',
-    base: '',
+    database: '',
   })
 
   const handleFilterChange = useCallback((id, value) => {
@@ -23,7 +23,7 @@ export default function Indicadores() {
   }, [])
 
   const handleReset = useCallback(() => {
-    setFilters({ data_inicio: '', data_fim: '', base: '' })
+    setFilters({ data_inicio: '', data_fim: '', database: '' })
     setData(null)
   }, [])
 
@@ -34,7 +34,7 @@ export default function Indicadores() {
       const params = {}
       if (filters.data_inicio) params.data_inicio = filters.data_inicio
       if (filters.data_fim) params.data_fim = filters.data_fim
-      if (filters.base) params.base = filters.base
+      if (filters.database) params.database = filters.database
 
       const qs = new URLSearchParams(params).toString()
       const url = qs ? `${api.indicadoresExecutivos}?${qs}` : api.indicadoresExecutivos
@@ -51,19 +51,31 @@ export default function Indicadores() {
     { id: 'data_inicio', label: 'Data Início', type: 'date', value: filters.data_inicio },
     { id: 'data_fim', label: 'Data Fim', type: 'date', value: filters.data_fim },
     {
-      id: 'base',
+      id: 'database',
       label: 'Base de Dados',
       type: 'select',
-      value: filters.base,
+      value: filters.database,
       options: [
-        { value: '', label: 'Todas' },
-        { value: 'producao', label: 'Produção' },
-        { value: 'homologacao', label: 'Homologação' },
+        { value: '', label: 'Padrão' },
+        { value: 'azportoex', label: 'MATRIZ (azportoex)' },
+        { value: 'portoexsp', label: 'FILIAL (portoexsp)' },
       ],
     },
   ]
 
-  const indicadores = data?.indicadores || data?.kpis || []
+  // Backend retorna panel_data (objeto) ou indicadores/kpis (array). Normaliza para array de { label, value }.
+  const rawIndicadores = data?.indicadores ?? data?.kpis
+  const panelData = data?.panel_data
+  const indicadores = Array.isArray(rawIndicadores)
+    ? rawIndicadores
+    : panelData && typeof panelData === 'object'
+      ? Object.entries(panelData)
+          .filter(([, v]) => v != null && typeof v !== 'object')
+          .map(([key, value]) => ({
+            label: key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+            value: typeof value === 'number' ? value.toLocaleString('pt-BR') : String(value),
+          }))
+      : []
   const leituraExecutiva = data?.leitura_executiva || data?.resumo || null
 
   return (
