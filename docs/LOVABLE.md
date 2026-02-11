@@ -70,6 +70,8 @@ Para o Lovable melhorar a interface:
 
 ## Variáveis de ambiente (front)
 
+No **.env** na raiz (desenvolvimento) ou no **Railway** (produção). Para o serviço **front** no Railway, use as variáveis e settings descritos em **`docs/RAILWAY_FRONT.md`**.
+
 No **.env** na raiz (ou no painel do Lovable/Railway):
 
 - **`VITE_BACKEND_URL`** – URL do backend (ex.: `https://web-production-xxx.up.railway.app`).
@@ -77,3 +79,19 @@ No **.env** na raiz (ou no painel do Lovable/Railway):
 - **`VITE_REDIRECT_TO_BACKEND_LOGIN`** – Se `true`, redireciona `/` para o login do backend.
 
 Assim a conexão entre o Lovable (front na raiz) e o backend fica organizada e previsível.
+
+---
+
+## Sincronizar atualizações do Lovable (GitHub → aqui)
+
+O Lovable envia as alterações direto para o **mesmo repositório no GitHub**. Para que cada novo update do Lovable já apareça neste projeto:
+
+1. **Mesmo repositório** – No Lovable, o projeto deve estar conectado ao **mesmo repo** que você usa no Cursor (ex.: `gerot-clean-mobile`). Assim todo push do Lovable vai para o `main` (ou o branch configurado).
+
+2. **Trazer as atualizações para cá:**
+   - **Pelo terminal:** `npm run sync` (ou `git pull origin main`).
+   - **No Cursor:** `Terminal` → `Run Task...` → **"Sync from Lovable (GitHub)"** – executa `git pull` para você.
+
+3. **Quando rodar:** Sempre que souber que o Lovable fez um deploy/update, rode `npm run sync` ou a tarefa acima para atualizar os arquivos locais (e evitar conflitos).
+
+Assim cada novo update do Lovable sobe no GitHub e você puxa automaticamente com um comando ou uma tarefa.

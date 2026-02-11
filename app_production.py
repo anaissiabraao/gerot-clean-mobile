@@ -85,7 +85,7 @@ DATABASE_URL = (
 
 if not DATABASE_URL:
     raise RuntimeError(
-        "DATABASE_URL não configurada. Defina a string de conexão do Supabase."
+        "DATABASE_URL não configurada. Defina a string de conexão do banco (PostgreSQL/Supabase) nas variáveis do serviço no Railway."
     )
 
 app.config["DATABASE_URL"] = DATABASE_URL
