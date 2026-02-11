@@ -1,23 +1,99 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 import env from './config/env'
 import { BackendStatusCard } from './modules/health/components/BackendStatusCard'
 
 function App() {
+  const [authChecked, setAuthChecked] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+
   useEffect(() => {
-    if (!env.redirectToBackendLogin || !env.backendUrl) {
+    let canceled = false
+
+    async function run() {
+      try {
+        if (!env.backendUrl) {
+          setAuthChecked(true)
+          return
+        }
+
+        const params = new URLSearchParams(window.location.search)
+        if (params.get('noRedirect') === '1') {
+          setAuthChecked(true)
+          return
+        }
+
+        const backendOrigin = new URL(env.backendUrl).origin
+        if (window.location.origin === backendOrigin) {
+          setAuthChecked(true)
+          return
+        }
+
+        const apiBase = env.apiBaseUrl || env.backendUrl
+        const resp = await fetch(`${apiBase}/api/me`, {
+          method: 'GET',
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        })
+
+        if (canceled) return
+
+        if (resp.ok) {
+          setIsAuthenticated(true)
+          setAuthChecked(true)
+          return
+        }
+
+        setIsAuthenticated(false)
+        setAuthChecked(true)
+
+        if (env.redirectToBackendLogin) {
+          window.location.replace(`${env.backendUrl}/login`)
+        }
+      } catch {
+        if (canceled) return
+        setIsAuthenticated(false)
+        setAuthChecked(true)
+        if (env.redirectToBackendLogin && env.backendUrl) {
+          window.location.replace(`${env.backendUrl}/login`)
+        }
+      }
+    }
+
+    run()
+
+    return () => {
+      canceled = true
+    }
+  }, [])
+
+  async function handleLogout() {
+    if (!env.backendUrl) {
       return
     }
 
-    if (window.location.pathname === '/' || window.location.pathname === '/index.html') {
+    try {
+      const apiBase = env.apiBaseUrl || env.backendUrl
+      await fetch(`${apiBase}/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+    } finally {
       window.location.replace(`${env.backendUrl}/login`)
     }
-  }, [])
+  }
 
   return (
     <main className="app-shell">
       <header className="app-header">
         <h1>GeRot Frontend - Vite + React</h1>
+        {authChecked && isAuthenticated && env.backendUrl ? (
+          <div style={{ marginTop: 8 }}>
+            <button type="button" onClick={handleLogout}>
+              Sair
+            </button>
+          </div>
+        ) : null}
         <p>
           Base modular para integrar com Lovable e orquestrar consumo de backend
           poliglota.

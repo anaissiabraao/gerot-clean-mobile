@@ -32,6 +32,12 @@ export async function httpGet(path, init = {}) {
   })
 
   if (!response.ok) {
+    if (response.status === 401 && env.backendUrl) {
+      const backendOrigin = new URL(env.backendUrl).origin
+      if (typeof window !== 'undefined' && window.location.origin !== backendOrigin) {
+        window.location.replace(`${env.backendUrl}/login`)
+      }
+    }
     const bodyText = await response.text()
     throw new Error(`HTTP ${response.status}: ${bodyText || response.statusText}`)
   }

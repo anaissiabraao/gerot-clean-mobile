@@ -30,12 +30,13 @@ if (!sessionSecret) {
   app.log.warn('SESSION_SECRET não configurada; login por sessão ficará indisponível')
 } else {
   const secretBuf = Buffer.from(sessionSecret, 'utf-8')
+  const sameSite = (process.env.COOKIE_SAMESITE || 'none').toString().toLowerCase()
   await app.register(secureSession, {
     cookieName: 'gerot_session',
     cookie: {
       path: '/',
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: sameSite === 'lax' || sameSite === 'strict' || sameSite === 'none' ? sameSite : 'none',
       secure: String(process.env.COOKIE_SECURE || 'true').toLowerCase() === 'true',
     },
     key: secretBuf.length >= 32 ? secretBuf.subarray(0, 32) : Buffer.concat([secretBuf, Buffer.alloc(32 - secretBuf.length)]),
