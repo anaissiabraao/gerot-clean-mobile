@@ -62,22 +62,23 @@ window.openTab = function(tabName) {
 {% endblock %}
 
 {% block header_prepend %}
-<div class="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
+<!-- Status bar compacta -->
+<div class="border-b bg-muted/30">
     <div class="container mx-auto px-4">
-        <div class="flex flex-wrap items-center justify-between gap-4 py-2 text-xs text-muted-foreground">
-            <div class="flex items-center gap-3">
-                <span id="relatorio-global-clock" class="inline-flex items-center rounded-full bg-muted px-3 py-1">
-                    <i class="far fa-clock mr-2"></i>--:--:--
+        <div class="flex items-center justify-between gap-3 py-1.5 text-xs text-muted-foreground">
+            <div class="flex items-center gap-2">
+                <span id="relatorio-global-clock" class="inline-flex items-center gap-1.5 badge badge-muted">
+                    <i class="far fa-clock"></i><span>--:--:--</span>
                 </span>
-                <span id="relatorio-global-status" class="inline-flex items-center rounded-full bg-muted px-3 py-1">
-                    <i id="relatorio-global-refresh-icon" class="fas fa-sync-alt mr-2"></i>
+                <span id="relatorio-global-status" class="inline-flex items-center gap-1.5 badge badge-muted">
+                    <i id="relatorio-global-refresh-icon" class="fas fa-sync-alt"></i>
                     <span>Sem recarregar</span>
                 </span>
             </div>
             <div id="relatorio-ticker"
                  data-meta-valor="{{ relatorio_meta.meta_valor if relatorio_meta else 0 }}"
                  data-meta-percentual="{{ relatorio_meta.meta_percentual if relatorio_meta else 0 }}"
-                 class="relative hidden md:flex h-8 max-w-[640px] flex-1 overflow-hidden rounded-full border border-input bg-muted/40 px-3">
+                 class="relative hidden md:flex h-7 max-w-[560px] flex-1 overflow-hidden rounded-full border border-input bg-card px-3">
                 <div id="relatorio-ticker-track" class="flex items-center gap-4 whitespace-nowrap text-[11px] text-muted-foreground">
                     <span>Sem dados carregados.</span>
                 </div>
@@ -93,38 +94,46 @@ window.openTab = function(tabName) {
     <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-            <div class="container mx-auto px-4 py-4">
+            <div class="fixed top-4 right-4 z-50 space-y-2">
                 {% for category, message in messages %}
-                    <div class="mb-4 rounded-lg border px-4 py-3 {% if category == 'success' %}bg-green-50 border-green-200 text-green-800{% elif category == 'error' %}bg-red-50 border-red-200 text-red-800{% else %}bg-orange-50 border-orange-200 text-orange-800{% endif %}">
-                        {{ message }}
+                    <div class="animate-slide-in rounded-lg border px-4 py-3 shadow-large text-sm
+                        {% if category == 'success' %}bg-card border-success/30 text-success
+                        {% elif category == 'error' %}bg-card border-destructive/30 text-destructive
+                        {% else %}bg-card border-warning/30 text-warning{% endif %}" data-auto-dismiss>
+                        <div class="flex items-center gap-2">
+                            <i class="fas {% if category == 'success' %}fa-check-circle{% elif category == 'error' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %}"></i>
+                            {{ message }}
+                        </div>
                     </div>
                 {% endfor %}
             </div>
         {% endif %}
     {% endwith %}
 
-    <!-- Conteúdo Principal -->
-    <main class="container mx-auto px-4 py-8">
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-6 lg:py-8">
+        <!-- Page Header -->
+        <div class="mb-6">
+            <h1 class="text-2xl font-bold text-foreground lg:text-3xl">Dashboard</h1>
+            <p class="mt-1 text-sm text-muted-foreground">Visão geral dos seus painéis e indicadores</p>
+        </div>
+
         <!-- Tabs Navigation -->
-        <div class="mb-6 border-b">
-            <nav class="flex flex-wrap items-center justify-between gap-4">
-                <div class="flex gap-4">
-                <button onclick="openTab('dashboards')" id="tab-btn-dashboards" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-primary text-primary transition-colors">
-                    <i class="fas fa-chart-bar mr-2"></i>Dashboards
-                </button>
-                <button onclick="openTab('indicadores-executivos')" id="tab-btn-indicadores-executivos" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-muted-foreground hover:text-foreground transition-colors">
-                    <i class="fas fa-chart-line mr-2"></i>Indicadores Executivos
-                </button>
-                <button onclick="openTab('chat')" id="tab-btn-chat" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-muted-foreground hover:text-foreground transition-colors">
-                    <i class="fas fa-robot mr-2"></i>Chat IA
-                </button>
-                </div>
-                <div class="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span class="inline-flex items-center rounded-full bg-muted px-3 py-1">
-                        <i class="fas fa-layer-group mr-2"></i>{{ assets|length }} ativo(s)
-                    </span>
-                </div>
-            </nav>
+        <div class="tab-nav mb-6 no-scrollbar">
+            <button onclick="openTab('dashboards')" id="tab-btn-dashboards" class="tab-btn active">
+                <i class="fas fa-chart-bar mr-1.5"></i>Dashboards
+            </button>
+            <button onclick="openTab('indicadores-executivos')" id="tab-btn-indicadores-executivos" class="tab-btn">
+                <i class="fas fa-chart-line mr-1.5"></i>Indicadores
+            </button>
+            <button onclick="openTab('chat')" id="tab-btn-chat" class="tab-btn">
+                <i class="fas fa-robot mr-1.5"></i>Chat IA
+            </button>
+            <div class="ml-auto flex items-center pl-4">
+                <span class="badge badge-muted">
+                    <i class="fas fa-layer-group mr-1.5"></i>{{ assets|length }} ativo(s)
+                </span>
+            </div>
         </div>
 
         <!-- Tab: Dashboards -->
@@ -134,38 +143,35 @@ window.openTab = function(tabName) {
 
         <!-- Grid de Dashboards -->
         {% if regular_assets %}
-            <div class="mb-6 flex items-center justify-between">
-                <h3 class="text-lg font-semibold text-foreground">Painéis e automações</h3>
-                <span class="text-xs text-muted-foreground">{{ regular_assets|length }} item(ns)</span>
+            <div class="section-header">
+                <div>
+                    <h3 class="section-title">Painéis e automações</h3>
+                    <p class="section-subtitle mt-0.5">{{ regular_assets|length }} item(ns) disponíveis</p>
+                </div>
             </div>
-            <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 stagger-in">
                 {% for asset in regular_assets %}
                     {% set selected_types = asset.assignment_config.chart_types if asset.assignment_config and asset.assignment_config.chart_types else [] %}
                     {% set selected_components = asset.assignment_config.components if asset.assignment_config and asset.assignment_config.components else [] %}
-                    <div class="group relative overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover:shadow-lg hover:scale-[1.01]">
-                        <div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                        <div class="relative p-6">
-                            <div class="mb-4 flex items-center justify-between">
+                    <div class="card-base card-interactive group relative overflow-hidden">
+                        <div class="p-5">
+                            <div class="mb-3 flex items-center justify-between">
                                 <div class="flex items-center gap-2">
-                                    <span class="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                                        {{ asset.tipo }}
-                                    </span>
+                                    <span class="badge badge-primary">{{ asset.tipo }}</span>
                                     {% if asset.categoria %}
-                                        <span class="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-                                            {{ asset.categoria }}
-                                        </span>
+                                        <span class="badge badge-muted">{{ asset.categoria }}</span>
                                     {% endif %}
                                 </div>
-                                <i class="fas fa-external-link-alt text-muted-foreground group-hover:text-primary transition-colors"></i>
+                                <i class="fas fa-external-link-alt text-xs text-muted-foreground group-hover:text-primary transition-colors"></i>
                             </div>
-                            <h3 class="text-lg font-semibold text-foreground">
+                            <h3 class="text-base font-semibold text-foreground leading-snug">
                                 {{ asset.nome }}
                             </h3>
-                            <p class="text-sm text-muted-foreground">
+                            <p class="mt-1 text-sm text-muted-foreground line-clamp-2">
                                 {{ asset.descricao or "Sem descrição disponível." }}
                             </p>
                             {% if asset.tipo == 'interno' and selected_components %}
-                                <div class="mt-2 flex flex-wrap gap-2">
+                                <div class="mt-2 flex flex-wrap gap-1.5">
                                     {% for comp in selected_components %}
                                         {% set ns = namespace(label=comp) %}
                                         {% if asset.asset_config and asset.asset_config.available_components %}
@@ -175,27 +181,24 @@ window.openTab = function(tabName) {
                                                 {% endif %}
                                             {% endfor %}
                                         {% endif %}
-                                        <span class="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                                            {{ ns.label }}
-                                        </span>
+                                        <span class="badge badge-muted text-[11px]">{{ ns.label }}</span>
                                     {% endfor %}
                                 </div>
                             {% endif %}
-                            <div class="my-4 rounded-xl border bg-muted/20 overflow-hidden shadow-inner">
+                            <div class="my-4 rounded-lg border bg-muted/20 overflow-hidden">
                                 {% if asset.tipo == 'PBI' and asset.embed_url %}
                                     <div class="relative">
-                                        <div class="absolute inset-0 bg-gradient-to-b from-transparent to-background/60 pointer-events-none"></div>
+                                        <div class="absolute inset-0 bg-gradient-to-b from-transparent to-background/50 pointer-events-none z-10"></div>
                                         <iframe
                                             src="{{ asset.embed_url }}"
                                             title="Prévia de {{ asset.nome }}"
                                             loading="lazy"
-                                            class="h-48 w-full border-0 pointer-events-none"
+                                            class="h-40 w-full border-0 pointer-events-none"
                                             allowfullscreen
                                             referrerpolicy="no-referrer-when-downgrade">
                                         </iframe>
-                                        <div class="absolute bottom-2 right-2 rounded-full bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground shadow-md flex items-center gap-1">
-                                            <i class="fas fa-eye"></i>
-                                            Prévia
+                                        <div class="absolute bottom-2 right-2 z-20 badge badge-muted shadow-soft">
+                                            <i class="fas fa-eye mr-1"></i>Prévia
                                         </div>
                                     </div>
                                 {% elif asset.tipo == 'grafico' and asset.asset_config and asset.asset_config.chart %}
@@ -212,27 +215,30 @@ window.openTab = function(tabName) {
                                             referrerpolicy="no-referrer-when-downgrade"></iframe>
                                     </div>
                                 {% else %}
-                                    <div class="flex h-48 items-center justify-center text-sm text-muted-foreground">
-                                        Prévia indisponível
+                                    <div class="flex h-36 items-center justify-center text-sm text-muted-foreground">
+                                        <div class="text-center">
+                                            <i class="fas fa-chart-area text-2xl mb-2 opacity-30"></i>
+                                            <p>Prévia indisponível</p>
+                                        </div>
                                     </div>
                                 {% endif %}
                             </div>
                             {% if asset.tipo == 'PBI' and asset.embed_url %}
                                 <button onclick="openDashboard('{{ asset.embed_url }}', '{{ asset.nome }}')"
-                                   class="inline-flex items-center justify-center w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors cursor-pointer">
-                                    <i class="fas fa-chart-line mr-2"></i>
+                                   class="btn btn-primary w-full gap-2">
+                                    <i class="fas fa-chart-line"></i>
                                     Acessar Dashboard
                                 </button>
                             {% elif not (asset.tipo == 'interno' and asset.asset_config and asset.asset_config.embed_mode and selected_components and asset.resource_url) %}
                                 {% if asset.resource_url %}
                                     <a href="{{ asset.resource_url }}" target="_blank"
-                                       class="inline-flex items-center justify-center w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors">
-                                        <i class="fas fa-link mr-2"></i>
+                                       class="btn btn-primary w-full gap-2">
+                                        <i class="fas fa-link"></i>
                                         Abrir Ativo
                                     </a>
                                 {% else %}
-                                    <button class="inline-flex items-center justify-center w-full rounded-md bg-muted px-4 py-2 text-sm font-medium text-muted-foreground cursor-not-allowed" disabled>
-                                        <i class="fas fa-ban mr-2"></i>
+                                    <button class="btn btn-outline w-full gap-2 opacity-50 cursor-not-allowed" disabled>
+                                        <i class="fas fa-ban"></i>
                                         Link indisponível
                                     </button>
                                 {% endif %}
@@ -241,59 +247,58 @@ window.openTab = function(tabName) {
                     </div>
                 {% endfor %}
             </div>
-        {% elif not internal_assets %}
-            <div class="rounded-lg border-2 border-dashed bg-card p-12 text-center">
-                <i class="fas fa-inbox text-6xl text-muted-foreground mb-4"></i>
-                <h3 class="text-lg font-medium text-foreground mb-2">
+            <div class="card-base p-10 text-center">
+                <div class="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                    <i class="fas fa-inbox text-2xl text-muted-foreground"></i>
+                </div>
+                <h3 class="text-base font-semibold text-foreground mb-1">
                     Nenhum dashboard disponível
                 </h3>
-                <p class="text-sm text-muted-foreground">
+                <p class="text-sm text-muted-foreground max-w-sm mx-auto">
                     Entre em contato com o administrador para liberar acesso aos dashboards.
                 </p>
             </div>
         {% endif %}
 
         {% if internal_assets %}
-            <div class="mt-10">
-                <div class="mb-4 flex items-center justify-between">
-                    <h3 class="text-lg font-semibold text-foreground">Painéis internos atribuídos</h3>
-                    <span class="text-xs text-muted-foreground">{{ internal_assets|length }} painel(is)</span>
+            <div class="mt-8">
+                <div class="section-header">
+                    <div>
+                        <h3 class="section-title">Painéis internos</h3>
+                        <p class="section-subtitle mt-0.5">{{ internal_assets|length }} painel(is) atribuído(s)</p>
+                    </div>
                 </div>
                 <div class="space-y-6">
                 {% for asset in internal_assets %}
                     {% set selected_components = asset.assignment_config.components if asset.assignment_config and asset.assignment_config.components else [] %}
-                    <section class="rounded-2xl border bg-card shadow-sm p-6">
-                        <div class="flex flex-wrap items-start justify-between gap-4 border-b pb-4">
+                    <section class="card-base p-5 lg:p-6">
+                        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 border-b border-border pb-4">
                             <div>
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <span class="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                                        interno
-                                    </span>
+                                    <span class="badge badge-primary">interno</span>
                                     {% if asset.categoria %}
-                                        <span class="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-                                            {{ asset.categoria }}
-                                        </span>
+                                        <span class="badge badge-muted">{{ asset.categoria }}</span>
                                     {% endif %}
                                 </div>
                                 {% if not (asset.asset_config and asset.asset_config.legacy_view == 'relatorio_resultados') %}
-                                    <h3 class="mt-2 text-xl font-semibold text-foreground">{{ asset.nome }}</h3>
+                                    <h3 class="mt-2 text-lg font-semibold text-foreground">{{ asset.nome }}</h3>
                                     <p class="text-sm text-muted-foreground">{{ asset.descricao }}</p>
                                 {% endif %}
                             </div>
-                            <div class="flex items-center gap-3 text-xs text-muted-foreground">
+                            <div class="flex items-center gap-2 flex-shrink-0">
                                 <button type="button"
                                         data-action="toggle-components"
                                         data-target="component-tags-{{ asset.id }}"
-                                        class="rounded-md border border-input px-2 py-1 text-xs font-medium text-foreground hover:bg-muted/40">
+                                        class="btn btn-outline text-xs px-2 py-1">
                                     <i class="fas fa-eye-slash mr-1"></i>Blocos
                                 </button>
                                 <button type="button"
                                         data-action="toggle-controls"
                                         data-target="internal-embed-{{ asset.id }}"
-                                        class="rounded-md border border-input px-2 py-1 text-xs font-medium text-foreground hover:bg-muted/40">
+                                        class="btn btn-outline text-xs px-2 py-1">
                                     <i class="fas fa-sliders-h mr-1"></i>Controles
                                 </button>
-                                <span>Blocos atribuídos: {{ selected_components|length }}</span>
+                                <span class="text-xs text-muted-foreground">{{ selected_components|length }} blocos</span>
                             </div>
                         </div>
                         {% if selected_components %}
@@ -331,22 +336,22 @@ window.openTab = function(tabName) {
         {% endif %}
 
         <!-- Ações Rápidas -->
-        <div class="mt-8 rounded-lg border bg-card p-6">
-            <h3 class="mb-4 text-lg font-semibold text-foreground">Ações Rápidas</h3>
-            <div class="grid gap-4 md:grid-cols-3">
+        <div class="mt-8 card-base p-5">
+            <h3 class="section-title mb-3">Ações Rápidas</h3>
+            <div class="grid gap-3 sm:grid-cols-3">
                 <a href="{{ url_for('cd_booking') }}" 
-                   class="flex items-center justify-center rounded-md border bg-background px-4 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground">
-                    <i class="fas fa-calendar-alt mr-2"></i>
-                    Agendar Sala de Reunião
+                   class="btn btn-outline gap-2 justify-center">
+                    <i class="fas fa-calendar-alt"></i>
+                    Agendar Sala
                 </a>
                 <a href="{{ url_for('profile') }}" 
-                   class="flex items-center justify-center rounded-md border bg-background px-4 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground">
-                    <i class="fas fa-user-edit mr-2"></i>
+                   class="btn btn-outline gap-2 justify-center">
+                    <i class="fas fa-user-edit"></i>
                     Editar Perfil
                 </a>
                 <a href="https://docs.google.com/forms/u/1/d/e/1FAIpQLSdI3tO7oVJ2omPsgtO-OYh5384OX3d4pwRddt0n0XUsuHJZgA/viewform" target="_blank"
-                   class="flex items-center justify-center rounded-md border bg-background px-4 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground">
-                    <i class="fas fa-headset mr-2"></i>
+                   class="btn btn-outline gap-2 justify-center">
+                    <i class="fas fa-headset"></i>
                     Suporte
                 </a>
             </div>
@@ -356,55 +361,57 @@ window.openTab = function(tabName) {
         <!-- Tab: Indicadores Executivos -->
         <div id="tab-indicadores-executivos" class="tab-pane" data-tab-active="false" style="display: none;">
             <div class="mb-6">
-                <h2 class="text-3xl font-bold text-foreground">Indicadores Executivos</h2>
-                <p class="mt-2 text-muted-foreground">
-                    Visao executiva orientada a decisao do desempenho operacional e financeiro.
+                <h2 class="text-2xl font-bold text-foreground">Indicadores Executivos</h2>
+                <p class="mt-1 text-sm text-muted-foreground">
+                    Visão executiva orientada à decisão do desempenho operacional e financeiro.
                 </p>
             </div>
 
             <!-- Filtros -->
-            <div class="mb-6 rounded-lg border bg-card p-4">
-                <div class="grid gap-4 md:grid-cols-4">
+            <div class="card-base p-5 mb-6">
+                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <div>
-                        <label class="block text-sm font-medium mb-1">Base de Dados</label>
-                        <select id="exec-database" class="w-full rounded-md border px-3 py-2 text-sm">
+                        <label class="block text-sm font-medium text-foreground mb-1.5">Base de Dados</label>
+                        <select id="exec-database" class="input-base">
                             <option value="azportoex">MATRIZ (azportoex)</option>
                             <option value="portoexsp">FILIAL (portoexsp)</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-1">Data Inicio</label>
-                        <input type="date" id="exec-data-inicio" class="w-full rounded-md border px-3 py-2 text-sm" />
+                        <label class="block text-sm font-medium text-foreground mb-1.5">Data Início</label>
+                        <input type="date" id="exec-data-inicio" class="input-base" />
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-1">Data Fim</label>
-                        <input type="date" id="exec-data-fim" class="w-full rounded-md border px-3 py-2 text-sm" />
+                        <label class="block text-sm font-medium text-foreground mb-1.5">Data Fim</label>
+                        <input type="date" id="exec-data-fim" class="input-base" />
                     </div>
                     <div class="flex items-end">
-                        <button onclick="carregarIndicadoresExecutivos()" class="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors">
-                            <i class="fas fa-sync-alt mr-2"></i>Atualizar
+                        <button onclick="carregarIndicadoresExecutivos()" class="btn btn-primary w-full gap-2">
+                            <i class="fas fa-sync-alt"></i>Atualizar
                         </button>
                     </div>
                 </div>
             </div>
 
             <!-- Leitura Executiva -->
-            <div id="exec-leitura-container" class="mb-6 rounded-lg border bg-gradient-to-r from-blue-50 to-indigo-50 p-6 hidden">
-                <div class="flex items-start justify-between mb-4">
+            <div id="exec-leitura-container" class="mb-6 card-base p-5 border-l-4 border-l-primary hidden">
+                <div class="flex items-start justify-between mb-3">
                     <div>
-                        <h3 class="text-lg font-semibold text-foreground">Leitura Executiva</h3>
-                        <p class="text-sm text-muted-foreground">Resumo orientado a decisao do painel atual</p>
+                        <h3 class="text-base font-semibold text-foreground">Leitura Executiva</h3>
+                        <p class="text-xs text-muted-foreground">Resumo orientado à decisão</p>
                     </div>
-                    <span id="exec-panel-badge" class="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">-</span>
+                    <span id="exec-panel-badge" class="badge badge-primary">-</span>
                 </div>
-                <p id="exec-leitura-texto" class="text-sm text-foreground leading-relaxed">Carregando leitura executiva...</p>
+                <p id="exec-leitura-texto" class="text-sm text-foreground leading-relaxed">Carregando...</p>
             </div>
 
-            <!-- Indicadores (serao inseridos via JavaScript) -->
-            <div id="exec-indicadores-container" class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <div class="col-span-full text-center py-12 text-muted-foreground">
-                    <i class="fas fa-chart-line text-4xl mb-4"></i>
-                    <p>Selecione um periodo e clique em Atualizar para carregar os indicadores executivos.</p>
+            <!-- Indicadores -->
+            <div id="exec-indicadores-container" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 stagger-in">
+                <div class="col-span-full text-center py-10 text-muted-foreground">
+                    <div class="mx-auto w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-3">
+                        <i class="fas fa-chart-line text-xl"></i>
+                    </div>
+                    <p class="text-sm">Selecione um período e clique em Atualizar para carregar os indicadores.</p>
                 </div>
             </div>
         </div><!-- End tab-indicadores-executivos -->
@@ -412,39 +419,39 @@ window.openTab = function(tabName) {
         <!-- Tab: Chat IA -->
         <div id="tab-chat" class="tab-pane" data-tab-active="false" style="display: none;">
             <div class="mb-6">
-                <h2 class="text-3xl font-bold text-foreground">Chat IA</h2>
-                <p class="mt-2 text-muted-foreground">
+                <h2 class="text-2xl font-bold text-foreground">Chat IA</h2>
+                <p class="mt-1 text-sm text-muted-foreground">
                     Converse com o assistente inteligente para obter informações e insights.
                 </p>
             </div>
             
-            <div id="chatContainer" class="rounded-lg border bg-card shadow-lg overflow-hidden flex flex-col" style="height: 70vh; min-height: 500px;">
+            <div id="chatContainer" class="card-base overflow-hidden flex flex-col" style="height: 65vh; min-height: 400px; max-height: 80vh;">
                 <!-- Chat Header -->
-                <div class="flex items-center justify-between border-b bg-gradient-to-r from-purple-500 to-indigo-600 px-4 py-3">
+                <div class="flex items-center justify-between border-b px-4 py-3" style="background: var(--gradient-navy);">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                            <i class="fas fa-robot text-white text-lg"></i>
+                        <div class="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center">
+                            <i class="fas fa-robot text-primary-foreground text-base"></i>
                         </div>
                         <div>
-                            <h3 class="font-semibold text-white">Assistente GeRot</h3>
-                            <p class="text-xs text-white/70">IA integrada aos dados</p>
+                            <h3 class="font-semibold text-sm text-primary-foreground">Assistente GeRot</h3>
+                            <p class="text-xs text-primary-foreground/60">IA integrada aos dados</p>
                         </div>
                     </div>
-                    <button onclick="toggleChatFullscreen()" class="rounded-md bg-white/20 px-3 py-1.5 text-sm font-medium text-white hover:bg-white/30 transition-colors">
+                    <button onclick="toggleChatFullscreen()" class="btn btn-ghost text-xs text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 px-2.5 py-1.5">
                         <i id="chatExpandIcon" class="fas fa-expand mr-1"></i>
                         <span id="chatExpandText">Expandir</span>
                     </button>
                 </div>
                 
                 <!-- Chat Messages -->
-                <div id="fullChatMessages" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-gradient-to-b from-gray-50 to-gray-100" style="scroll-behavior: smooth;">
+                <div id="fullChatMessages" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-muted/30" style="scroll-behavior: smooth;">
                     <div class="flex items-start gap-3 max-w-4xl mx-auto">
-                        <div class="w-10 h-10 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-md p-1">
+                        <div class="w-9 h-9 rounded-full bg-card border border-border flex items-center justify-center flex-shrink-0 overflow-hidden shadow-soft p-1">
                             <img src="{{ url_for('static', filename='avatar-bot.png') }}" alt="AI" class="w-full h-full object-contain">
                         </div>
                         <div class="flex-1 min-w-0">
-                            <div class="rounded-2xl bg-white border-2 border-gray-200 p-4 text-sm rounded-tl-sm shadow-md max-w-[90%] md:max-w-[80%]">
-                                <div class="prose prose-sm max-w-none text-gray-800 leading-relaxed">
+                            <div class="rounded-xl bg-card border border-border p-4 text-sm rounded-tl-sm shadow-soft max-w-[90%] md:max-w-[80%]">
+                                <div class="prose prose-sm max-w-none text-foreground leading-relaxed">
                                     Olá! Sou o assistente virtual do GeRot. Como posso ajudar você hoje com seus dados e relatórios?
                                 </div>
                             </div>
@@ -453,26 +460,26 @@ window.openTab = function(tabName) {
                 </div>
                 
                 <!-- Chat Input -->
-                <div class="border-t bg-white p-4">
+                <div class="border-t border-border bg-card p-3 sm:p-4">
                     <form onsubmit="sendFullChatMessage(event)" class="flex gap-2 items-end">
                         <input id="fullChatFileInput" type="file" class="hidden" accept=".pdf,.doc,.docx,.txt,.md" onchange="uploadKnowledgeFileFromFullChat(this)" />
                         <button type="button"
                                 onclick="document.getElementById('fullChatFileInput').click()"
-                                class="h-[44px] w-[44px] rounded-md border border-gray-200 bg-white hover:bg-gray-50 transition-all flex items-center justify-center flex-shrink-0"
-                                title="Enviar arquivo para ingestão (Docling)">
-                            <i class="fas fa-paperclip text-gray-700"></i>
+                                class="h-[44px] w-[44px] rounded-md border border-border bg-card hover:bg-muted transition-colors flex items-center justify-center flex-shrink-0"
+                                title="Enviar arquivo">
+                            <i class="fas fa-paperclip text-muted-foreground"></i>
                         </button>
                         <textarea id="fullChatInput" rows="1" 
-                                  class="flex-1 min-h-[44px] max-h-[100px] rounded-md border border-input bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                                  class="input-base flex-1 min-h-[44px] max-h-[100px] resize-none"
                                   placeholder="Digite sua mensagem..."
                                   onkeydown="handleFullChatKey(event)"></textarea>
                         <button type="button" id="fullVoiceBtn" onclick="toggleFullChatVoiceInput()" title="Perguntar por voz"
-                                class="h-[44px] w-[44px] rounded-md border border-gray-200 bg-white hover:bg-gray-50 transition-all flex items-center justify-center flex-shrink-0">
-                            <i class="fas fa-microphone text-gray-700"></i>
+                                class="h-[44px] w-[44px] rounded-md border border-border bg-card hover:bg-muted transition-colors flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-microphone text-muted-foreground"></i>
                         </button>
                         <button type="submit" 
-                                class="h-[44px] w-[44px] rounded-md bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 transition-all flex items-center justify-center flex-shrink-0">
-                            <i class="fas fa-paper-plane"></i>
+                                class="h-[44px] w-[44px] rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-paper-plane text-sm"></i>
                         </button>
                     </form>
                 </div>
@@ -483,20 +490,20 @@ window.openTab = function(tabName) {
 
 <!-- Modal Fullscreen para Dashboard -->
 <div id="dashboardModal" class="fixed inset-0 z-50 hidden flex-col bg-background">
-    <div class="flex items-center justify-between border-b bg-card px-4 py-3 shadow-sm">
-        <h2 id="modalTitle" class="text-lg font-semibold text-foreground">Visualizando Dashboard</h2>
-        <div class="flex items-center space-x-2">
-            <button onclick="toggleFullscreen()" class="rounded-md bg-muted px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent transition-colors">
-                <i class="fas fa-expand mr-2"></i>Expandir
+    <div class="flex items-center justify-between border-b bg-card px-4 py-3 shadow-soft">
+        <h2 id="modalTitle" class="text-base font-semibold text-foreground">Visualizando Dashboard</h2>
+        <div class="flex items-center gap-2">
+            <button onclick="toggleFullscreen()" class="btn btn-outline text-sm gap-1.5">
+                <i class="fas fa-expand"></i>Expandir
             </button>
-            <button onclick="closeDashboard()" class="rounded-md bg-destructive px-3 py-1.5 text-sm font-medium text-white hover:bg-destructive/90 transition-colors">
-                <i class="fas fa-times mr-2"></i>Fechar
+            <button onclick="closeDashboard()" class="btn text-sm gap-1.5 bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                <i class="fas fa-times"></i>Fechar
             </button>
         </div>
     </div>
     <div class="flex-1 bg-muted/20 p-0 relative">
         <div id="loadingSpinner" class="absolute inset-0 flex items-center justify-center">
-            <div class="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+            <div class="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
         </div>
         <iframe id="dashboardFrame" class="h-full w-full border-none" allowfullscreen></iframe>
     </div>
@@ -504,12 +511,10 @@ window.openTab = function(tabName) {
 
 <script src="{{ url_for('static', filename='relatorio.js') }}"></script>
 <script>
-// openTab ja definido no <head> - NAO redefinir para evitar quebrar abas Indicadores Executivos e Chat IA
 window.TAB_IDS = window.TAB_IDS || ['tab-dashboards', 'tab-indicadores-executivos', 'tab-chat'];
 
 function initAssetCharts() {
     if (typeof Chart === 'undefined') return;
-    // Apenas canvas com data-chart (JSON). Divs no relatorio usam data-chart como identificador, nao JSON.
     const chartNodes = document.querySelectorAll('canvas[data-chart]');
     chartNodes.forEach((node) => {
         try {
@@ -554,317 +559,7 @@ function resizeDashboardCharts() {
 
 document.addEventListener('DOMContentLoaded', initAssetCharts);
 
-// --- CHAT WIDGET LOGIC ---
-let currentConversationId = null;
-
-function toggleChat() {
-    const chatWindow = document.getElementById('chat-window');
-    const chatIcon = document.getElementById('chat-icon');
-    const closeIcon = document.getElementById('close-icon');
-    
-    if (chatWindow && chatWindow.classList.contains('hidden')) {
-        chatWindow.classList.remove('hidden');
-        chatWindow.classList.add('flex', 'flex-col');
-        if (chatIcon) chatIcon.classList.add('hidden');
-        if (closeIcon) closeIcon.classList.remove('hidden');
-        document.getElementById('chat-input')?.focus();
-    } else if (chatWindow) {
-        chatWindow.classList.add('hidden');
-        chatWindow.classList.remove('flex', 'flex-col');
-        if (chatIcon) chatIcon.classList.remove('hidden');
-        if (closeIcon) closeIcon.classList.add('hidden');
-    }
-}
-
-async function sendMessage(e) {
-    e.preventDefault();
-    const input = document.getElementById('chat-input');
-    const message = input.value.trim();
-    const btn = document.getElementById('send-btn');
-    
-    if (!message) return;
-    
-    // UI Updates
-    input.value = '';
-    appendMessage('user', message);
-    scrollToBottom();
-    
-    // Disable input while loading
-    input.disabled = true;
-    btn.disabled = true;
-    
-    // Show typing
-    const typingId = 'typing-' + Date.now();
-    appendTypingIndicator(typingId);
-    scrollToBottom();
-    
-    try {
-        const response = await fetch('/api/agent/chat/message', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                conversation_id: currentConversationId,
-                message: message
-            })
-        });
-        let data = null;
-        const ct = (response.headers.get('content-type') || '').toLowerCase();
-        if (ct.includes('application/json')) {
-            data = await response.json();
-        } else {
-            const text = await response.text();
-            throw new Error(`HTTP ${response.status}: ${text.slice(0, 300)}`);
-        }
-        document.getElementById(typingId).remove();
-        
-        if (data.error) {
-            appendMessage('system', 'Erro: ' + data.error);
-        } else {
-            if (data.conversation_id) {
-                currentConversationId = data.conversation_id;
-            }
-            appendMessage('assistant', data.response);
-        }
-        
-    } catch (error) {
-        document.getElementById(typingId)?.remove();
-        appendMessage('system', 'Erro: ' + ((error && error.message) ? error.message : 'Erro de conexão.'));
-    } finally {
-        input.disabled = false;
-        btn.disabled = false;
-        input.focus();
-        scrollToBottom();
-    }
-}
-
-async function uploadKnowledgeFileFromFullChat(inputEl) {
-    try {
-        const file = inputEl?.files?.[0];
-        if (!file) return;
-        // feedback no chat
-        appendFullChatMessage('system', `Enviando arquivo para ingestão: ${file.name}...`);
-        scrollFullChatToBottom();
-
-        const form = new FormData();
-        form.append('file', file, file.name);
-        form.append('source_name', 'dashboard_upload');
-        form.append('category', 'Uploads');
-
-        const resp = await fetch('/api/agent/rag/ingest-file', { method: 'POST', body: form });
-        const data = await resp.json().catch(() => ({}));
-        if (!resp.ok || data?.error || data?.ok === false) {
-            const msg = data?.error || data?.rag?.detail || `Falha no upload (HTTP ${resp.status})`;
-            appendFullChatMessage('system', 'Erro: ' + msg);
-        } else {
-            const added = data?.rag?.added_items;
-            appendFullChatMessage('system', `✅ Ingestão concluída. Itens adicionados na base: ${added ?? 'OK'}.`);
-        }
-    } catch (e) {
-        appendFullChatMessage('system', 'Erro: ' + (e?.message || 'Falha ao enviar arquivo'));
-    } finally {
-        if (inputEl) inputEl.value = '';
-    }
-}
-
-function appendMessage(role, content) {
-    const container = document.getElementById('chat-messages');
-    const isUser = role === 'user';
-    const isSystem = role === 'system';
-    
-    let html = '';
-    
-    if (isSystem) {
-        html = `<div class="flex justify-center my-2"><span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">${content}</span></div>`;
-    } else {
-        const avatarHtml = isUser 
-            ? `<div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0 text-white shadow-sm"><i class="fas fa-user text-xs"></i></div>`
-            : `<div class="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm p-1">
-                 <img src="{{ url_for('static', filename='avatar-bot.png') }}" alt="AI" class="w-full h-full object-contain">
-               </div>`;
-
-        let actionsHtml = '';
-        if (!isUser) {
-            const encoded = btoa(unescape(encodeURIComponent(String(content))));
-            actionsHtml = `
-                <div class="mt-2 flex gap-3 border-t border-gray-100 pt-2 text-xs text-gray-600">
-                    <button type="button" onclick="speakChatText('${encoded}')" class="hover:text-gray-900 flex items-center gap-1" title="Ouvir resposta">
-                        <i class="fas fa-volume-up"></i> Ouvir
-                    </button>
-                    <button type="button" onclick="stopSpeech()" class="hover:text-gray-900 flex items-center gap-1" title="Parar áudio">
-                        <i class="fas fa-stop"></i> Parar
-                    </button>
-                </div>
-            `;
-        }
-
-        html = `
-            <div class="flex items-start gap-3 ${isUser ? 'flex-row-reverse' : ''} animate-in fade-in slide-in-from-bottom-2 duration-300">
-                ${avatarHtml}
-                <div class="rounded-2xl p-3 text-sm max-w-[85%] ${isUser ? 'bg-primary text-white rounded-tr-sm' : 'bg-white border border-gray-100 text-gray-800 rounded-tl-sm shadow-sm'}">
-                    <div class="prose prose-sm ${isUser ? 'text-white' : 'text-gray-800'} max-w-none break-words">
-                        ${formatMessageContent(content)}
-                    </div>
-                    ${actionsHtml}
-                </div>
-            </div>
-        `;
-    }
-    
-    container.insertAdjacentHTML('beforeend', html);
-}
-
-function appendTypingIndicator(id) {
-    const container = document.getElementById('chat-messages');
-    const html = `
-        <div id="${id}" class="flex items-start gap-3">
-            <div class="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm p-1">
-                 <img src="{{ url_for('static', filename='avatar-bot.png') }}" alt="AI" class="w-full h-full object-contain">
-            </div>
-            <div class="rounded-2xl bg-white border border-gray-100 p-3 text-sm rounded-tl-sm shadow-sm">
-                <div class="flex gap-1">
-                    <div class="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce"></div>
-                    <div class="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce delay-100"></div>
-                    <div class="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce delay-200"></div>
-                </div>
-            </div>
-        </div>
-    `;
-    container.insertAdjacentHTML('beforeend', html);
-}
-
-function formatMessageContent(text) {
-    if (text === null || text === undefined) return '';
-    text = String(text);
-
-    // Normalizações para evitar "resposta quebrada":
-    // - remove placeholders de imagens do Docling
-    // - conserta URLs quebradas por quebras de linha do dump (ex.: https:\nsite)
-    // IMPORTANT: avoid JS ASI (no leading-dot on a new line)
-    // Remove placeholder do Docling (forma escapada que chega do backend)
-    text = text.replace(/&lt;!--\s*image\s*--&gt;/gi, '');
-    // Fix URLs quebradas por quebras de linha vindas do dump (sem regex com \n para evitar lints do template)
-    text = text
-        .split('https:\r\n').join('https://')
-        .split('http:\r\n').join('http://')
-        .split('https:\n').join('https://')
-        .split('http:\n').join('http://')
-        .split(':\r\n//').join('://')
-        .split(':\n//').join('://');
-
-    // Markdown render (mais robusto que regex manual)
-    try {
-        if (typeof marked !== 'undefined') {
-            const renderer = new marked.Renderer();
-            const escHtml = (s) => String(s)
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/\"/g, "&quot;");
-            // Evita injetar HTML arbitrário vindo do texto
-            renderer.html = () => '';
-            // Link: sempre nova aba + url limpa
-            renderer.link = (href, title, text) => {
-                const h = String(href || '').replace(/\s+/g, '');
-                const t = String(text || h);
-                if (!/^https?:\/\//i.test(h)) return t;
-                const ti = title ? ` title="${String(title).replace(/"/g, '&quot;')}"` : '';
-                return `<a href="${h}" target="_blank" rel="noopener noreferrer"${ti} class="text-blue-600 hover:text-blue-800 underline break-all">${t}</a>`;
-            };
-
-            // Tabelas com layout clean
-            renderer.table = (header, body) => {
-                return `
-<div class="my-3 overflow-x-auto rounded-lg border border-gray-200 bg-white">
-  <table class="min-w-full text-sm">
-    <thead class="bg-gray-50">${header}</thead>
-    <tbody>${body}</tbody>
-  </table>
-</div>`;
-            };
-            renderer.tablerow = (content) => `<tr class="border-b border-gray-200 last:border-b-0">${content}</tr>`;
-            renderer.tablecell = (content, flags) => {
-                if (flags && flags.header) {
-                    return `<th class="px-3 py-2 text-left font-semibold text-gray-700">${content}</th>`;
-                }
-                return `<td class="px-3 py-2 align-top text-gray-800">${content}</td>`;
-            };
-
-            // Blocos especiais: mindmap/quadro
-            renderer.code = (code, infostring) => {
-                const lang = String(infostring || '').trim().toLowerCase();
-                const c = String(code || '').trimEnd();
-                if (lang === 'mindmap') {
-                    return `
-<div class="my-3 rounded-lg border border-indigo-200 bg-indigo-50/40">
-  <div class="flex items-center justify-between px-3 py-2 border-b border-indigo-200">
-    <span class="text-xs font-semibold text-indigo-700">Mapa mental</span>
-  </div>
-  <pre class="p-3 overflow-x-auto text-xs leading-relaxed font-mono text-indigo-950 whitespace-pre">${escHtml(c)}</pre>
-</div>`;
-                }
-                if (lang === 'quadro') {
-                    // Formato esperado:
-                    // [Tema]
-                    // - item
-                    const lines = c.split(/\r?\n/);
-                    const sections = [];
-                    let cur = null;
-                    for (const raw of lines) {
-                        const line = raw.trim();
-                        if (!line) continue;
-                        const m = line.match(/^\[(.+?)\]$/);
-                        if (m) {
-                            cur = { title: m[1].trim(), items: [] };
-                            sections.push(cur);
-                            continue;
-                        }
-                        const it = line.replace(/^-+\s*/, '').replace(/^\*\s*/, '');
-                        if (!cur) {
-                            cur = { title: 'Geral', items: [] };
-                            sections.push(cur);
-                        }
-                        cur.items.push(it);
-                    }
-                    const cards = sections.map(sec => {
-                        const items = (sec.items || []).map(i => `<li class="text-sm text-gray-800">${escHtml(i)}</li>`).join('');
-                        return `
-<div class="rounded-lg border border-gray-200 bg-white">
-  <div class="px-3 py-2 border-b border-gray-200 bg-gray-50">
-    <div class="text-xs font-semibold text-gray-700">${escHtml(sec.title)}</div>
-  </div>
-  <ul class="p-3 space-y-2 list-disc list-inside">${items || '<li class="text-sm text-gray-500">—</li>'}</ul>
-</div>`;
-                    }).join('');
-                    return `
-<div class="my-3 rounded-lg border border-gray-200 bg-white">
-  <div class="flex items-center justify-between px-3 py-2 border-b border-gray-200">
-    <span class="text-xs font-semibold text-gray-700">Quadro por tema</span>
-  </div>
-  <div class="p-3 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-    ${cards}
-  </div>
-</div>`;
-                }
-                // default code block (clean)
-                return `<pre class="my-3 overflow-x-auto rounded-lg border border-gray-200 bg-gray-900 p-3 text-xs text-gray-100"><code>${escHtml(c)}</code></pre>`;
-            };
-
-            marked.setOptions({ gfm: true, breaks: true, renderer, mangle: false, headerIds: false });
-            return marked.parse(text);
-        }
-    } catch (e) {}
-
-    // Fallback simples: escapa e troca quebras de linha
-    const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    return '<p class="leading-relaxed">' + esc(text).replace(/\n/g, '<br>') + '</p>';
-}
-
-function scrollToBottom() {
-    const container = document.getElementById('chat-messages');
-    container.scrollTop = container.scrollHeight;
-}
-
-// --- DASHBOARD LOGIC ---
+// --- DASHBOARD MODAL LOGIC ---
 function openDashboard(url, title) {
     const modal = document.getElementById('dashboardModal');
     const iframe = document.getElementById('dashboardFrame');
@@ -874,7 +569,7 @@ function openDashboard(url, title) {
     titleEl.textContent = title;
     modal.classList.remove('hidden');
     modal.classList.add('flex');
-    document.body.style.overflow = 'hidden'; // Previne scroll na página principal
+    document.body.style.overflow = 'hidden';
     
     spinner.style.display = 'flex';
     iframe.style.opacity = '0';
@@ -893,22 +588,20 @@ function closeDashboard() {
     
     modal.classList.add('hidden');
     modal.classList.remove('flex');
-    document.body.style.overflow = ''; // Restaura scroll
-    
+    document.body.style.overflow = '';
     iframe.src = '';
 }
 
 function toggleFullscreen() {
     if (!document.fullscreenElement) {
         document.getElementById('dashboardModal').requestFullscreen().catch(err => {
-            console.error(`Error attempting to enable fullscreen: ${err.message}`);
+            console.error('Fullscreen error:', err.message);
         });
     } else {
         document.exitFullscreen();
     }
 }
 
-// Fechar com ESC
 document.addEventListener('keydown', function(event) {
     if (event.key === "Escape") {
         if (document.fullscreenElement) {
@@ -920,7 +613,6 @@ document.addEventListener('keydown', function(event) {
         }
     }
 });
-
 
 // --- FULL CHAT LOGIC ---
 let fullChatConversationId = null;
