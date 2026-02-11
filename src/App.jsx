@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useTheme } from './hooks/useTheme'
 import { useAuth } from './context/AuthContext'
 import { MainLayout } from './components/layout/MainLayout'
+import env from './config/env'
 import Home from './pages/Home'
 import Dashboards from './pages/Dashboards'
 import Indicadores from './pages/Indicadores'
@@ -23,6 +24,12 @@ function App() {
         </div>
       </div>
     )
+  }
+
+  if (!user && env.redirectToBackendLogin && env.backendUrl) {
+    const next = encodeURIComponent(window.location.origin + window.location.pathname + window.location.search)
+    window.location.replace(`${env.backendUrl}/login?next=${next}`)
+    return null
   }
 
   return (

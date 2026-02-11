@@ -42,11 +42,7 @@ export function AuthProvider({ children }) {
       } catch (err) {
         if (!cancelled) {
           setUser(null)
-          if (
-            env.backendUrl &&
-            env.redirectToBackendLogin &&
-            (err.message?.includes('401') || err.message?.includes('Não autenticado'))
-          ) {
+          if (env.backendUrl && env.redirectToBackendLogin) {
             const next = encodeURIComponent(window.location.origin + window.location.pathname + window.location.search)
             window.location.replace(`${env.backendUrl}/login?next=${next}`)
             return
