@@ -337,31 +337,39 @@ direct_url_env = os.getenv("DIRECT_URL")
 if direct_url_env and direct_url_env.strip() and direct_url_env.strip() != DATABASE_URL:
     pool_dsn_candidates.append(_strip_pgbouncer_param(direct_url_env.strip()))
 
-# Min: 1, Max: 60 conexões simultâneas
+# Min: 1, Max: 60 conexões simultâneas (com retry para PostgreSQL que sobe após o app no Railway)
 db_pool = None
 last_pool_error: Exception | None = None
-for pool_dsn in pool_dsn_candidates:
-    try:
-        db_pool = psycopg2.pool.ThreadedConnectionPool(
-            minconn=1,
-            maxconn=60,
-            dsn=pool_dsn,
-            cursor_factory=psycopg2.extras.RealDictCursor,
-            keepalives=1,
-            keepalives_idle=30,
-            keepalives_interval=10,
-            keepalives_count=5,
-        )
-        print("✅ Pool de conexões criado com sucesso (1-60 conexões)")
+_pool_retries = int(os.getenv("DB_POOL_INIT_RETRIES", "5"))
+_pool_delay = float(os.getenv("DB_POOL_INIT_DELAY_SECONDS", "2.0"))
+for attempt in range(1, _pool_retries + 1):
+    for pool_dsn in pool_dsn_candidates:
+        try:
+            db_pool = psycopg2.pool.ThreadedConnectionPool(
+                minconn=1,
+                maxconn=60,
+                dsn=pool_dsn,
+                cursor_factory=psycopg2.extras.RealDictCursor,
+                keepalives=1,
+                keepalives_idle=30,
+                keepalives_interval=10,
+                keepalives_count=5,
+            )
+            print("✅ Pool de conexões criado com sucesso (1-60 conexões)")
+            break
+        except Exception as e:
+            last_pool_error = e
+            db_pool = None
+            continue
+    if db_pool is not None:
         break
-    except Exception as e:
-        last_pool_error = e
-        db_pool = None
-        continue
+    if attempt < _pool_retries:
+        print(f"⏳ Tentativa {attempt}/{_pool_retries} do pool falhou; aguardando {_pool_delay}s...")
+        time.sleep(_pool_delay)
 
 if db_pool is None and last_pool_error is not None:
-    print(f"❌ Erro fatal ao criar pool de conexões: {last_pool_error}")
-    # Fallback ou exit? Vamos deixar passar e tentar reconectar no get_db se falhar.
+    print(f"❌ Erro ao criar pool de conexões após {_pool_retries} tentativas: {last_pool_error}")
+    print("   O app seguirá; get_db() tentará conexão direta a cada request (ou use DATABASE_URL correto).")
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -1791,15 +1799,30 @@ def import_users_from_excel() -> None:
         workbook.close()
 
 
+def _run_db_init_with_retry(max_attempts: int = 5, delay_seconds: float = 2.0) -> None:
+    """Executa inicialização do banco com retry (útil quando o PostgreSQL sobe após o app no Railway)."""
+    last_error = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            ensure_schema()
+            ensure_agent_tables()
+            seed_dashboards()
+            normalize_roles()
+            app.logger.info("Inicialização do banco concluída com sucesso.")
+            return
+        except Exception as e:
+            last_error = e
+            app.logger.warning(
+                "Tentativa %d/%d de inicialização do banco falhou: %s",
+                attempt, max_attempts, e,
+            )
+            if attempt < max_attempts:
+                time.sleep(delay_seconds)
+    app.logger.error("Erro na inicialização do banco após %d tentativas: %s", max_attempts, last_error)
+
+
 with app.app_context():
-    try:
-        ensure_schema()
-        ensure_agent_tables()
-        seed_dashboards()
-        normalize_roles()
-        # import_users_from_excel() # Pode ser pesado para rodar em todo restart
-    except Exception as e:
-        app.logger.error(f"Erro na inicialização do banco: {e}")
+    _run_db_init_with_retry()
 
 
 # --------------------------------------------------------------------------- #
