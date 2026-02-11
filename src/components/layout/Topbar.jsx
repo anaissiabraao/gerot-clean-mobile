@@ -11,7 +11,7 @@ const pageTitles = {
   '/perfil': 'Perfil',
 }
 
-export function Topbar({ onMenuClick, themeCtx }) {
+export function Topbar({ onMenuClick, themeCtx, user }) {
   const location = useLocation()
   const title = pageTitles[location.pathname] || 'GeRot'
 
@@ -36,6 +36,9 @@ export function Topbar({ onMenuClick, themeCtx }) {
         >
           {themeCtx.isDark ? <Sun size={18} /> : <Moon size={18} />}
         </button>
+        <span className="hidden text-sm text-muted-foreground md:inline">
+          {user?.nome_completo || user?.username || 'Usuário'}
+        </span>
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
           <User size={16} />
         </div>

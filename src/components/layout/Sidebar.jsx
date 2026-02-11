@@ -11,8 +11,10 @@ import {
   Moon,
   Sun,
   X,
+  Settings,
 } from 'lucide-react'
 import env from '../../config/env'
+import { useAuth } from '../../context/AuthContext'
 
 const navItems = [
   { label: 'Início', path: '/', icon: Home },
@@ -23,8 +25,10 @@ const navItems = [
   { label: 'Biblioteca', path: '/biblioteca', icon: Library },
 ]
 
-export function Sidebar({ open, onClose, themeCtx }) {
+export function Sidebar({ open, onClose, themeCtx, user }) {
+  const { logout } = useAuth()
   const location = useLocation()
+  const isAdmin = user?.role === 'admin'
 
   const linkClasses = (isActive) =>
     `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
@@ -69,6 +73,20 @@ export function Sidebar({ open, onClose, themeCtx }) {
             <span>{item.label}</span>
           </NavLink>
         ))}
+        {isAdmin && env.backendUrl && (
+          <>
+            <div className="my-2 border-t border-sidebar-accent" />
+            <a
+              href={`${env.backendUrl}/admin/dashboard`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            >
+              <Settings size={18} />
+              <span>Admin</span>
+            </a>
+          </>
+        )}
       </nav>
 
       {/* Footer */}
@@ -91,13 +109,14 @@ export function Sidebar({ open, onClose, themeCtx }) {
         </button>
 
         {env.backendUrl && (
-          <a
-            href={`${env.backendUrl}/login`}
+          <button
+            type="button"
+            onClick={logout}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-destructive/10 hover:text-destructive"
           >
             <LogOut size={18} />
             <span>Sair</span>
-          </a>
+          </button>
         )}
       </div>
     </aside>

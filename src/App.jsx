@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useTheme } from './hooks/useTheme'
+import { useAuth } from './context/AuthContext'
 import { MainLayout } from './components/layout/MainLayout'
 import Home from './pages/Home'
 import Dashboards from './pages/Dashboards'
@@ -11,9 +12,21 @@ import Perfil from './pages/Perfil'
 
 function App() {
   const themeCtx = useTheme()
+  const { user, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <p className="text-sm text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <MainLayout themeCtx={themeCtx}>
+    <MainLayout themeCtx={themeCtx} user={user}>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/dashboards" element={<Dashboards />} />

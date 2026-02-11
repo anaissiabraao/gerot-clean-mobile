@@ -12,6 +12,8 @@ O backend Flask em `app_production.py` expõe as rotas abaixo. O front (Vite/Rea
 | Método | Caminho | Descrição |
 |--------|---------|-----------|
 | GET | `/api/agent/health` | Health check do backend |
+| GET | `/api/session` | Sessão atual (200 + user/role ou 401; SPA redireciona ao login) |
+| GET | `/api/team-dashboard` | Mesmos dados do team_dashboard: regular_assets, internal_assets, is_admin (requer login) |
 | GET | `/api/agent/rag/status` | Status do RAG (requer login) |
 | GET | `/api/relatorio/layout` | Layout do relatório (requer login) |
 | POST | `/api/relatorio/layout` | Salvar layout do relatório |
@@ -38,7 +40,7 @@ O backend Flask em `app_production.py` expõe as rotas abaixo. O front (Vite/Rea
 | GET | `/api/agent/knowledge` | Listar base de conhecimento |
 | POST | `/api/agent/knowledge` | Adicionar item |
 | DELETE | `/api/agent/knowledge/:id` | Remover item |
-| GET | `/api/indicadores-executivos` | Indicadores executivos |
+| GET | `/api/indicadores-executivos` | Indicadores executivos (panel_data, leitura_executiva, **charts**: array de `{ id, type, title, labels, datasets }` para bar/pie) |
 | GET | `/api/relatorio-entregas` | Relatório de entregas |
 | POST | `/api/agent/relatorio-resultados/request` | Solicitar relatório de resultados |
 | GET | `/api/agent/relatorio-resultados/status/:id` | Status do relatório |

@@ -4,6 +4,7 @@ import { httpGet } from '../services/httpClient'
 import api from '../api/endpoints'
 import { KpiCard } from '../components/ui/KpiCard'
 import { Card } from '../components/ui/Card'
+import { ChartCard } from '../components/ui/ChartCard'
 import { FilterBar } from '../components/ui/FilterBar'
 import { EmptyState } from '../components/ui/EmptyState'
 import { SkeletonKpi } from '../components/ui/Skeleton'
@@ -139,6 +140,18 @@ export default function Indicadores() {
               />
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Gráficos (formato clean do backend) */}
+      {!loading && data?.charts?.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-foreground">Gráficos</h3>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            {data.charts.map((chart) => (
+              <ChartCard key={chart.id || chart.title} chart={chart} />
+            ))}
+          </div>
         </div>
       )}
 

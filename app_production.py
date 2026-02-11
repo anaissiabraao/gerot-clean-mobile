@@ -2491,6 +2491,9 @@ def login():
                         f"Senha atualizada! Bem-vindo, {user['nome_completo']}!",
                         "success",
                     )
+                    next_url = _safe_redirect_url(request.form.get("next") or request.args.get("next"))
+                    if next_url:
+                        return redirect(next_url)
                     return redirect(url_for("index"))
                 flash("Não foi possível carregar o usuário.", "error")
             else:
@@ -2543,6 +2546,9 @@ def login():
                     }
                 )
                 flash(f"Bem-vindo de volta, {user['nome_completo']}!", "success")
+                next_url = _safe_redirect_url(request.form.get("next") or request.args.get("next"))
+                if next_url:
+                    return redirect(next_url)
                 return redirect(url_for("index"))
             else:
                 flash("Usuário ou senha incorretos!", "error")
@@ -2556,7 +2562,158 @@ def login():
 def logout():
     session.clear()
     flash("Logout realizado com sucesso!", "success")
+    next_url = request.args.get("next")
+    if next_url:
+        return redirect(url_for("login", next=next_url))
     return redirect(url_for("login"))
+
+
+# --------------------------------------------------------------------------- #
+# API para o frontend SPA: sessão e dashboards (mesmo modelo do team_dashboard)
+# --------------------------------------------------------------------------- #
+
+def _safe_redirect_url(next_url: str | None) -> str | None:
+    """Retorna next_url apenas se for segura (mesmo host do backend ou FRONTEND_APP_URL)."""
+    if not next_url or not next_url.strip():
+        return None
+    next_url = next_url.strip()
+    try:
+        parsed = urlparse(next_url)
+        if not parsed.scheme or not parsed.netloc:
+            return None
+        allowed_hosts = [request.host]
+        if FRONTEND_APP_URL:
+            front_parsed = urlparse(FRONTEND_APP_URL)
+            if front_parsed.netloc:
+                allowed_hosts.append(front_parsed.netloc)
+        if parsed.netloc.lower() in [h.lower() for h in allowed_hosts]:
+            return next_url
+    except Exception:
+        pass
+    return None
+
+
+@app.route("/api/session", methods=["GET"])
+def api_session():
+    """Retorna dados da sessão atual. 401 se não autenticado (SPA usa para redirecionar ao login)."""
+    if not session.get("user_id"):
+        return jsonify({"error": "Não autenticado"}), 401
+    return jsonify({
+        "user_id": session.get("user_id"),
+        "username": session.get("username"),
+        "role": session.get("role"),
+        "nome_completo": session.get("nome_completo"),
+        "departamento": session.get("departamento"),
+        "email": session.get("email"),
+    }), 200
+
+
+def _serialize_asset(a: Dict) -> Dict:
+    """Converte um asset (RealDict) para dict JSON-serializável."""
+    out = {}
+    for k, v in a.items():
+        if v is None:
+            out[k] = None
+        elif isinstance(v, (datetime, date)):
+            out[k] = v.isoformat() if hasattr(v, "isoformat") else str(v)
+        elif isinstance(v, (bytes, memoryview)):
+            continue
+        elif isinstance(v, dict):
+            out[k] = _serialize_asset(v) if v else v
+        elif isinstance(v, list):
+            out[k] = [_serialize_asset(x) if isinstance(x, dict) else x for x in v]
+        else:
+            out[k] = v
+    return out
+
+
+@app.route("/api/team-dashboard", methods=["GET"])
+@login_required
+def api_team_dashboard():
+    """Retorna os mesmos dados que team_dashboard passa ao template: regular_assets, internal_assets, is_admin."""
+    show_all = is_admin_session() and request.args.get("all") == "1"
+    preview_user_id = request.args.get("preview_user_id", type=int)
+    preview_group = request.args.get("preview_group", "").strip() or None
+
+    effective_user_id = session.get("user_id")
+    effective_department = session.get("departamento")
+
+    if is_admin_session():
+        if preview_user_id:
+            conn = get_db()
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id, nome_completo, departamento FROM users_new WHERE id = %s",
+                (preview_user_id,),
+            )
+            preview_user = cursor.fetchone()
+            conn.close()
+            if preview_user:
+                effective_user_id = preview_user["id"]
+                effective_department = preview_user.get("departamento")
+        elif preview_group:
+            effective_user_id = None
+            effective_department = preview_group
+
+    assets: List[Dict] = []
+    if show_all and is_admin_session():
+        assets = fetch_assets(["ativo", "experimental"])
+    else:
+        assets = fetch_assets_for_user(effective_user_id, effective_department)
+
+    if not assets and effective_user_id is not None:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT d.title, d.description, d.category, d.embed_url
+            FROM dashboards d
+            JOIN user_dashboards ud ON ud.dashboard_id = d.id
+            WHERE ud.user_id = %s AND d.is_active = true
+            ORDER BY d.display_order, d.title
+            """,
+            (effective_user_id,),
+        )
+        dashboards = cursor.fetchall()
+        conn.close()
+        assets = [
+            {
+                "id": idx + 1,
+                "nome": row["title"],
+                "tipo": "PBI",
+                "categoria": row.get("category"),
+                "descricao": row.get("description"),
+                "embed_url": row.get("embed_url"),
+                "resource_url": None,
+                "status": "ativo",
+                "ordem_padrao": idx,
+                "config": None,
+                "assignment_source": "legado",
+            }
+            for idx, row in enumerate(dashboards or [])
+        ]
+        if not assets:
+            default_asset = _fetch_default_relatorio_asset()
+            if default_asset:
+                assets = [default_asset]
+
+    internal_assets = []
+    regular_assets = []
+    for asset in assets:
+        if (
+            asset.get("tipo") == "interno"
+            and (asset.get("asset_config") or {}).get("embed_mode")
+            and (asset.get("assignment_config") or {}).get("components")
+        ):
+            internal_assets.append(asset)
+        else:
+            regular_assets.append(asset)
+
+    return jsonify({
+        "regular_assets": [_serialize_asset(a) for a in regular_assets],
+        "internal_assets": [_serialize_asset(a) for a in internal_assets],
+        "is_admin": is_admin_session(),
+    }), 200
 
 
 @app.route("/profile", methods=["GET", "POST"])
@@ -8380,12 +8537,44 @@ def api_indicadores_executivos():
         panel_id = panel_map.get(panel_key) if panel_key else None
         panel_data = indicadores_exec["indicadores"].get(panel_id) if panel_id else None
         leitura = indicadores_exec["leituras_executivas"].get(panel_key) if panel_key else None
-        
+
+        # Gráficos prontos para o frontend (formato clean: type, title, labels, datasets)
+        charts = []
+        try:
+            dir_panel = indicadores_exec["indicadores"].get("diretoria_panel") or {}
+            resultado_por_servico = dir_panel.get("resultado_por_servico_d5")
+            if isinstance(resultado_por_servico, dict) and resultado_por_servico:
+                items = sorted(
+                    resultado_por_servico.items(),
+                    key=lambda x: float(x[1].get("faturamento") or 0),
+                    reverse=True,
+                )[:12]
+                charts.append({
+                    "id": "faturamento_por_servico",
+                    "type": "bar",
+                    "title": "Faturamento por serviço",
+                    "labels": [k for k, _ in items],
+                    "datasets": [{"label": "Faturamento (R$)", "data": [float(v.get("faturamento") or 0) for _, v in items]}],
+                })
+            pc = dir_panel.get("participacao_corporativo_percent")
+            pv = dir_panel.get("participacao_vendedores_percent")
+            if pc is not None and pv is not None:
+                charts.append({
+                    "id": "participacao_faturamento",
+                    "type": "pie",
+                    "title": "Participação no faturamento",
+                    "labels": ["Corporativo", "Vendedores"],
+                    "datasets": [{"label": "Participação (%)", "data": [float(pc), float(pv)]}],
+                })
+        except Exception as chart_err:
+            app.logger.warning(f"[INDICADORES] Charts opcionais: {chart_err}")
+
         return jsonify({
             "success": True,
             "panel_key": panel_key,
             "panel_data": panel_data,
             "leitura_executiva": leitura,
+            "charts": charts,
             "indicadores_completos": indicadores_exec,
             "periodo": {
                 "inicio": data_inicio,
