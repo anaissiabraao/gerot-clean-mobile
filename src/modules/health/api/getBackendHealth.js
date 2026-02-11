@@ -1,5 +1,5 @@
-import env from '../../../config/env'
 import { httpGet } from '../../../services/httpClient'
+import api from '../../../api/endpoints'
 
 function toPayload(data) {
   if (typeof data === 'string') {
@@ -10,7 +10,7 @@ function toPayload(data) {
 }
 
 export async function getBackendHealth() {
-  const data = await httpGet(env.healthEndpoint)
+  const data = await httpGet(api.health)
   const payload = toPayload(data)
 
   return {

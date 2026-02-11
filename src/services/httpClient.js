@@ -42,3 +42,71 @@ export async function httpGet(path, init = {}) {
 
   return response.text()
 }
+
+export async function httpPost(path, init = {}) {
+  const response = await fetch(normalizeUrl(path), {
+    method: 'POST',
+    ...init,
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      ...init.headers,
+    },
+    signal: init.signal ?? getAbortSignal(env.requestTimeoutMs),
+  })
+
+  if (!response.ok) {
+    const bodyText = await response.text()
+    throw new Error(`HTTP ${response.status}: ${bodyText || response.statusText}`)
+  }
+
+  const contentType = response.headers.get('content-type') ?? ''
+  if (contentType.includes('application/json')) {
+    return response.json()
+  }
+  return response.text()
+}
+
+export async function httpPut(path, init = {}) {
+  const response = await fetch(normalizeUrl(path), {
+    method: 'PUT',
+    ...init,
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      ...init.headers,
+    },
+    signal: init.signal ?? getAbortSignal(env.requestTimeoutMs),
+  })
+
+  if (!response.ok) {
+    const bodyText = await response.text()
+    throw new Error(`HTTP ${response.status}: ${bodyText || response.statusText}`)
+  }
+
+  const contentType = response.headers.get('content-type') ?? ''
+  if (contentType.includes('application/json')) {
+    return response.json()
+  }
+  return response.text()
+}
+
+export async function httpDelete(path, init = {}) {
+  const response = await fetch(normalizeUrl(path), {
+    method: 'DELETE',
+    ...init,
+    headers: { Accept: 'application/json', ...init.headers },
+    signal: init.signal ?? getAbortSignal(env.requestTimeoutMs),
+  })
+
+  if (!response.ok) {
+    const bodyText = await response.text()
+    throw new Error(`HTTP ${response.status}: ${bodyText || response.statusText}`)
+  }
+
+  const contentType = response.headers.get('content-type') ?? ''
+  if (contentType.includes('application/json')) {
+    return response.json()
+  }
+  return response.text()
+}

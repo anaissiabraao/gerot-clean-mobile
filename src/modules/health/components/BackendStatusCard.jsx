@@ -1,3 +1,4 @@
+import api from '../../../api/endpoints'
 import { useBackendHealth } from '../hooks/useBackendHealth'
 import './BackendStatusCard.css'
 
@@ -13,7 +14,7 @@ export function BackendStatusCard() {
       </div>
 
       <p className="status-card__description">
-        Endpoint atual: <code>{import.meta.env.VITE_HEALTH_ENDPOINT ?? '/api/agent/health'}</code>
+        Endpoint atual: <code>{api.health}</code>
       </p>
 
       {loading && <p className="status-card__info">Consultando servico...</p>}
