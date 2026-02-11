@@ -13,12 +13,16 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     server: {
       port: frontendPort,
+      allowedHosts: ['front-production-ea82.up.railway.app'],
       proxy: {
         '/api': {
           target: backendUrl,
           changeOrigin: true,
         },
       },
+    },
+    preview: {
+      allowedHosts: ['front-production-ea82.up.railway.app'],
     },
   }
 })
