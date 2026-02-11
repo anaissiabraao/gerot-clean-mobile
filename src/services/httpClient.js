@@ -19,15 +19,22 @@ function getAbortSignal(timeoutMs) {
   return controller.signal
 }
 
+const fetchOpts = (method, init = {}, body = null) => ({
+  method,
+  ...init,
+  credentials: 'include', // envia cookie de sessão (cross-origin)
+  headers: {
+    Accept: 'application/json',
+    ...(body !== null ? { 'Content-Type': 'application/json' } : {}),
+    ...init.headers,
+  },
+  ...(body !== null ? { body } : {}),
+  signal: init.signal ?? getAbortSignal(env.requestTimeoutMs),
+})
+
 export async function httpGet(path, init = {}) {
   const response = await fetch(normalizeUrl(path), {
-    method: 'GET',
-    ...init,
-    headers: {
-      Accept: 'application/json',
-      ...init.headers,
-    },
-    signal: init.signal ?? getAbortSignal(env.requestTimeoutMs),
+    ...fetchOpts('GET', init),
   })
 
   if (!response.ok) {
@@ -45,14 +52,7 @@ export async function httpGet(path, init = {}) {
 
 export async function httpPost(path, init = {}) {
   const response = await fetch(normalizeUrl(path), {
-    method: 'POST',
-    ...init,
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      ...init.headers,
-    },
-    signal: init.signal ?? getAbortSignal(env.requestTimeoutMs),
+    ...fetchOpts('POST', init, init.body ?? null),
   })
 
   if (!response.ok) {
@@ -69,14 +69,7 @@ export async function httpPost(path, init = {}) {
 
 export async function httpPut(path, init = {}) {
   const response = await fetch(normalizeUrl(path), {
-    method: 'PUT',
-    ...init,
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      ...init.headers,
-    },
-    signal: init.signal ?? getAbortSignal(env.requestTimeoutMs),
+    ...fetchOpts('PUT', init, init.body ?? null),
   })
 
   if (!response.ok) {
@@ -93,10 +86,7 @@ export async function httpPut(path, init = {}) {
 
 export async function httpDelete(path, init = {}) {
   const response = await fetch(normalizeUrl(path), {
-    method: 'DELETE',
-    ...init,
-    headers: { Accept: 'application/json', ...init.headers },
-    signal: init.signal ?? getAbortSignal(env.requestTimeoutMs),
+    ...fetchOpts('DELETE', init),
   })
 
   if (!response.ok) {
