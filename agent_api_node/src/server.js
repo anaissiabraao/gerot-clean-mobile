@@ -13,60 +13,6 @@ const app = Fastify({
 
 const upstreamFlaskUrl = (process.env.UPSTREAM_FLASK_URL || '').trim().replace(/\/+$/, '')
 
-app.all('/api/*', async (req, reply) => {
-  if (req.url.startsWith('/api/agent/')) {
-    return reply.callNotFound()
-  }
-
-  if (!upstreamFlaskUrl) {
-    return jsonResponse(reply, 500, { error: 'UPSTREAM_FLASK_URL não configurada' })
-  }
-
-  const upstreamUrl = `${upstreamFlaskUrl}${req.url}`
-
-  const headers = { ...req.headers }
-  delete headers.host
-  delete headers.connection
-  delete headers['content-length']
-
-  let body
-  if (req.method !== 'GET' && req.method !== 'HEAD') {
-    if (req.body === undefined || req.body === null) {
-      body = undefined
-    } else if (Buffer.isBuffer(req.body) || typeof req.body === 'string') {
-      body = req.body
-    } else {
-      body = JSON.stringify(req.body)
-      if (!headers['content-type']) {
-        headers['content-type'] = 'application/json'
-      }
-    }
-  }
-
-  try {
-    const resp = await fetch(upstreamUrl, {
-      method: req.method,
-      headers,
-      body,
-      redirect: 'manual',
-    })
-
-    reply.code(resp.status)
-
-    resp.headers.forEach((value, key) => {
-      const k = key.toLowerCase()
-      if (k === 'transfer-encoding' || k === 'connection') return
-      reply.header(key, value)
-    })
-
-    const arrBuf = await resp.arrayBuffer()
-    return reply.send(Buffer.from(arrBuf))
-  } catch (err) {
-    req.log.error({ err }, '[GATEWAY] Falha ao proxyar para upstream Flask')
-    return jsonResponse(reply, 502, { error: err?.message || String(err) })
-  }
-})
-
 await app.register(cors, {
   origin: true,
 })
@@ -95,6 +41,119 @@ app.addHook('onRequest', async (req, reply) => {
 })
 
 app.get('/health', async () => ({ ok: true }))
+
+app.get('/api/team-dashboard', async (req, reply) => {
+  try {
+    const out = await withTx(pool, async (client) => {
+      const hasAssets = await client.query(
+        `
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'assets'
+        LIMIT 1
+        `,
+      )
+      if (hasAssets.rows.length === 0) {
+        return { regular_assets: [], internal_assets: [], is_admin: false }
+      }
+
+      const res = await client.query(
+        `
+        SELECT
+          id,
+          nome,
+          tipo,
+          categoria,
+          descricao,
+          status,
+          ordem_padrao,
+          resource_url,
+          embed_url,
+          config AS asset_config
+        FROM assets
+        WHERE COALESCE(status, 'ativo') = 'ativo'
+        ORDER BY COALESCE(ordem_padrao, 0) ASC, id ASC
+        `,
+      )
+
+      const regular = []
+      const internal = []
+
+      for (const row of res.rows) {
+        const tipo = (row.tipo || '').toString().toLowerCase()
+        if (tipo === 'pbi' || tipo === 'dashboard') {
+          regular.push(row)
+        } else {
+          internal.push(row)
+        }
+      }
+
+      return {
+        regular_assets: regular,
+        internal_assets: internal,
+        is_admin: false,
+      }
+    })
+
+    return jsonResponse(reply, 200, out)
+  } catch (err) {
+    req.log.error({ err }, '[API] Erro ao montar team-dashboard')
+    return jsonResponse(reply, 500, { error: err?.message || String(err) })
+  }
+})
+
+const disableProxy = String(process.env.DISABLE_PROXY || 'false').toLowerCase() === 'true'
+if (upstreamFlaskUrl && !disableProxy) {
+  app.all('/api/*', async (req, reply) => {
+    if (req.url.startsWith('/api/agent/')) {
+      return reply.callNotFound()
+    }
+
+    const upstreamUrl = `${upstreamFlaskUrl}${req.url}`
+
+    const headers = { ...req.headers }
+    delete headers.host
+    delete headers.connection
+    delete headers['content-length']
+
+    let body
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      if (req.body === undefined || req.body === null) {
+        body = undefined
+      } else if (Buffer.isBuffer(req.body) || typeof req.body === 'string') {
+        body = req.body
+      } else {
+        body = JSON.stringify(req.body)
+        if (!headers['content-type']) {
+          headers['content-type'] = 'application/json'
+        }
+      }
+    }
+
+    try {
+      const resp = await fetch(upstreamUrl, {
+        method: req.method,
+        headers,
+        body,
+        redirect: 'manual',
+      })
+
+      reply.code(resp.status)
+
+      resp.headers.forEach((value, key) => {
+        const k = key.toLowerCase()
+        if (k === 'transfer-encoding' || k === 'connection') return
+        reply.header(key, value)
+      })
+
+      const arrBuf = await resp.arrayBuffer()
+      return reply.send(Buffer.from(arrBuf))
+    } catch (err) {
+      req.log.error({ err }, '[GATEWAY] Falha ao proxyar para upstream Flask')
+      return jsonResponse(reply, 502, { error: err?.message || String(err) })
+    }
+  })
+}
 
 app.post('/api/agent/sync/knowledge', async (req, reply) => {
   const body = req.body || {}
