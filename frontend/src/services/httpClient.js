@@ -23,6 +23,7 @@ export async function httpGet(path, init = {}) {
   const response = await fetch(normalizeUrl(path), {
     method: 'GET',
     ...init,
+    credentials: 'include',
     headers: {
       Accept: 'application/json',
       ...init.headers,

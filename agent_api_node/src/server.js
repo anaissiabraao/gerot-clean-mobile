@@ -1,6 +1,10 @@
 import 'dotenv/config'
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
+import cookie from '@fastify/cookie'
+import formbody from '@fastify/formbody'
+import secureSession from '@fastify/secure-session'
+import bcrypt from 'bcryptjs'
 
 import { createPool, withTx } from './db.js'
 import { verifyAgentApiKey } from './auth.js'
@@ -16,6 +20,27 @@ const upstreamFlaskUrl = (process.env.UPSTREAM_FLASK_URL || '').trim().replace(/
 await app.register(cors, {
   origin: true,
 })
+
+await app.register(cookie)
+
+await app.register(formbody)
+
+const sessionSecret = (process.env.SESSION_SECRET || '').toString()
+if (!sessionSecret) {
+  app.log.warn('SESSION_SECRET não configurada; login por sessão ficará indisponível')
+} else {
+  const secretBuf = Buffer.from(sessionSecret, 'utf-8')
+  await app.register(secureSession, {
+    cookieName: 'gerot_session',
+    cookie: {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: String(process.env.COOKIE_SECURE || 'true').toLowerCase() === 'true',
+    },
+    key: secretBuf.length >= 32 ? secretBuf.subarray(0, 32) : Buffer.concat([secretBuf, Buffer.alloc(32 - secretBuf.length)]),
+  })
+}
 
 app.addContentTypeParser(
   'application/json',
@@ -42,7 +67,448 @@ app.addHook('onRequest', async (req, reply) => {
 
 app.get('/health', async () => ({ ok: true }))
 
+app.get('/', async (req, reply) => {
+  return reply.redirect('/login')
+})
+
+app.get('/dashboard', async (req, reply) => {
+  const sessionUser = requireLogin(req, reply)
+  if (!sessionUser) return
+
+  const target = (process.env.FRONTEND_DASHBOARD_URL || process.env.FRONTEND_URL || '').toString().trim()
+  if (target) {
+    return reply.redirect(target)
+  }
+
+  return reply.redirect('/login')
+})
+
+function getSessionUser(req) {
+  if (!req.session) return null
+  const u = req.session.get('user')
+  if (!u || typeof u !== 'object') return null
+  return u
+}
+
+function requireLogin(req, reply) {
+  const u = getSessionUser(req)
+  if (u) return u
+
+  const accept = (req.headers.accept || '').toString()
+  if (accept.includes('text/html')) {
+    reply.redirect('/login')
+    return null
+  }
+
+  jsonResponse(reply, 401, { error: 'Not authenticated', login_url: '/login' })
+  return null
+}
+
+function requireAdmin(req, reply) {
+  const u = requireLogin(req, reply)
+  if (!u) return null
+  const isAdmin = (u.role || '').toString().toLowerCase() === 'admin'
+  if (isAdmin) return u
+  jsonResponse(reply, 403, { error: 'Forbidden' })
+  return null
+}
+
+app.get('/api/admin/users', async (req, reply) => {
+  const admin = requireAdmin(req, reply)
+  if (!admin) return
+
+  const q = (req.query?.q || '').toString().trim()
+  const limit = clampInt(req.query?.limit, 1, 200, 50)
+
+  try {
+    const out = await withTx(pool, async (client) => {
+      const res = await client.query(
+        `
+        SELECT id, username, role, nome_completo, departamento, is_active
+        FROM users_new
+        WHERE ($1 = '' OR username ILIKE '%' || $1 || '%' OR COALESCE(nome_completo, '') ILIKE '%' || $1 || '%')
+        ORDER BY username ASC
+        LIMIT $2
+        `,
+        [q, limit],
+      )
+      return res.rows
+    })
+    return jsonResponse(reply, 200, { items: out })
+  } catch (err) {
+    req.log.error({ err }, '[ADMIN] Erro ao listar usuários')
+    return jsonResponse(reply, 500, { error: err?.message || String(err) })
+  }
+})
+
+app.get('/api/admin/assets', async (req, reply) => {
+  const admin = requireAdmin(req, reply)
+  if (!admin) return
+
+  const limit = clampInt(req.query?.limit, 1, 500, 200)
+  const status = (req.query?.status || 'ativo').toString().trim()
+
+  try {
+    const out = await withTx(pool, async (client) => {
+      const res = await client.query(
+        `
+        SELECT id, nome, tipo, categoria, descricao, status, ordem_padrao, resource_url, embed_url, config AS asset_config
+        FROM assets
+        WHERE ($1 = '' OR COALESCE(status, '') = $1)
+        ORDER BY COALESCE(ordem_padrao, 0) ASC, id ASC
+        LIMIT $2
+        `,
+        [status, limit],
+      )
+      return res.rows
+    })
+    return jsonResponse(reply, 200, { items: out })
+  } catch (err) {
+    req.log.error({ err }, '[ADMIN] Erro ao listar assets')
+    return jsonResponse(reply, 500, { error: err?.message || String(err) })
+  }
+})
+
+app.get('/api/admin/asset-assignments', async (req, reply) => {
+  const admin = requireAdmin(req, reply)
+  if (!admin) return
+
+  const userId = req.query?.user_id ? Number(req.query.user_id) : null
+  const groupName = (req.query?.group_name || '').toString().trim()
+  const limit = clampInt(req.query?.limit, 1, 500, 200)
+
+  try {
+    const out = await withTx(pool, async (client) => {
+      const res = await client.query(
+        `
+        SELECT
+          aa.id,
+          aa.asset_id,
+          aa.user_id,
+          aa.group_name,
+          aa.ordem,
+          aa.visivel,
+          aa.config AS assignment_config,
+          a.nome AS asset_nome,
+          a.tipo AS asset_tipo,
+          a.categoria AS asset_categoria
+        FROM asset_assignments aa
+        JOIN assets a ON a.id = aa.asset_id
+        WHERE ($1::bigint IS NULL OR aa.user_id = $1)
+          AND ($2 = '' OR aa.group_name = $2)
+        ORDER BY COALESCE(aa.ordem, 0) ASC, aa.id ASC
+        LIMIT $3
+        `,
+        [userId, groupName, limit],
+      )
+      return res.rows
+    })
+    return jsonResponse(reply, 200, { items: out })
+  } catch (err) {
+    req.log.error({ err }, '[ADMIN] Erro ao listar asset_assignments')
+    return jsonResponse(reply, 500, { error: err?.message || String(err) })
+  }
+})
+
+app.post('/api/admin/asset-assignments', async (req, reply) => {
+  const admin = requireAdmin(req, reply)
+  if (!admin) return
+
+  const assetId = Number(req.body?.asset_id)
+  const userId = req.body?.user_id !== undefined && req.body?.user_id !== null ? Number(req.body.user_id) : null
+  const groupName = (req.body?.group_name || '').toString().trim()
+  const ordem = req.body?.ordem !== undefined && req.body?.ordem !== null ? Number(req.body.ordem) : null
+  const visivel = req.body?.visivel === undefined ? true : !!req.body.visivel
+  const config = req.body?.config ?? req.body?.assignment_config ?? null
+
+  if (!assetId || (userId === null && !groupName)) {
+    return jsonResponse(reply, 400, { error: 'asset_id e (user_id ou group_name) são obrigatórios' })
+  }
+
+  try {
+    const out = await withTx(pool, async (client) => {
+      const res = await client.query(
+        `
+        INSERT INTO asset_assignments (asset_id, user_id, group_name, ordem, visivel, config)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id
+        `,
+        [assetId, userId, groupName || null, ordem, visivel, config],
+      )
+      return res.rows[0]
+    })
+    return jsonResponse(reply, 201, { id: out.id })
+  } catch (err) {
+    req.log.error({ err }, '[ADMIN] Erro ao criar asset_assignment')
+    return jsonResponse(reply, 500, { error: err?.message || String(err) })
+  }
+})
+
+app.put('/api/admin/asset-assignments/:id', async (req, reply) => {
+  const admin = requireAdmin(req, reply)
+  if (!admin) return
+
+  const id = Number(req.params?.id)
+  if (!id) {
+    return jsonResponse(reply, 400, { error: 'id inválido' })
+  }
+
+  const patch = {
+    ordem: req.body?.ordem,
+    visivel: req.body?.visivel,
+    config: req.body?.config ?? req.body?.assignment_config,
+  }
+
+  const sets = []
+  const vals = []
+  let idx = 1
+
+  if (patch.ordem !== undefined) {
+    sets.push(`ordem = $${idx++}`)
+    vals.push(patch.ordem === null ? null : Number(patch.ordem))
+  }
+  if (patch.visivel !== undefined) {
+    sets.push(`visivel = $${idx++}`)
+    vals.push(!!patch.visivel)
+  }
+  if (patch.config !== undefined) {
+    sets.push(`config = $${idx++}`)
+    vals.push(patch.config)
+  }
+
+  if (sets.length === 0) {
+    return jsonResponse(reply, 400, { error: 'Nenhum campo para atualizar' })
+  }
+
+  try {
+    await withTx(pool, async (client) => {
+      await client.query(
+        `
+        UPDATE asset_assignments
+        SET ${sets.join(', ')}
+        WHERE id = $${idx}
+        `,
+        [...vals, id],
+      )
+    })
+    return jsonResponse(reply, 200, { ok: true })
+  } catch (err) {
+    req.log.error({ err }, '[ADMIN] Erro ao atualizar asset_assignment')
+    return jsonResponse(reply, 500, { error: err?.message || String(err) })
+  }
+})
+
+app.delete('/api/admin/asset-assignments/:id', async (req, reply) => {
+  const admin = requireAdmin(req, reply)
+  if (!admin) return
+
+  const id = Number(req.params?.id)
+  if (!id) {
+    return jsonResponse(reply, 400, { error: 'id inválido' })
+  }
+
+  try {
+    await withTx(pool, async (client) => {
+      await client.query('DELETE FROM asset_assignments WHERE id = $1', [id])
+    })
+    return jsonResponse(reply, 200, { ok: true })
+  } catch (err) {
+    req.log.error({ err }, '[ADMIN] Erro ao remover asset_assignment')
+    return jsonResponse(reply, 500, { error: err?.message || String(err) })
+  }
+})
+
+app.post('/api/admin/asset-assignments/bulk', async (req, reply) => {
+  const admin = requireAdmin(req, reply)
+  if (!admin) return
+
+  const assetIds = Array.isArray(req.body?.asset_ids) ? req.body.asset_ids.map((x) => Number(x)).filter(Boolean) : []
+  const userIds = Array.isArray(req.body?.user_ids) ? req.body.user_ids.map((x) => Number(x)).filter(Boolean) : []
+  const groupNames = Array.isArray(req.body?.group_names) ? req.body.group_names.map((x) => String(x).trim()).filter(Boolean) : []
+  const visivel = req.body?.visivel === undefined ? true : !!req.body.visivel
+  const config = req.body?.config ?? req.body?.assignment_config ?? null
+  const ordem = req.body?.ordem !== undefined && req.body?.ordem !== null ? Number(req.body.ordem) : null
+
+  if (assetIds.length === 0 || (userIds.length === 0 && groupNames.length === 0)) {
+    return jsonResponse(reply, 400, { error: 'asset_ids e (user_ids ou group_names) são obrigatórios' })
+  }
+
+  try {
+    const inserted = await withTx(pool, async (client) => {
+      let total = 0
+
+      for (const assetId of assetIds) {
+        for (const userId of userIds) {
+          const u = await client.query(
+            `
+            UPDATE asset_assignments
+            SET ordem = $3, visivel = $4, config = $5
+            WHERE asset_id = $1 AND user_id = $2
+            `,
+            [assetId, userId, ordem, visivel, config],
+          )
+          if ((u.rowCount || 0) === 0) {
+            const i = await client.query(
+              `
+              INSERT INTO asset_assignments (asset_id, user_id, group_name, ordem, visivel, config)
+              SELECT $1, $2, NULL, $3, $4, $5
+              WHERE NOT EXISTS (
+                SELECT 1 FROM asset_assignments WHERE asset_id = $1 AND user_id = $2
+              )
+              `,
+              [assetId, userId, ordem, visivel, config],
+            )
+            total += i.rowCount || 0
+          } else {
+            total += u.rowCount || 0
+          }
+        }
+
+        for (const groupName of groupNames) {
+          const u = await client.query(
+            `
+            UPDATE asset_assignments
+            SET ordem = $3, visivel = $4, config = $5
+            WHERE asset_id = $1 AND group_name = $2 AND user_id IS NULL
+            `,
+            [assetId, groupName, ordem, visivel, config],
+          )
+          if ((u.rowCount || 0) === 0) {
+            const i = await client.query(
+              `
+              INSERT INTO asset_assignments (asset_id, user_id, group_name, ordem, visivel, config)
+              SELECT $1, NULL, $2, $3, $4, $5
+              WHERE NOT EXISTS (
+                SELECT 1 FROM asset_assignments WHERE asset_id = $1 AND group_name = $2 AND user_id IS NULL
+              )
+              `,
+              [assetId, groupName, ordem, visivel, config],
+            )
+            total += i.rowCount || 0
+          } else {
+            total += u.rowCount || 0
+          }
+        }
+      }
+
+      return total
+    })
+
+    return jsonResponse(reply, 200, { ok: true, affected: inserted })
+  } catch (err) {
+    req.log.error({ err }, '[ADMIN] Erro ao bulk upsert asset_assignments')
+    return jsonResponse(reply, 500, { error: err?.message || String(err) })
+  }
+})
+
+app.get('/login', async (req, reply) => {
+  const html = `<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Login - GeRot</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: #0b1220; color: #fff; margin: 0; }
+      .wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+      .card { width: 100%; max-width: 420px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14); border-radius: 14px; padding: 22px; }
+      h1 { margin: 0 0 4px; font-size: 24px; }
+      p { margin: 0 0 18px; color: rgba(255,255,255,.75); font-size: 13px; }
+      label { display: block; font-size: 13px; margin: 12px 0 6px; color: rgba(255,255,255,.85); }
+      input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.18); background: rgba(0,0,0,.25); color: #fff; }
+      button { width: 100%; margin-top: 16px; padding: 10px 12px; border-radius: 10px; border: 0; background: #6366f1; color: #fff; font-weight: 600; cursor: pointer; }
+      .err { margin-top: 12px; color: #fca5a5; font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <h1>GeRot</h1>
+        <p>Login</p>
+        <form method="POST" action="/login">
+          <label for="username">Usuário</label>
+          <input id="username" name="username" autocomplete="username" required />
+          <label for="password">Senha</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required />
+          <button type="submit">Entrar</button>
+        </form>
+      </div>
+    </div>
+  </body>
+</html>`
+  reply.type('text/html; charset=utf-8')
+  return reply.send(html)
+})
+
+app.post('/login', async (req, reply) => {
+  if (!req.session || !sessionSecret) {
+    return jsonResponse(reply, 500, { error: 'SESSION_SECRET não configurada' })
+  }
+
+  const username = (req.body?.username || '').toString().trim()
+  const password = (req.body?.password || '').toString()
+  if (!username || !password) {
+    return jsonResponse(reply, 400, { error: 'Credenciais inválidas' })
+  }
+
+  try {
+    const user = await withTx(pool, async (client) => {
+      const r = await client.query(
+        `
+        SELECT id, username, password_hash, role, nome_completo, departamento, is_active
+        FROM users_new
+        WHERE username = $1
+        LIMIT 1
+        `,
+        [username],
+      )
+      return r.rows[0] || null
+    })
+
+    if (!user || user.is_active === false) {
+      return jsonResponse(reply, 401, { error: 'Usuário ou senha inválidos' })
+    }
+
+    const ok = await bcrypt.compare(password, user.password_hash)
+    if (!ok) {
+      return jsonResponse(reply, 401, { error: 'Usuário ou senha inválidos' })
+    }
+
+    const sessionUser = {
+      id: user.id,
+      username: user.username,
+      role: user.role || 'user',
+      nome_completo: user.nome_completo || null,
+      departamento: user.departamento || null,
+    }
+
+    req.session.set('user', sessionUser)
+    return reply.redirect('/dashboard')
+  } catch (err) {
+    req.log.error({ err }, '[AUTH] Erro no login')
+    return jsonResponse(reply, 500, { error: err?.message || String(err) })
+  }
+})
+
+app.post('/logout', async (req, reply) => {
+  if (req.session) {
+    req.session.delete()
+  }
+  return reply.redirect('/login')
+})
+
+app.get('/api/me', async (req, reply) => {
+  const u = getSessionUser(req)
+  if (!u) {
+    return jsonResponse(reply, 401, { error: 'Not authenticated' })
+  }
+  return jsonResponse(reply, 200, { user: u })
+})
+
 app.get('/api/team-dashboard', async (req, reply) => {
+  const sessionUser = requireLogin(req, reply)
+  if (!sessionUser) return
+
   try {
     const out = await withTx(pool, async (client) => {
       const hasAssets = await client.query(
@@ -57,31 +523,77 @@ app.get('/api/team-dashboard', async (req, reply) => {
         return { regular_assets: [], internal_assets: [], is_admin: false }
       }
 
-      const res = await client.query(
+      const hasAssignments = await client.query(
         `
-        SELECT
-          id,
-          nome,
-          tipo,
-          categoria,
-          descricao,
-          status,
-          ordem_padrao,
-          resource_url,
-          embed_url,
-          config AS asset_config
-        FROM assets
-        WHERE COALESCE(status, 'ativo') = 'ativo'
-        ORDER BY COALESCE(ordem_padrao, 0) ASC, id ASC
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'asset_assignments'
+        LIMIT 1
         `,
       )
+
+      const isAdmin = (sessionUser.role || '').toString().toLowerCase() === 'admin'
+      const userId = sessionUser.id
+      const dept = (sessionUser.departamento || '').toString().trim()
+
+      let rows
+      if (hasAssignments.rows.length > 0) {
+        const res = await client.query(
+          `
+          SELECT
+            a.id,
+            a.nome,
+            a.tipo,
+            a.categoria,
+            a.descricao,
+            a.status,
+            a.ordem_padrao,
+            a.resource_url,
+            a.embed_url,
+            a.config AS asset_config,
+            aa.config AS assignment_config,
+            aa.ordem AS assignment_order
+          FROM assets a
+          JOIN asset_assignments aa ON aa.asset_id = a.id
+          WHERE COALESCE(a.status, 'ativo') = 'ativo'
+            AND COALESCE(aa.visivel, true) = true
+            AND (
+              aa.user_id = $1
+              OR ($2 <> '' AND aa.group_name = $2)
+            )
+          ORDER BY COALESCE(aa.ordem, a.ordem_padrao, 0) ASC, a.id ASC
+          `,
+          [userId, dept],
+        )
+        rows = res.rows
+      } else {
+        const res = await client.query(
+          `
+          SELECT
+            id,
+            nome,
+            tipo,
+            categoria,
+            descricao,
+            status,
+            ordem_padrao,
+            resource_url,
+            embed_url,
+            config AS asset_config
+          FROM assets
+          WHERE COALESCE(status, 'ativo') = 'ativo'
+          ORDER BY COALESCE(ordem_padrao, 0) ASC, id ASC
+          `,
+        )
+        rows = res.rows
+      }
 
       const regular = []
       const internal = []
 
-      for (const row of res.rows) {
+      for (const row of rows) {
         const tipo = (row.tipo || '').toString().toLowerCase()
-        if (tipo === 'pbi' || tipo === 'dashboard') {
+        if (tipo === 'pbi' || tipo === 'dashboard' || tipo === 'grafico' || tipo === 'rpa') {
           regular.push(row)
         } else {
           internal.push(row)
@@ -91,7 +603,7 @@ app.get('/api/team-dashboard', async (req, reply) => {
       return {
         regular_assets: regular,
         internal_assets: internal,
-        is_admin: false,
+        is_admin: isAdmin,
       }
     })
 
