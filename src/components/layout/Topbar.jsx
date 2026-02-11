@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router-dom'
-import { Menu, Moon, Sun, User } from 'lucide-react'
+import { LogOut, Menu, Moon, Sun, User } from 'lucide-react'
 
 const pageTitles = {
   '/': 'Início',
@@ -11,7 +11,7 @@ const pageTitles = {
   '/perfil': 'Perfil',
 }
 
-export function Topbar({ onMenuClick, themeCtx, user }) {
+export function Topbar({ onMenuClick, themeCtx, user, onLogout }) {
   const location = useLocation()
   const title = pageTitles[location.pathname] || 'GeRot'
 
@@ -36,6 +36,16 @@ export function Topbar({ onMenuClick, themeCtx, user }) {
         >
           {themeCtx.isDark ? <Sun size={18} /> : <Moon size={18} />}
         </button>
+        {user && onLogout ? (
+          <button
+            onClick={onLogout}
+            className="hidden rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:flex"
+            aria-label="Sair"
+            type="button"
+          >
+            <LogOut size={18} />
+          </button>
+        ) : null}
         <span className="hidden text-sm text-muted-foreground md:inline">
           {user?.nome_completo || user?.username || 'Usuário'}
         </span>

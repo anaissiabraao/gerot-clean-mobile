@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 
-export function MainLayout({ children, themeCtx, user }) {
+export function MainLayout({ children, themeCtx, user, onLogout }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
@@ -29,6 +29,7 @@ export function MainLayout({ children, themeCtx, user }) {
           onMenuClick={() => setSidebarOpen(true)}
           themeCtx={themeCtx}
           user={user}
+          onLogout={onLogout}
         />
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
           {children}

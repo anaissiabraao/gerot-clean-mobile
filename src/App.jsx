@@ -12,7 +12,7 @@ import Perfil from './pages/Perfil'
 
 function App() {
   const themeCtx = useTheme()
-  const { user, loading } = useAuth()
+  const { user, loading, logout } = useAuth()
 
   if (loading) {
     return (
@@ -26,7 +26,7 @@ function App() {
   }
 
   return (
-    <MainLayout themeCtx={themeCtx} user={user}>
+    <MainLayout themeCtx={themeCtx} user={user} onLogout={logout}>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/dashboards" element={<Dashboards />} />
