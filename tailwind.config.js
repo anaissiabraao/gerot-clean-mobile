@@ -1,62 +1,86 @@
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
+  darkMode: 'class',
   content: [
-    "./templates/**/*.html",
-    "./GeRot/**/*.html",
-    "./static/js/**/*.js",
-    "./app_production.py"
+    './index.html',
+    './src/**/*.{js,jsx,ts,tsx}',
+    './templates/**/*.html',
+    './GeRot/**/*.html',
+    './static/js/**/*.js',
   ],
   theme: {
     extend: {
       colors: {
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        card: "hsl(var(--card))",
-        "card-foreground": "hsl(var(--card-foreground))",
-        primary: "hsl(var(--primary))",
-        "primary-foreground": "hsl(var(--primary-foreground))",
-        secondary: "hsl(var(--secondary))",
-        "secondary-foreground": "hsl(var(--secondary-foreground))",
-        muted: "hsl(var(--muted))",
-        "muted-foreground": "hsl(var(--muted-foreground))",
-        accent: "hsl(var(--accent))",
-        "accent-foreground": "hsl(var(--accent-foreground))",
-        destructive: "hsl(var(--destructive))",
-        "destructive-foreground": "hsl(var(--destructive-foreground))",
-        success: "hsl(var(--success))",
-        "success-foreground": "hsl(var(--success-foreground))",
-        warning: "hsl(var(--warning))",
-        "warning-foreground": "hsl(var(--warning-foreground))",
-        info: "hsl(var(--info))",
-        "info-foreground": "hsl(var(--info-foreground))",
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        "chat-accent": "hsl(var(--chat-accent))",
-        "chat-accent-foreground": "hsl(var(--chat-accent-foreground))"
-      },
-      borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)"
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        primary: {
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))',
+        },
+        secondary: {
+          DEFAULT: 'hsl(var(--secondary))',
+          foreground: 'hsl(var(--secondary-foreground))',
+        },
+        muted: {
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))',
+        },
+        accent: {
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))',
+        },
+        destructive: {
+          DEFAULT: 'hsl(var(--destructive))',
+          foreground: 'hsl(var(--destructive-foreground))',
+        },
+        card: {
+          DEFAULT: 'hsl(var(--card))',
+          foreground: 'hsl(var(--card-foreground))',
+        },
+        sidebar: {
+          DEFAULT: 'hsl(var(--sidebar))',
+          foreground: 'hsl(var(--sidebar-foreground))',
+          accent: 'hsl(var(--sidebar-accent))',
+        },
+        success: 'hsl(var(--success))',
+        warning: 'hsl(var(--warning))',
       },
       fontFamily: {
-        sans: ["'DM Sans'", "system-ui", "-apple-system", "sans-serif"]
+        sans: ["'DM Sans'", 'Inter', 'system-ui', 'sans-serif'],
+      },
+      borderRadius: {
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)',
       },
       boxShadow: {
-        "soft": "var(--shadow-soft)",
-        "medium": "var(--shadow-medium)",
-        "large": "var(--shadow-large)",
-        "glow": "var(--shadow-glow)",
-        "card": "var(--shadow-card)",
-        "card-hover": "var(--shadow-card-hover)"
+        card: '0 1px 3px 0 rgba(0,0,0,0.04), 0 1px 2px -1px rgba(0,0,0,0.04)',
+        'card-hover': '0 4px 12px -2px rgba(0,0,0,0.08)',
+        'card-lg': '0 8px 24px -4px rgba(0,0,0,0.08)',
       },
-      spacing: {
-        "section": "var(--space-section)",
-        "card-p": "var(--space-card)",
-        "element": "var(--space-element)"
-      }
+      keyframes: {
+        'fade-in': {
+          from: { opacity: '0', transform: 'translateY(8px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
+        'slide-in-left': {
+          from: { transform: 'translateX(-100%)' },
+          to: { transform: 'translateX(0)' },
+        },
+        shimmer: {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
+        },
+      },
+      animation: {
+        'fade-in': 'fade-in 0.4s ease-out forwards',
+        'slide-in-left': 'slide-in-left 0.3s ease-out',
+        shimmer: 'shimmer 1.5s infinite',
+      },
     },
   },
   plugins: [],
-};
+}
