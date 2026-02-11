@@ -138,116 +138,10 @@ window.openTab = function(tabName) {
 
         <!-- Tab: Dashboards -->
         <div id="tab-dashboards" class="tab-pane" data-tab-active="true" style="display: block;">
-        <!-- Título e Descrição -->
 
-
-        <!-- Grid de Dashboards -->
-        {% if regular_assets %}
-            <div class="section-header">
-                <div>
-                    <h3 class="section-title">Painéis e automações</h3>
-                    <p class="section-subtitle mt-0.5">{{ regular_assets|length }} item(ns) disponíveis</p>
-                </div>
-            </div>
-            <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 stagger-in">
-                {% for asset in regular_assets %}
-                    {% set selected_types = asset.assignment_config.chart_types if asset.assignment_config and asset.assignment_config.chart_types else [] %}
-                    {% set selected_components = asset.assignment_config.components if asset.assignment_config and asset.assignment_config.components else [] %}
-                    <div class="card-base card-interactive group relative overflow-hidden">
-                        <div class="p-5">
-                            <div class="mb-3 flex items-center justify-between">
-                                <div class="flex items-center gap-2">
-                                    <span class="badge badge-primary">{{ asset.tipo }}</span>
-                                    {% if asset.categoria %}
-                                        <span class="badge badge-muted">{{ asset.categoria }}</span>
-                                    {% endif %}
-                                </div>
-                                <i class="fas fa-external-link-alt text-xs text-muted-foreground group-hover:text-primary transition-colors"></i>
-                            </div>
-                            <h3 class="text-base font-semibold text-foreground leading-snug">
-                                {{ asset.nome }}
-                            </h3>
-                            <p class="mt-1 text-sm text-muted-foreground line-clamp-2">
-                                {{ asset.descricao or "Sem descrição disponível." }}
-                            </p>
-                            {% if asset.tipo == 'interno' and selected_components %}
-                                <div class="mt-2 flex flex-wrap gap-1.5">
-                                    {% for comp in selected_components %}
-                                        {% set ns = namespace(label=comp) %}
-                                        {% if asset.asset_config and asset.asset_config.available_components %}
-                                            {% for opt in asset.asset_config.available_components %}
-                                                {% if opt.key == comp %}
-                                                    {% set ns.label = opt.label %}
-                                                {% endif %}
-                                            {% endfor %}
-                                        {% endif %}
-                                        <span class="badge badge-muted text-[11px]">{{ ns.label }}</span>
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-                            <div class="my-4 rounded-lg border bg-muted/20 overflow-hidden">
-                                {% if asset.tipo == 'PBI' and asset.embed_url %}
-                                    <div class="relative">
-                                        <div class="absolute inset-0 bg-gradient-to-b from-transparent to-background/50 pointer-events-none z-10"></div>
-                                        <iframe
-                                            src="{{ asset.embed_url }}"
-                                            title="Prévia de {{ asset.nome }}"
-                                            loading="lazy"
-                                            class="h-40 w-full border-0 pointer-events-none"
-                                            allowfullscreen
-                                            referrerpolicy="no-referrer-when-downgrade">
-                                        </iframe>
-                                        <div class="absolute bottom-2 right-2 z-20 badge badge-muted shadow-soft">
-                                            <i class="fas fa-eye mr-1"></i>Prévia
-                                        </div>
-                                    </div>
-                                {% elif asset.tipo == 'grafico' and asset.asset_config and asset.asset_config.chart %}
-                                    <div class="p-4">
-                                        <canvas id="chart-{{ asset.id }}" data-chart='{{ asset.asset_config.chart | tojson | safe }}'></canvas>
-                                    </div>
-                                {% elif asset.tipo == 'interno' and asset.asset_config and asset.asset_config.embed_mode and selected_components and asset.resource_url %}
-                                    <div class="relative">
-                                        <iframe
-                                            src="{{ asset.resource_url }}&embed=1&components={{ selected_components | join(',') }}"
-                                            class="h-[720px] w-full border-0"
-                                            loading="lazy"
-                                            allowfullscreen
-                                            referrerpolicy="no-referrer-when-downgrade"></iframe>
-                                    </div>
-                                {% else %}
-                                    <div class="flex h-36 items-center justify-center text-sm text-muted-foreground">
-                                        <div class="text-center">
-                                            <i class="fas fa-chart-area text-2xl mb-2 opacity-30"></i>
-                                            <p>Prévia indisponível</p>
-                                        </div>
-                                    </div>
-                                {% endif %}
-                            </div>
-                            {% if asset.tipo == 'PBI' and asset.embed_url %}
-                                <button onclick="openDashboard('{{ asset.embed_url }}', '{{ asset.nome }}')"
-                                   class="btn btn-primary w-full gap-2">
-                                    <i class="fas fa-chart-line"></i>
-                                    Acessar Dashboard
-                                </button>
-                            {% elif not (asset.tipo == 'interno' and asset.asset_config and asset.asset_config.embed_mode and selected_components and asset.resource_url) %}
-                                {% if asset.resource_url %}
-                                    <a href="{{ asset.resource_url }}" target="_blank"
-                                       class="btn btn-primary w-full gap-2">
-                                        <i class="fas fa-link"></i>
-                                        Abrir Ativo
-                                    </a>
-                                {% else %}
-                                    <button class="btn btn-outline w-full gap-2 opacity-50 cursor-not-allowed" disabled>
-                                        <i class="fas fa-ban"></i>
-                                        Link indisponível
-                                    </button>
-                                {% endif %}
-                            {% endif %}
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
-            <div class="card-base p-10 text-center">
+        {% if not regular_assets and not internal_assets %}
+            <!-- Empty State -->
+            <div class="card-base p-12 text-center mt-2">
                 <div class="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
                     <i class="fas fa-inbox text-2xl text-muted-foreground"></i>
                 </div>
@@ -260,49 +154,156 @@ window.openTab = function(tabName) {
             </div>
         {% endif %}
 
+        <!-- Grid de Dashboards Externos / PBI -->
+        {% if regular_assets %}
+            <div class="section-header mt-2">
+                <div>
+                    <h3 class="section-title">
+                        <i class="fas fa-th-large text-primary mr-2 text-base"></i>Painéis e Automações
+                    </h3>
+                    <p class="section-subtitle mt-0.5">{{ regular_assets|length }} item(ns) disponíveis</p>
+                </div>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 stagger-in">
+                {% for asset in regular_assets %}
+                    {% set selected_types = asset.assignment_config.chart_types if asset.assignment_config and asset.assignment_config.chart_types else [] %}
+                    {% set selected_components = asset.assignment_config.components if asset.assignment_config and asset.assignment_config.components else [] %}
+                    <div class="card-base card-interactive group relative overflow-hidden flex flex-col">
+                        <!-- Card Header: tipo + categoria -->
+                        <div class="px-4 pt-4 pb-2 flex items-center justify-between">
+                            <div class="flex items-center gap-1.5">
+                                {% if asset.tipo == 'PBI' %}
+                                    <span class="badge badge-primary text-[11px]"><i class="fas fa-chart-pie mr-1"></i>Power BI</span>
+                                {% elif asset.tipo == 'grafico' %}
+                                    <span class="badge badge-primary text-[11px]"><i class="fas fa-chart-bar mr-1"></i>Gráfico</span>
+                                {% elif asset.tipo == 'interno' %}
+                                    <span class="badge badge-primary text-[11px]"><i class="fas fa-cube mr-1"></i>Interno</span>
+                                {% else %}
+                                    <span class="badge badge-primary text-[11px]">{{ asset.tipo }}</span>
+                                {% endif %}
+                                {% if asset.categoria %}
+                                    <span class="badge badge-muted text-[11px]">{{ asset.categoria }}</span>
+                                {% endif %}
+                            </div>
+                            <i class="fas fa-arrow-right text-xs text-muted-foreground/50 group-hover:text-primary group-hover:translate-x-0.5 transition-all"></i>
+                        </div>
+
+                        <!-- Card Body: nome + descrição -->
+                        <div class="px-4 pb-3 flex-1">
+                            <h3 class="text-sm font-semibold text-foreground leading-snug line-clamp-1">
+                                {{ asset.nome }}
+                            </h3>
+                            <p class="mt-0.5 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                                {{ asset.descricao or "Sem descrição disponível." }}
+                            </p>
+                            {% if asset.tipo == 'interno' and selected_components %}
+                                <div class="mt-2 flex flex-wrap gap-1">
+                                    {% for comp in selected_components[:3] %}
+                                        {% set ns = namespace(label=comp) %}
+                                        {% if asset.asset_config and asset.asset_config.available_components %}
+                                            {% for opt in asset.asset_config.available_components %}
+                                                {% if opt.key == comp %}{% set ns.label = opt.label %}{% endif %}
+                                            {% endfor %}
+                                        {% endif %}
+                                        <span class="inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{{ ns.label }}</span>
+                                    {% endfor %}
+                                    {% if selected_components|length > 3 %}
+                                        <span class="inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">+{{ selected_components|length - 3 }}</span>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Card Preview (compacta) -->
+                        <div class="mx-4 mb-3 rounded-lg border bg-muted/20 overflow-hidden">
+                            {% if asset.tipo == 'PBI' and asset.embed_url %}
+                                <div class="relative h-32">
+                                    <div class="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/60 pointer-events-none z-10"></div>
+                                    <iframe src="{{ asset.embed_url }}" title="Prévia" loading="lazy"
+                                        class="h-full w-full border-0 pointer-events-none scale-[0.5] origin-top-left" style="width:200%;height:200%;"
+                                        referrerpolicy="no-referrer-when-downgrade"></iframe>
+                                </div>
+                            {% elif asset.tipo == 'grafico' and asset.asset_config and asset.asset_config.chart %}
+                                <div class="p-3 h-28">
+                                    <canvas id="chart-{{ asset.id }}" data-chart='{{ asset.asset_config.chart | tojson | safe }}' class="w-full h-full"></canvas>
+                                </div>
+                            {% else %}
+                                <div class="flex h-20 items-center justify-center text-muted-foreground/40">
+                                    <i class="fas fa-chart-area text-xl"></i>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Card Action -->
+                        <div class="px-4 pb-4">
+                            {% if asset.tipo == 'PBI' and asset.embed_url %}
+                                <button onclick="openDashboard('{{ asset.embed_url }}', '{{ asset.nome }}')"
+                                   class="btn btn-primary w-full gap-2 text-sm py-2">
+                                    <i class="fas fa-external-link-alt text-xs"></i>Abrir Dashboard
+                                </button>
+                            {% elif asset.tipo == 'interno' and asset.asset_config and asset.asset_config.embed_mode and selected_components and asset.resource_url %}
+                                {# Internos com embed ficam na seção abaixo #}
+                            {% elif asset.resource_url %}
+                                <a href="{{ asset.resource_url }}" target="_blank" class="btn btn-outline w-full gap-2 text-sm py-2">
+                                    <i class="fas fa-external-link-alt text-xs"></i>Abrir Recurso
+                                </a>
+                            {% else %}
+                                <span class="flex items-center justify-center gap-1.5 text-xs text-muted-foreground/60 py-2">
+                                    <i class="fas fa-lock text-[10px]"></i>Link indisponível
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- Painéis Internos (embed completo) -->
         {% if internal_assets %}
             <div class="mt-8">
                 <div class="section-header">
                     <div>
-                        <h3 class="section-title">Painéis internos</h3>
+                        <h3 class="section-title">
+                            <i class="fas fa-layer-group text-primary mr-2 text-base"></i>Painéis Internos
+                        </h3>
                         <p class="section-subtitle mt-0.5">{{ internal_assets|length }} painel(is) atribuído(s)</p>
                     </div>
                 </div>
-                <div class="space-y-6">
+                <div class="space-y-5">
                 {% for asset in internal_assets %}
                     {% set selected_components = asset.assignment_config.components if asset.assignment_config and asset.assignment_config.components else [] %}
-                    <section class="card-base p-5 lg:p-6">
-                        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 border-b border-border pb-4">
-                            <div>
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <span class="badge badge-primary">interno</span>
-                                    {% if asset.categoria %}
-                                        <span class="badge badge-muted">{{ asset.categoria }}</span>
+                    <section class="card-base overflow-hidden">
+                        <!-- Section Header -->
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b bg-muted/20">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-cube text-primary text-sm"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    {% if not (asset.asset_config and asset.asset_config.legacy_view == 'relatorio_resultados') %}
+                                        <h3 class="text-sm font-semibold text-foreground truncate">{{ asset.nome }}</h3>
+                                        <p class="text-xs text-muted-foreground truncate">{{ asset.descricao or asset.categoria or 'Painel interno' }}</p>
+                                    {% else %}
+                                        <h3 class="text-sm font-semibold text-foreground">Relatório de Resultados</h3>
+                                        <p class="text-xs text-muted-foreground">{{ asset.categoria or 'Painel interno' }}</p>
                                     {% endif %}
                                 </div>
-                                {% if not (asset.asset_config and asset.asset_config.legacy_view == 'relatorio_resultados') %}
-                                    <h3 class="mt-2 text-lg font-semibold text-foreground">{{ asset.nome }}</h3>
-                                    <p class="text-sm text-muted-foreground">{{ asset.descricao }}</p>
-                                {% endif %}
                             </div>
                             <div class="flex items-center gap-2 flex-shrink-0">
-                                <button type="button"
-                                        data-action="toggle-components"
-                                        data-target="component-tags-{{ asset.id }}"
-                                        class="btn btn-outline text-xs px-2 py-1">
-                                    <i class="fas fa-eye-slash mr-1"></i>Blocos
+                                <button type="button" data-action="toggle-components" data-target="component-tags-{{ asset.id }}"
+                                    class="btn btn-ghost text-xs px-2 py-1 gap-1">
+                                    <i class="fas fa-puzzle-piece"></i><span class="hidden sm:inline">Blocos</span>
+                                    <span class="badge badge-muted text-[10px] ml-0.5">{{ selected_components|length }}</span>
                                 </button>
-                                <button type="button"
-                                        data-action="toggle-controls"
-                                        data-target="internal-embed-{{ asset.id }}"
-                                        class="btn btn-outline text-xs px-2 py-1">
-                                    <i class="fas fa-sliders-h mr-1"></i>Controles
+                                <button type="button" data-action="toggle-controls" data-target="internal-embed-{{ asset.id }}"
+                                    class="btn btn-ghost text-xs px-2 py-1 gap-1">
+                                    <i class="fas fa-sliders-h"></i><span class="hidden sm:inline">Controles</span>
                                 </button>
-                                <span class="text-xs text-muted-foreground">{{ selected_components|length }} blocos</span>
                             </div>
                         </div>
+                        <!-- Component Tags (collapsible) -->
                         {% if selected_components %}
-                            <div id="component-tags-{{ asset.id }}" class="mt-4 hidden flex-wrap gap-2">
+                            <div id="component-tags-{{ asset.id }}" class="hidden px-5 py-3 border-b bg-muted/10 flex-wrap gap-1.5">
                                 {% for comp in selected_components %}
                                     {% set ns = namespace(label=comp) %}
                                     {% if asset.asset_config and asset.asset_config.available_components %}
