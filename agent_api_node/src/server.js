@@ -19,6 +19,7 @@ const upstreamFlaskUrl = (process.env.UPSTREAM_FLASK_URL || '').trim().replace(/
 
 await app.register(cors, {
   origin: true,
+  credentials: true,
 })
 
 await app.register(cookie)
@@ -410,29 +411,156 @@ app.get('/login', async (req, reply) => {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Login - GeRot</title>
     <style>
-      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: #0b1220; color: #fff; margin: 0; }
-      .wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
-      .card { width: 100%; max-width: 420px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14); border-radius: 14px; padding: 22px; }
-      h1 { margin: 0 0 4px; font-size: 24px; }
-      p { margin: 0 0 18px; color: rgba(255,255,255,.75); font-size: 13px; }
-      label { display: block; font-size: 13px; margin: 12px 0 6px; color: rgba(255,255,255,.85); }
-      input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.18); background: rgba(0,0,0,.25); color: #fff; }
-      button { width: 100%; margin-top: 16px; padding: 10px 12px; border-radius: 10px; border: 0; background: #6366f1; color: #fff; font-weight: 600; cursor: pointer; }
-      .err { margin-top: 12px; color: #fca5a5; font-size: 13px; }
+      :root {
+        --bg0: #070a12;
+        --bg1: #0b1220;
+        --card: rgba(255,255,255,.06);
+        --border: rgba(255,255,255,.14);
+        --muted: rgba(255,255,255,.72);
+        --text: rgba(255,255,255,.92);
+        --primary: #6366f1;
+        --primary2: #8b5cf6;
+        --shadow: 0 20px 60px rgba(0,0,0,.55);
+      }
+
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        margin: 0;
+        color: var(--text);
+        background:
+          radial-gradient(900px 500px at 20% 10%, rgba(99,102,241,.22), transparent 60%),
+          radial-gradient(800px 500px at 90% 20%, rgba(139,92,246,.18), transparent 60%),
+          linear-gradient(180deg, var(--bg0), var(--bg1));
+      }
+
+      .wrap {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 28px 18px;
+      }
+
+      .shell {
+        width: 100%;
+        max-width: 440px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 22px;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(10px);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      .logo {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--primary), var(--primary2));
+        box-shadow: 0 10px 30px rgba(99,102,241,.28);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 22px;
+        line-height: 1.2;
+        letter-spacing: .2px;
+      }
+
+      .subtitle {
+        margin: 4px 0 18px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      label {
+        display: block;
+        font-size: 12px;
+        margin: 12px 0 6px;
+        color: rgba(255,255,255,.82);
+      }
+
+      .field {
+        width: 100%;
+        padding: 11px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,.16);
+        background: rgba(3,6,14,.55);
+        color: #fff;
+        outline: none;
+        transition: border-color .15s ease, box-shadow .15s ease, transform .05s ease;
+      }
+
+      .field:focus {
+        border-color: rgba(99,102,241,.7);
+        box-shadow: 0 0 0 4px rgba(99,102,241,.18);
+      }
+
+      .actions {
+        margin-top: 16px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .btn {
+        width: 100%;
+        padding: 11px 12px;
+        border-radius: 12px;
+        border: 0;
+        background: linear-gradient(135deg, var(--primary), var(--primary2));
+        color: #fff;
+        font-weight: 700;
+        letter-spacing: .2px;
+        cursor: pointer;
+        transition: transform .06s ease, filter .15s ease;
+      }
+
+      .btn:hover { filter: brightness(1.05); }
+      .btn:active { transform: translateY(1px); }
+
+      .foot {
+        margin-top: 14px;
+        text-align: center;
+        font-size: 12px;
+        color: rgba(255,255,255,.58);
+      }
     </style>
   </head>
   <body>
     <div class="wrap">
-      <div class="card">
-        <h1>GeRot</h1>
-        <p>Login</p>
-        <form method="POST" action="/login">
-          <label for="username">Usuário</label>
-          <input id="username" name="username" autocomplete="username" required />
-          <label for="password">Senha</label>
-          <input id="password" name="password" type="password" autocomplete="current-password" required />
-          <button type="submit">Entrar</button>
-        </form>
+      <div class="shell">
+        <div class="card">
+          <div class="brand">
+            <div class="logo" aria-hidden="true"></div>
+            <div>
+              <h1>GeRot</h1>
+              <div class="subtitle">Acesse com seu usuário e senha</div>
+            </div>
+          </div>
+
+          <form method="POST" action="/login">
+            <label for="username">Usuário</label>
+            <input class="field" id="username" name="username" autocomplete="username" placeholder="ex.: anaissiabraao" required />
+            <label for="password">Senha</label>
+            <input class="field" id="password" name="password" type="password" autocomplete="current-password" placeholder="Sua senha" required />
+            <div class="actions">
+              <button class="btn" type="submit">Entrar</button>
+            </div>
+          </form>
+
+          <div class="foot">© ${new Date().getFullYear()} GeRot</div>
+        </div>
       </div>
     </div>
   </body>
@@ -454,7 +582,20 @@ app.post('/login', async (req, reply) => {
 
   try {
     const user = await withTx(pool, async (client) => {
-      try {
+      const hasPasswordHash = await client
+        .query(
+          `
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'users_new'
+            AND column_name = 'password_hash'
+          LIMIT 1
+          `,
+        )
+        .then((r) => r.rows.length > 0)
+
+      if (hasPasswordHash) {
         const r = await client.query(
           `
           SELECT id, username, password_hash, role, nome_completo, departamento, is_active
@@ -465,28 +606,25 @@ app.post('/login', async (req, reply) => {
           [username],
         )
         return r.rows[0] || null
-      } catch (err) {
-        // Compat: schema legado usa coluna `password` (BYTEA) ao invés de `password_hash`
-        if (err && err.code === '42703') {
-          const r = await client.query(
-            `
-            SELECT id,
-                   username,
-                   convert_from(password, 'UTF8') AS password_hash,
-                   role,
-                   nome_completo,
-                   departamento,
-                   is_active
-            FROM users_new
-            WHERE username = $1
-            LIMIT 1
-            `,
-            [username],
-          )
-          return r.rows[0] || null
-        }
-        throw err
       }
+
+      // Compat: schema legado usa coluna `password` (BYTEA) ao invés de `password_hash`
+      const r = await client.query(
+        `
+        SELECT id,
+               username,
+               convert_from(password, 'UTF8') AS password_hash,
+               role,
+               nome_completo,
+               departamento,
+               is_active
+        FROM users_new
+        WHERE username = $1
+        LIMIT 1
+        `,
+        [username],
+      )
+      return r.rows[0] || null
     })
 
     if (!user || user.is_active === false) {
