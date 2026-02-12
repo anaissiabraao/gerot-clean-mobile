@@ -12,8 +12,6 @@ env/
 .vscode/
 
 # Logs / temp
-*.log
-logs/
 rag_uvicorn.log
 cloudflared_tunnel.log
 rag_tunnel_url.txt

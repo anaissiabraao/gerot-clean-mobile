@@ -454,16 +454,39 @@ app.post('/login', async (req, reply) => {
 
   try {
     const user = await withTx(pool, async (client) => {
-      const r = await client.query(
-        `
-        SELECT id, username, password_hash, role, nome_completo, departamento, is_active
-        FROM users_new
-        WHERE username = $1
-        LIMIT 1
-        `,
-        [username],
-      )
-      return r.rows[0] || null
+      try {
+        const r = await client.query(
+          `
+          SELECT id, username, password_hash, role, nome_completo, departamento, is_active
+          FROM users_new
+          WHERE username = $1
+          LIMIT 1
+          `,
+          [username],
+        )
+        return r.rows[0] || null
+      } catch (err) {
+        // Compat: schema legado usa coluna `password` (BYTEA) ao invés de `password_hash`
+        if (err && err.code === '42703') {
+          const r = await client.query(
+            `
+            SELECT id,
+                   username,
+                   convert_from(password, 'UTF8') AS password_hash,
+                   role,
+                   nome_completo,
+                   departamento,
+                   is_active
+            FROM users_new
+            WHERE username = $1
+            LIMIT 1
+            `,
+            [username],
+          )
+          return r.rows[0] || null
+        }
+        throw err
+      }
     })
 
     if (!user || user.is_active === false) {
