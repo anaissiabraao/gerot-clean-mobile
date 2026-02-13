@@ -76,3 +76,6 @@ scripts/_tmp_*.py
 
 
 agent_api_node/node_modules/
+node_modules/
+node_modules/.vite/
+.vite/
