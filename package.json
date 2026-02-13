@@ -4,12 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "build:dev": "vite build --mode development",
-    "start": "vite preview --host 0.0.0.0 --port ${PORT:-5173}",
+    "dev": "node ./node_modules/vite/bin/vite.js",
+    "build": "node ./node_modules/vite/bin/vite.js build",
+    "build:dev": "node ./node_modules/vite/bin/vite.js build --mode development",
+    "start": "node ./node_modules/vite/bin/vite.js preview --host 0.0.0.0 --port ${PORT:-5173}",
     "lint": "eslint .",
-    "preview": "vite preview",
+    "preview": "node ./node_modules/vite/bin/vite.js preview",
     "sync": "git pull origin main"
   },
   "engines": {
