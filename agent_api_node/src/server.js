@@ -77,12 +77,13 @@ app.get('/dashboard', async (req, reply) => {
   const sessionUser = requireLogin(req, reply)
   if (!sessionUser) return
 
+  const noRedirect = (req.query?.noredirect || '').toString() === '1'
   const target = (process.env.FRONTEND_DASHBOARD_URL || process.env.FRONTEND_URL || '').toString().trim()
-  if (target) {
+  if (!noRedirect && target) {
     return reply.redirect(target)
   }
 
-  return reply.redirect('/login')
+  return reply.redirect('/team-dashboard')
 })
 
 function getSessionUser(req) {
@@ -667,7 +668,13 @@ app.post('/login', async (req, reply) => {
         if (allowedFront) {
           const allowedOrigin = new URL(allowedFront).origin
           const nextUrl = new URL(nextRaw)
+          const proto = (req.headers['x-forwarded-proto'] || req.protocol || 'http').toString().split(',')[0].trim()
+          const host = (req.headers['x-forwarded-host'] || req.headers.host || '').toString().split(',')[0].trim()
+          const backendOrigin = host ? new URL(`${proto}://${host}`).origin : ''
           if (nextUrl.origin === allowedOrigin) {
+            return reply.redirect(nextUrl.toString())
+          }
+          if (backendOrigin && nextUrl.origin === backendOrigin) {
             return reply.redirect(nextUrl.toString())
           }
         }

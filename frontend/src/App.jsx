@@ -12,7 +12,8 @@ function App() {
       return
     }
 
-    window.location.replace(`${env.backendUrl}/dashboard`)
+    const next = encodeURIComponent(`${env.backendUrl}/dashboard?noredirect=1`)
+    window.location.replace(`${env.backendUrl}/login?next=${next}`)
   }, [])
 
   return null
