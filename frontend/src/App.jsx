@@ -31,7 +31,7 @@ function App() {
 
         const apiBase = env.apiBaseUrl || env.backendUrl
 
-        if (env.forceLogin) {
+        if (env.forceLogin && params.get('forceLogin') === '1') {
           try {
             await fetch(`${apiBase}/logout`, {
               method: 'POST',
