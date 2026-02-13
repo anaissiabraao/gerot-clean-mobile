@@ -13,6 +13,7 @@ import { clampInt, jsonResponse, parseJsonFromBuffer } from './utils.js'
 const app = Fastify({
   logger: true,
   bodyLimit: Number.parseInt(process.env.BODY_LIMIT_BYTES || `${20 * 1024 * 1024}`, 10),
+  trustProxy: String(process.env.TRUST_PROXY || (process.env.NODE_ENV === 'production' ? 'true' : 'false')).toLowerCase() === 'true',
 })
 
 const upstreamFlaskUrl = (process.env.UPSTREAM_FLASK_URL || '').trim().replace(/\/+$/, '')
