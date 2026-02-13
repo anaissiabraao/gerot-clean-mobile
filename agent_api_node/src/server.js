@@ -705,6 +705,191 @@ app.get('/api/me', async (req, reply) => {
   return jsonResponse(reply, 200, { user: u })
 })
 
+app.get('/team-dashboard', async (req, reply) => {
+  const sessionUser = requireLogin(req, reply)
+  if (!sessionUser) return
+
+  try {
+    const out = await withTx(pool, async (client) => {
+      const hasAssets = await client.query(
+        `
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'assets'
+        LIMIT 1
+        `,
+      )
+      if (hasAssets.rows.length === 0) {
+        return { regular_assets: [], internal_assets: [], is_admin: false }
+      }
+
+      const hasAssignments = await client.query(
+        `
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'asset_assignments'
+        LIMIT 1
+        `,
+      )
+
+      const isAdmin = (sessionUser.role || '').toString().toLowerCase() === 'admin'
+      const userId = sessionUser.id
+      const dept = (sessionUser.departamento || '').toString().trim()
+
+      let rows
+      if (hasAssignments.rows.length > 0) {
+        const res = await client.query(
+          `
+          SELECT
+            a.id,
+            a.nome,
+            a.tipo,
+            a.categoria,
+            a.descricao,
+            a.status,
+            a.ordem_padrao,
+            a.resource_url,
+            a.embed_url,
+            a.config AS asset_config,
+            aa.config AS assignment_config,
+            aa.ordem AS assignment_order
+          FROM assets a
+          JOIN asset_assignments aa ON aa.asset_id = a.id
+          WHERE COALESCE(a.status, 'ativo') = 'ativo'
+            AND COALESCE(aa.visivel, true) = true
+            AND (
+              aa.user_id = $1
+              OR ($2 <> '' AND aa.group_name = $2)
+            )
+          ORDER BY COALESCE(aa.ordem, a.ordem_padrao, 0) ASC, a.id ASC
+          `,
+          [userId, dept],
+        )
+        rows = res.rows
+      } else {
+        const res = await client.query(
+          `
+          SELECT
+            id,
+            nome,
+            tipo,
+            categoria,
+            descricao,
+            status,
+            ordem_padrao,
+            resource_url,
+            embed_url,
+            config AS asset_config
+          FROM assets
+          WHERE COALESCE(status, 'ativo') = 'ativo'
+          ORDER BY COALESCE(ordem_padrao, 0) ASC, id ASC
+          `,
+        )
+        rows = res.rows
+      }
+
+      const regular = []
+      const internal = []
+
+      for (const row of rows) {
+        const tipo = (row.tipo || '').toString().toLowerCase()
+        if (tipo === 'pbi' || tipo === 'dashboard' || tipo === 'grafico' || tipo === 'rpa') {
+          regular.push(row)
+        } else {
+          internal.push(row)
+        }
+      }
+
+      return {
+        regular_assets: regular,
+        internal_assets: internal,
+        is_admin: isAdmin,
+      }
+    })
+
+    const esc = (v) => String(v ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
+    const renderCard = (a) => {
+      const title = esc(a.nome || a.id)
+      const cat = esc(a.categoria || '')
+      const desc = esc(a.descricao || '')
+      const embed = (a.embed_url || '').toString().trim()
+      const res = (a.resource_url || '').toString().trim()
+      const link = embed || res
+      const linkHtml = link ? `<a class="btn" href="${esc(link)}" target="_blank" rel="noopener">Abrir</a>` : ''
+      return `
+        <div class="card">
+          <div class="card-h">
+            <div>
+              <div class="t">${title}</div>
+              <div class="m">${cat}</div>
+            </div>
+            ${linkHtml}
+          </div>
+          ${desc ? `<div class="d">${desc}</div>` : ''}
+        </div>
+      `
+    }
+
+    const html = `<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GeRot - Dashboard</title>
+    <style>
+      :root { --bg:#0b1220; --card: rgba(255,255,255,.06); --border: rgba(255,255,255,.14); --muted: rgba(255,255,255,.7); --text: rgba(255,255,255,.92); --primary:#6366f1; }
+      *{box-sizing:border-box}
+      body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:linear-gradient(180deg,#070a12,var(--bg));color:var(--text)}
+      .wrap{max-width:1100px;margin:0 auto;padding:22px 16px 40px}
+      .top{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px}
+      .h{font-size:18px;font-weight:800;letter-spacing:.2px}
+      .sub{color:var(--muted);font-size:12px;margin-top:4px}
+      .btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 12px;border-radius:12px;background:linear-gradient(135deg,var(--primary),#8b5cf6);color:#fff;text-decoration:none;font-weight:700;font-size:12px}
+      .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
+      .col{grid-column: span 12}
+      @media (min-width: 900px){.col{grid-column: span 6}}
+      .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;box-shadow:0 20px 60px rgba(0,0,0,.55)}
+      .card-h{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+      .t{font-weight:800;font-size:14px;line-height:1.2}
+      .m{font-size:12px;color:var(--muted);margin-top:2px}
+      .d{margin-top:10px;color:rgba(255,255,255,.78);font-size:13px;line-height:1.4}
+      .section{margin:18px 0 10px;font-size:13px;color:rgba(255,255,255,.86);font-weight:700}
+      .hr{height:1px;background:rgba(255,255,255,.10);margin:14px 0}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="top">
+        <div>
+          <div class="h">GeRot</div>
+          <div class="sub">Olá, ${esc(sessionUser.nome_completo || sessionUser.username || 'usuário')}</div>
+        </div>
+        <a class="btn" href="/logout">Sair</a>
+      </div>
+
+      <div class="section">Dashboards</div>
+      <div class="grid">
+        ${(out.regular_assets || []).map(renderCard).join('')}
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="section">Recursos internos</div>
+      <div class="grid">
+        ${(out.internal_assets || []).map(renderCard).join('')}
+      </div>
+    </div>
+  </body>
+</html>`
+
+    reply.type('text/html; charset=utf-8')
+    return reply.send(html)
+  } catch (err) {
+    req.log.error({ err }, '[UI] Erro ao renderizar team-dashboard')
+    return jsonResponse(reply, 500, { error: err?.message || String(err) })
+  }
+})
+
 app.get('/api/team-dashboard', async (req, reply) => {
   const sessionUser = requireLogin(req, reply)
   if (!sessionUser) return
