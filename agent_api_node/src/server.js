@@ -404,6 +404,7 @@ app.post('/api/admin/asset-assignments/bulk', async (req, reply) => {
 })
 
 app.get('/login', async (req, reply) => {
+  const nextRaw = (req.query?.next || '').toString().trim()
   const html = `<!doctype html>
 <html lang="pt-BR">
   <head>
@@ -550,6 +551,7 @@ app.get('/login', async (req, reply) => {
           </div>
 
           <form method="POST" action="/login">
+            <input type="hidden" name="next" value="${nextRaw.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')}" />
             <label for="username">Usuário</label>
             <input class="field" id="username" name="username" autocomplete="username" placeholder="ex.: anaissiabraao" required />
             <label for="password">Senha</label>
@@ -657,6 +659,23 @@ app.post('/login', async (req, reply) => {
     }
 
     req.session.set('user', sessionUser)
+
+    const nextRaw = (req.body?.next || '').toString().trim()
+    if (nextRaw) {
+      try {
+        const allowedFront = (process.env.FRONTEND_DASHBOARD_URL || process.env.FRONTEND_URL || '').toString().trim()
+        if (allowedFront) {
+          const allowedOrigin = new URL(allowedFront).origin
+          const nextUrl = new URL(nextRaw)
+          if (nextUrl.origin === allowedOrigin) {
+            return reply.redirect(nextUrl.toString())
+          }
+        }
+      } catch {
+        // ignore invalid URL
+      }
+    }
+
     return reply.redirect('/dashboard')
   } catch (err) {
     req.log.error({ err }, '[AUTH] Erro no login')

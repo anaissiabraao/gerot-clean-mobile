@@ -12,11 +12,6 @@ if (!iconEl.parentNode) {
   document.head.appendChild(iconEl)
 }
 
-if (env.backendUrl && (env.forceLogin || env.redirectToBackendLogin)) {
-  const next = encodeURIComponent(window.location.origin + window.location.pathname + window.location.search)
-  window.location.replace(`${env.backendUrl}/login?next=${next}`)
-}
-
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />

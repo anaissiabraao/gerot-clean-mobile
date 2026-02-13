@@ -73,3 +73,6 @@ documents/incoming/
 
 rag_tunnel_url.txt
 scripts/_tmp_*.py
+
+
+agent_api_node/node_modules/

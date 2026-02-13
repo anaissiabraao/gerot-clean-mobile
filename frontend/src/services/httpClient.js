@@ -35,7 +35,8 @@ export async function httpGet(path, init = {}) {
     if (response.status === 401 && env.backendUrl) {
       const backendOrigin = new URL(env.backendUrl).origin
       if (typeof window !== 'undefined' && window.location.origin !== backendOrigin) {
-        window.location.replace(`${env.backendUrl}/login`)
+        const next = encodeURIComponent(window.location.origin + window.location.pathname + window.location.search)
+        window.location.replace(`${env.backendUrl}/login?next=${next}`)
       }
     }
     const bodyText = await response.text()

@@ -43,7 +43,8 @@ function App() {
 
           setIsAuthenticated(false)
           setAuthChecked(true)
-          window.location.replace(`${env.backendUrl}/login`)
+          const next = encodeURIComponent(window.location.origin + window.location.pathname + window.location.search)
+          window.location.replace(`${env.backendUrl}/login?next=${next}`)
           return
         }
 
@@ -65,14 +66,16 @@ function App() {
         setAuthChecked(true)
 
         if (env.redirectToBackendLogin) {
-          window.location.replace(`${env.backendUrl}/login`)
+          const next = encodeURIComponent(window.location.origin + window.location.pathname + window.location.search)
+          window.location.replace(`${env.backendUrl}/login?next=${next}`)
         }
       } catch {
         if (canceled) return
         setIsAuthenticated(false)
         setAuthChecked(true)
         if (env.redirectToBackendLogin && env.backendUrl) {
-          window.location.replace(`${env.backendUrl}/login`)
+          const next = encodeURIComponent(window.location.origin + window.location.pathname + window.location.search)
+          window.location.replace(`${env.backendUrl}/login?next=${next}`)
         }
       }
     }
