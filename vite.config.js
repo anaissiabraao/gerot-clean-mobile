@@ -9,6 +9,7 @@ export default defineConfig(({ mode }) => {
   const backendUrl = env.VITE_BACKEND_URL || 'http://localhost:5000'
 
   return {
+    cacheDir: '/tmp/vite-cache',
     plugins: [react()],
     resolve: {
       alias: {
