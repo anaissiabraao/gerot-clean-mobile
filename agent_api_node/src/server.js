@@ -582,25 +582,32 @@ app.post('/login', async (req, reply) => {
 
   try {
     const user = await withTx(pool, async (client) => {
-      const hasPasswordHash = await client
-        .query(
-          `
-          SELECT 1
-          FROM information_schema.columns
-          WHERE table_schema = 'public'
-            AND table_name = 'users_new'
-            AND column_name = 'password_hash'
-          LIMIT 1
-          `,
-        )
-        .then((r) => r.rows.length > 0)
+      const cols = await client.query(
+        `
+        SELECT column_name, data_type
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'users_new'
+          AND column_name IN ('password_hash', 'password', 'email', 'nome_usuario')
+        `,
+      )
+
+      const hasPasswordHash = cols.rows.some((r) => r.column_name === 'password_hash')
+      const passwordCol = cols.rows.find((r) => r.column_name === 'password')
+      const hasEmail = cols.rows.some((r) => r.column_name === 'email')
+      const hasNomeUsuario = cols.rows.some((r) => r.column_name === 'nome_usuario')
+
+      const whereParts = [`LOWER(username) = LOWER($1)`]
+      if (hasEmail) whereParts.push(`LOWER(email) = LOWER($1)`)
+      if (hasNomeUsuario) whereParts.push(`LOWER(nome_usuario) = LOWER($1)`)
+      const whereSql = whereParts.join(' OR ')
 
       if (hasPasswordHash) {
         const r = await client.query(
           `
           SELECT id, username, password_hash, role, nome_completo, departamento, is_active
           FROM users_new
-          WHERE username = $1
+          WHERE ${whereSql}
           LIMIT 1
           `,
           [username],
@@ -608,18 +615,23 @@ app.post('/login', async (req, reply) => {
         return r.rows[0] || null
       }
 
-      // Compat: schema legado usa coluna `password` (BYTEA) ao invés de `password_hash`
+      if (!passwordCol) {
+        throw new Error("Tabela users_new não possui coluna 'password_hash' nem 'password'")
+      }
+
+      const passwordExpr = passwordCol.data_type === 'bytea' ? `convert_from(password, 'UTF8')` : `password::text`
+
       const r = await client.query(
         `
         SELECT id,
                username,
-               convert_from(password, 'UTF8') AS password_hash,
+               ${passwordExpr} AS password_hash,
                role,
                nome_completo,
                departamento,
                is_active
         FROM users_new
-        WHERE username = $1
+        WHERE ${whereSql}
         LIMIT 1
         `,
         [username],
