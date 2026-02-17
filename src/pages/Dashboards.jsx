@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { ExternalLink, BarChart2, Monitor, Eye } from 'lucide-react'
 import { httpGet } from '../services/httpClient'
 import api from '../api/endpoints'
@@ -46,9 +46,84 @@ export default function Dashboards() {
   const [error, setError] = useState(null)
   const [selectedDash, setSelectedDash] = useState(null)
 
+  const [relEntregasRequestId, setRelEntregasRequestId] = useState(null)
+  const [relEntregasStatus, setRelEntregasStatus] = useState(null)
+  const [relEntregasData, setRelEntregasData] = useState(null)
+  const [relEntregasError, setRelEntregasError] = useState(null)
+  const [relEntregasLoading, setRelEntregasLoading] = useState(false)
+
   useEffect(() => {
     loadTeamDashboard()
   }, [])
+
+  const isRelatorioEntregas376 = selectedDash?.asset_config?.internal_key === 'relatorio_entregas_376'
+
+  useEffect(() => {
+    if (!isRelatorioEntregas376) return
+
+    let timer = null
+    let cancelled = false
+
+    async function start() {
+      setRelEntregasLoading(true)
+      setRelEntregasError(null)
+      setRelEntregasStatus(null)
+      setRelEntregasData(null)
+      setRelEntregasRequestId(null)
+
+      try {
+        const res = await httpGet(api.relatorioEntregas)
+        const requestId = res?.request_id
+        if (!requestId) {
+          throw new Error('Falha ao criar request do relatório (sem request_id)')
+        }
+        if (cancelled) return
+
+        setRelEntregasRequestId(requestId)
+        setRelEntregasStatus('pending')
+
+        const poll = async () => {
+          try {
+            const st = await httpGet(api.relatorioEntregasStatus(requestId))
+            if (cancelled) return
+            const status = st?.status || null
+            setRelEntregasStatus(status)
+
+            if (status === 'completed') {
+              const payload = st?.data?.payload ?? st?.data ?? null
+              setRelEntregasData(payload)
+              setRelEntregasLoading(false)
+              return
+            }
+            if (status === 'failed') {
+              setRelEntregasError(st?.error || 'Falha ao gerar relatório')
+              setRelEntregasLoading(false)
+              return
+            }
+
+            timer = setTimeout(poll, 2000)
+          } catch (e) {
+            if (cancelled) return
+            setRelEntregasError(e?.message || 'Erro ao consultar status do relatório')
+            setRelEntregasLoading(false)
+          }
+        }
+
+        poll()
+      } catch (e) {
+        if (cancelled) return
+        setRelEntregasError(e?.message || 'Erro ao iniciar relatório')
+        setRelEntregasLoading(false)
+      }
+    }
+
+    start()
+
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+    }
+  }, [isRelatorioEntregas376])
 
   async function loadTeamDashboard() {
     setLoading(true)
@@ -67,6 +142,107 @@ export default function Dashboards() {
   }
 
   const allDashboards = [...regularAssets, ...internalAssets]
+
+  const relEntregasAggregated = useMemo(() => {
+    const ag = relEntregasData?.agregado
+    if (ag && typeof ag === 'object') {
+      return {
+        total: Number(ag.total) || 0,
+        no_prazo: Number(ag.no_prazo) || 0,
+        fora_prazo: Number(ag.fora_prazo) || 0,
+        sem_previsao: Number(ag.sem_previsao) || 0,
+      }
+    }
+
+    const counts = relEntregasData?.status_counts
+    if (!counts || typeof counts !== 'object') {
+      return { total: 0, no_prazo: 0, fora_prazo: 0, sem_previsao: 0 }
+    }
+
+    const total = Object.values(counts).reduce((acc, v) => acc + (Number(v) || 0), 0)
+    const keysNoPrazo = new Set([
+      'ENTREGUE NO PRAZO',
+      'NO PRAZO',
+      'NO PRAZO (IN.CLIENTE)',
+      'ENTREGUE NO PRAZO (IN.CLIENTE)',
+    ])
+    const keysFora = new Set([
+      'ENTREGUE FORA DO PRAZO',
+      'FORA DO PRAZO',
+      'FORA DO PRAZO (IN.CLIENTE)',
+      'ENTREGUE FORA DO PRAZO (IN.CLIENTE)',
+    ])
+    const keysSem = new Set(['SEM PREVISAO', 'SEM PREVISÃO', 'PRAZO CONGELADO'])
+
+    let noPrazo = 0
+    let foraPrazo = 0
+    let semPrev = 0
+    for (const [k, vRaw] of Object.entries(counts)) {
+      const v = Number(vRaw) || 0
+      const key = String(k || '').trim().toUpperCase()
+      if (keysNoPrazo.has(key)) noPrazo += v
+      else if (keysFora.has(key)) foraPrazo += v
+      else if (keysSem.has(key)) semPrev += v
+    }
+    return { total, no_prazo: noPrazo, fora_prazo: foraPrazo, sem_previsao: semPrev }
+  }, [relEntregasData])
+
+  const relEntregasPctNoPrazo = useMemo(() => {
+    if (!relEntregasAggregated.total) return 0
+    return (relEntregasAggregated.no_prazo / relEntregasAggregated.total) * 100
+  }, [relEntregasAggregated])
+
+  const relEntregasPctForaPrazo = useMemo(() => {
+    if (!relEntregasAggregated.total) return 0
+    return (relEntregasAggregated.fora_prazo / relEntregasAggregated.total) * 100
+  }, [relEntregasAggregated])
+
+  const relEntregasPie = useMemo(() => {
+    if (!relEntregasAggregated.total) return null
+    return {
+      id: 'relatorio-entregas-376-pie',
+      type: 'pie',
+      title: 'Distribuição (agregado)',
+      labels: ['No Prazo', 'Fora do Prazo', 'Sem Previsão'],
+      datasets: [
+        {
+          label: 'Entregas',
+          data: [relEntregasAggregated.no_prazo, relEntregasAggregated.fora_prazo, relEntregasAggregated.sem_previsao],
+        },
+      ],
+    }
+  }, [relEntregasAggregated])
+
+  function GaugeCard({ title, percent, subtitle, variant }) {
+    const pct = Number.isFinite(percent) ? Math.max(0, Math.min(100, percent)) : 0
+    const color = variant === 'danger' ? 'hsl(var(--destructive))' : 'hsl(var(--success, 142 71% 45%))'
+    const track = 'hsl(var(--muted))'
+
+    return (
+      <Card className="p-4">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-semibold text-foreground">{title}</h4>
+          <span className="text-xs text-muted-foreground">{pct.toFixed(1)}%</span>
+        </div>
+        <div className="mt-3 flex items-center gap-4">
+          <div
+            className="relative h-20 w-20 rounded-full"
+            style={{
+              background: `conic-gradient(${color} ${pct}%, ${track} ${pct}% 100%)`,
+            }}
+          >
+            <div className="absolute inset-2 rounded-full bg-background" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-sm font-bold text-foreground">{pct.toFixed(0)}%</span>
+            </div>
+          </div>
+          <div className="flex-1">
+            <div className="text-xs text-muted-foreground">{subtitle}</div>
+          </div>
+        </div>
+      </Card>
+    )
+  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -208,6 +384,82 @@ export default function Dashboards() {
         {selectedDash?.chartConfig ? (
           <div className="min-h-[320px]">
             <ChartCard chart={selectedDash.chartConfig} />
+          </div>
+        ) : isRelatorioEntregas376 ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Request</p>
+                <p className="text-sm font-medium text-foreground">{relEntregasRequestId ? `#${relEntregasRequestId}` : '—'}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">Status</p>
+                <p className="text-sm font-medium text-foreground">{relEntregasStatus || (relEntregasLoading ? 'carregando…' : '—')}</p>
+              </div>
+            </div>
+
+            {relEntregasError ? (
+              <Card className="border-destructive/20 bg-destructive/5">
+                <p className="text-sm text-destructive">{relEntregasError}</p>
+              </Card>
+            ) : null}
+
+            {relEntregasLoading ? (
+              <Card>
+                <p className="text-sm text-muted-foreground">Gerando relatório… aguarde alguns segundos.</p>
+              </Card>
+            ) : null}
+
+            {relEntregasData ? (
+              <>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <GaugeCard
+                    title="No Prazo"
+                    percent={relEntregasPctNoPrazo}
+                    subtitle={`${relEntregasAggregated.no_prazo.toLocaleString('pt-BR')} de ${relEntregasAggregated.total.toLocaleString('pt-BR')} entregas`}
+                    variant="ok"
+                  />
+                  <GaugeCard
+                    title="Fora do Prazo"
+                    percent={relEntregasPctForaPrazo}
+                    subtitle={`${relEntregasAggregated.fora_prazo.toLocaleString('pt-BR')} de ${relEntregasAggregated.total.toLocaleString('pt-BR')} entregas`}
+                    variant="danger"
+                  />
+                </div>
+
+                {relEntregasPie ? (
+                  <ChartCard chart={relEntregasPie} />
+                ) : null}
+
+                {Array.isArray(relEntregasData?.por_agente) && relEntregasData.por_agente.length > 0 ? (
+                  <Card className="overflow-hidden">
+                    <CardTitle className="text-base">Performance por Agente</CardTitle>
+                    <div className="mt-3 overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/50">
+                          <tr>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">Agente</th>
+                            <th className="px-3 py-2 text-right text-xs font-medium text-muted-foreground">No Prazo</th>
+                            <th className="px-3 py-2 text-right text-xs font-medium text-muted-foreground">Fora</th>
+                            <th className="px-3 py-2 text-right text-xs font-medium text-muted-foreground">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {relEntregasData.por_agente.slice(0, 50).map((row, i) => (
+                            <tr key={i} className="border-t">
+                              <td className="px-3 py-2">{row.agente || row.nome || '—'}</td>
+                              <td className="px-3 py-2 text-right">{Number(row.no_prazo || 0).toLocaleString('pt-BR')}</td>
+                              <td className="px-3 py-2 text-right">{Number(row.fora_prazo || 0).toLocaleString('pt-BR')}</td>
+                              <td className="px-3 py-2 text-right">{Number(row.total || 0).toLocaleString('pt-BR')}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </Card>
+                ) : null}
+              </>
+            ) : null}
           </div>
         ) : selectedDash?.embed_url ? (
           <div className="aspect-video w-full overflow-hidden rounded-lg border border-border bg-muted">

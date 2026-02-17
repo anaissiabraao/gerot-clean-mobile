@@ -1021,6 +1021,19 @@ app.get('/team-dashboard', async (req, reply) => {
         }
       }
 
+      internal.unshift({
+        id: 'internal_relatorio_entregas_376',
+        nome: 'Relatório de Performance (376)',
+        tipo: 'interno',
+        categoria: 'Performance',
+        descricao: 'Relatório de entregas por status com velocímetros (No Prazo / Fora do Prazo) alimentado pelo agente.',
+        status: 'ativo',
+        ordem_padrao: -100,
+        resource_url: null,
+        embed_url: null,
+        asset_config: { internal_key: 'relatorio_entregas_376' },
+      })
+
       return {
         regular_assets: regular,
         internal_assets: internal,
@@ -1217,6 +1230,95 @@ app.get('/api/team-dashboard', async (req, reply) => {
   } catch (err) {
     req.log.error({ err }, '[API] Erro ao montar team-dashboard')
     return jsonResponse(reply, 500, { error: err?.message || String(err) })
+  }
+})
+
+app.get('/api/relatorio-entregas', async (req, reply) => {
+  const sessionUser = requireLogin(req, reply)
+  if (!sessionUser) return
+
+  const database = (req.query?.database || 'azportoex').toString().trim() || 'azportoex'
+  const dataInicio = (req.query?.data_inicio || '').toString().trim()
+  const dataFim = (req.query?.data_fim || '').toString().trim()
+
+  try {
+    const out = await withTx(pool, async (client) => {
+      const filters = {
+        runner: 'relatorio_entregas',
+        database,
+        data_inicio: dataInicio || null,
+        data_fim: dataFim || null,
+      }
+
+      const res = await client.query(
+        `
+        INSERT INTO agent_dashboard_requests (title, description, category, chart_types, filters, status, created_by)
+        VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, 'pending', $6)
+        RETURNING id
+        `,
+        [
+          `Relatório Entregas ${database}${dataInicio || dataFim ? ` (${dataInicio || '...'} a ${dataFim || '...'})` : ''}`,
+          'Relatório de Entregas por Status (Script 376)',
+          'relatorio_entregas',
+          JSON.stringify(['pie', 'table']),
+          JSON.stringify(filters),
+          sessionUser.id,
+        ],
+      )
+
+      return { request_id: res.rows?.[0]?.id }
+    })
+
+    if (!out?.request_id) {
+      return jsonResponse(reply, 500, { error: 'Falha ao criar request do relatório' })
+    }
+    return jsonResponse(reply, 202, { success: true, request_id: out.request_id })
+  } catch (err) {
+    req.log.error({ err }, '[RELATORIO-ENTREGAS] Erro ao criar request')
+    return jsonResponse(reply, 500, { error: err?.message || String(err) })
+  }
+})
+
+app.get('/api/relatorio-entregas/status/:requestId', async (req, reply) => {
+  const sessionUser = requireLogin(req, reply)
+  if (!sessionUser) return
+
+  const requestId = Number.parseInt(req.params.requestId, 10)
+  if (!Number.isFinite(requestId)) {
+    return jsonResponse(reply, 400, { error: 'request_id inválido' })
+  }
+
+  try {
+    const out = await withTx(pool, async (client) => {
+      const q = await client.query(
+        `
+        SELECT id, status, result_data, error_message, category
+        FROM agent_dashboard_requests
+        WHERE id = $1 AND created_by = $2 AND category = 'relatorio_entregas'
+        `,
+        [requestId, sessionUser.id],
+      )
+      if (q.rows.length === 0) {
+        const e = new Error('Request não encontrado')
+        e.statusCode = 404
+        throw e
+      }
+      return q.rows[0]
+    })
+
+    return jsonResponse(reply, 200, {
+      success: true,
+      request_id: out.id,
+      status: out.status,
+      data: out.result_data,
+      error: out.error_message,
+    })
+  } catch (err) {
+    const status = err?.statusCode || 500
+    if (status >= 500) {
+      req.log.error({ err }, '[RELATORIO-ENTREGAS] Erro ao consultar status')
+    }
+    return jsonResponse(reply, status, { error: err?.message || String(err) })
   }
 })
 
@@ -1602,14 +1704,25 @@ app.post('/api/agent/dashboard/:dashId/result', async (req, reply) => {
           finalStatus = allChunksReceived ? (success ? 'completed' : 'failed') : 'processing'
         }
       } else {
-        let resultData = data.data
-        if (resultData == null) resultData = []
-        if (!Array.isArray(resultData)) resultData = []
-
-        payloadData = {
-          data: resultData,
-          row_count: data.row_count || resultData.length,
-          source: 'agent_local',
+        const raw = data.data
+        if (Array.isArray(raw)) {
+          payloadData = {
+            data: raw,
+            row_count: data.row_count || raw.length,
+            source: 'agent_local',
+          }
+        } else if (raw && typeof raw === 'object') {
+          payloadData = {
+            payload: raw,
+            row_count: data.row_count || 0,
+            source: 'agent_local',
+          }
+        } else {
+          payloadData = {
+            data: [],
+            row_count: data.row_count || 0,
+            source: 'agent_local',
+          }
         }
 
         finalStatus = success ? 'completed' : 'failed'
