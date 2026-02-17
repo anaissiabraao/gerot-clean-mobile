@@ -4,6 +4,25 @@ import { Topbar } from './Topbar'
 
 export function MainLayout({ children, themeCtx, user, onLogout }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return window.localStorage.getItem('gerot.sidebar.collapsed') === '1'
+    } catch {
+      return false
+    }
+  })
+
+  const toggleCollapsed = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev
+      try {
+        window.localStorage.setItem('gerot.sidebar.collapsed', next ? '1' : '0')
+      } catch {
+        // ignore
+      }
+      return next
+    })
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -21,12 +40,15 @@ export function MainLayout({ children, themeCtx, user, onLogout }) {
         onClose={() => setSidebarOpen(false)}
         themeCtx={themeCtx}
         user={user}
+        collapsed={sidebarCollapsed}
       />
 
       {/* Main area */}
       <div className="flex flex-1 flex-col overflow-hidden">
         <Topbar
           onMenuClick={() => setSidebarOpen(true)}
+          onToggleSidebarCollapsed={toggleCollapsed}
+          sidebarCollapsed={sidebarCollapsed}
           themeCtx={themeCtx}
           user={user}
           onLogout={onLogout}

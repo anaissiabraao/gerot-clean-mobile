@@ -19,22 +19,32 @@ function getAbortSignal(timeoutMs) {
   return controller.signal
 }
 
-const fetchOpts = (method, init = {}, body = null) => ({
+function buildHeaders(path, initHeaders = {}, body = null) {
+  const headers = {
+    Accept: 'application/json',
+    ...(body !== null ? { 'Content-Type': 'application/json' } : {}),
+    ...initHeaders,
+  }
+
+  const p = (path || '').toString()
+  if (p.startsWith('/api/agent/') && env.agentApiKey) {
+    headers['x-api-key'] = env.agentApiKey
+  }
+  return headers
+}
+
+const fetchOpts = (method, init = {}, body = null, path = '') => ({
   method,
   ...init,
   credentials: 'include', // envia cookie de sessão (cross-origin)
-  headers: {
-    Accept: 'application/json',
-    ...(body !== null ? { 'Content-Type': 'application/json' } : {}),
-    ...init.headers,
-  },
+  headers: buildHeaders(path, init.headers, body),
   ...(body !== null ? { body } : {}),
   signal: init.signal ?? getAbortSignal(env.requestTimeoutMs),
 })
 
 export async function httpGet(path, init = {}) {
   const response = await fetch(normalizeUrl(path), {
-    ...fetchOpts('GET', init),
+    ...fetchOpts('GET', init, null, path),
   })
 
   if (!response.ok) {
@@ -52,7 +62,7 @@ export async function httpGet(path, init = {}) {
 
 export async function httpPost(path, init = {}) {
   const response = await fetch(normalizeUrl(path), {
-    ...fetchOpts('POST', init, init.body ?? null),
+    ...fetchOpts('POST', init, init.body ?? null, path),
   })
 
   if (!response.ok) {
@@ -69,7 +79,7 @@ export async function httpPost(path, init = {}) {
 
 export async function httpPut(path, init = {}) {
   const response = await fetch(normalizeUrl(path), {
-    ...fetchOpts('PUT', init, init.body ?? null),
+    ...fetchOpts('PUT', init, init.body ?? null, path),
   })
 
   if (!response.ok) {
@@ -86,7 +96,7 @@ export async function httpPut(path, init = {}) {
 
 export async function httpDelete(path, init = {}) {
   const response = await fetch(normalizeUrl(path), {
-    ...fetchOpts('DELETE', init),
+    ...fetchOpts('DELETE', init, null, path),
   })
 
   if (!response.ok) {

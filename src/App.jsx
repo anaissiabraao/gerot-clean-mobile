@@ -11,6 +11,7 @@ import Agenda from './pages/Agenda'
 import Biblioteca from './pages/Biblioteca'
 import Perfil from './pages/Perfil'
 import Login from './pages/Login'
+import Admin from './pages/Admin'
 
 function RequireAuth({ user, children }) {
   if (!user) return <Navigate to="/login" replace />
@@ -129,6 +130,19 @@ function App() {
               </RequireAuth>
             ) : (
               <Perfil />
+            )
+          }
+        />
+
+        <Route
+          path="/admin"
+          element={
+            env.apiBaseUrl ? (
+              <RequireAuth user={user}>
+                <Admin />
+              </RequireAuth>
+            ) : (
+              <Navigate to="/" replace />
             )
           }
         />

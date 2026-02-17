@@ -706,6 +706,172 @@ app.get('/api/me', async (req, reply) => {
   return jsonResponse(reply, 200, { user: u })
 })
 
+app.put('/api/me', async (req, reply) => {
+  const sessionUser = requireLogin(req, reply)
+  if (!sessionUser) return
+
+  const nomeCompleto = req.body?.nome_completo !== undefined ? String(req.body.nome_completo || '').trim() : null
+  const email = req.body?.email !== undefined ? String(req.body.email || '').trim() : null
+  const departamento = req.body?.departamento !== undefined ? String(req.body.departamento || '').trim() : null
+
+  if (nomeCompleto === null && email === null && departamento === null) {
+    return jsonResponse(reply, 400, { error: 'Nenhum campo para atualizar' })
+  }
+
+  try {
+    const out = await withTx(pool, async (client) => {
+      const cols = await client.query(
+        `
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'users_new'
+          AND column_name IN ('nome_completo', 'email', 'departamento')
+        `,
+      )
+      const colset = new Set(cols.rows.map((r) => r.column_name))
+
+      const sets = []
+      const vals = []
+      let i = 1
+
+      if (nomeCompleto !== null && colset.has('nome_completo')) {
+        sets.push(`nome_completo = $${i++}`)
+        vals.push(nomeCompleto || null)
+      }
+      if (email !== null && colset.has('email')) {
+        sets.push(`email = $${i++}`)
+        vals.push(email || null)
+      }
+      if (departamento !== null && colset.has('departamento')) {
+        sets.push(`departamento = $${i++}`)
+        vals.push(departamento || null)
+      }
+
+      if (sets.length === 0) {
+        return { updated: false, user: sessionUser }
+      }
+
+      vals.push(sessionUser.id)
+      const res = await client.query(
+        `
+        UPDATE users_new
+        SET ${sets.join(', ')}, updated_at = NOW()
+        WHERE id = $${i}
+        RETURNING id, username, role, nome_completo, departamento
+        `,
+        vals,
+      )
+
+      const row = res.rows[0]
+      if (!row) {
+        throw new Error('Usuário não encontrado')
+      }
+
+      const nextSessionUser = {
+        id: row.id,
+        username: row.username,
+        role: row.role || 'user',
+        nome_completo: row.nome_completo || null,
+        departamento: row.departamento || null,
+      }
+
+      if (req.session) {
+        req.session.set('user', nextSessionUser)
+      }
+
+      return { updated: true, user: nextSessionUser }
+    })
+
+    return jsonResponse(reply, 200, out)
+  } catch (err) {
+    req.log.error({ err }, '[PROFILE] Erro ao atualizar /api/me')
+    return jsonResponse(reply, 500, { error: err?.message || String(err) })
+  }
+})
+
+app.put('/api/me/password', async (req, reply) => {
+  const sessionUser = requireLogin(req, reply)
+  if (!sessionUser) return
+
+  const currentPassword = String(req.body?.current_password || '')
+  const newPassword = String(req.body?.new_password || '')
+  if (!currentPassword || !newPassword) {
+    return jsonResponse(reply, 400, { error: 'current_password e new_password são obrigatórios' })
+  }
+  if (newPassword.length < 6) {
+    return jsonResponse(reply, 400, { error: 'A nova senha deve ter pelo menos 6 caracteres' })
+  }
+
+  try {
+    await withTx(pool, async (client) => {
+      const cols = await client.query(
+        `
+        SELECT column_name, data_type
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'users_new'
+          AND column_name IN ('password_hash', 'password')
+        `,
+      )
+
+      const hasPasswordHash = cols.rows.some((r) => r.column_name === 'password_hash')
+      const passwordCol = cols.rows.find((r) => r.column_name === 'password')
+      if (!hasPasswordHash && !passwordCol) {
+        throw new Error("Tabela users_new não possui coluna 'password_hash' nem 'password'")
+      }
+
+      const passwordExpr = hasPasswordHash
+        ? 'password_hash'
+        : passwordCol.data_type === 'bytea'
+          ? `convert_from(password, 'UTF8')`
+          : `password::text`
+
+      const res = await client.query(
+        `
+        SELECT id, ${passwordExpr} AS password_hash
+        FROM users_new
+        WHERE id = $1
+        LIMIT 1
+        `,
+        [sessionUser.id],
+      )
+      const row = res.rows[0]
+      if (!row) {
+        throw new Error('Usuário não encontrado')
+      }
+
+      const ok = await bcrypt.compare(currentPassword, row.password_hash)
+      if (!ok) {
+        const err = new Error('Senha atual inválida')
+        err.statusCode = 401
+        throw err
+      }
+
+      const nextHash = await bcrypt.hash(newPassword, 10)
+      if (hasPasswordHash) {
+        await client.query(
+          `UPDATE users_new SET password_hash = $1, updated_at = NOW() WHERE id = $2`,
+          [nextHash, sessionUser.id],
+        )
+      } else {
+        await client.query(
+          `UPDATE users_new SET password = $1, updated_at = NOW() WHERE id = $2`,
+          [nextHash, sessionUser.id],
+        )
+      }
+    })
+
+    return jsonResponse(reply, 200, { ok: true })
+  } catch (err) {
+    const status = err?.statusCode ? Number(err.statusCode) : 500
+    if (status >= 500) {
+      req.log.error({ err }, '[PROFILE] Erro ao atualizar senha')
+    }
+    return jsonResponse(reply, status, { error: err?.message || String(err) })
+  }
+})
+
 app.get('/team-dashboard', async (req, reply) => {
   const sessionUser = requireLogin(req, reply)
   if (!sessionUser) return

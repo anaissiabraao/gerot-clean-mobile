@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router-dom'
-import { LogOut, Menu, Moon, Sun, User } from 'lucide-react'
+import { LogOut, Menu, Moon, Sun, User, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 
 const pageTitles = {
   '/': 'Início',
@@ -9,9 +9,10 @@ const pageTitles = {
   '/agenda': 'Agenda CD',
   '/biblioteca': 'Biblioteca',
   '/perfil': 'Perfil',
+  '/admin': 'Admin',
 }
 
-export function Topbar({ onMenuClick, themeCtx, user, onLogout }) {
+export function Topbar({ onMenuClick, onToggleSidebarCollapsed, sidebarCollapsed, themeCtx, user, onLogout }) {
   const location = useLocation()
   const title = pageTitles[location.pathname] || 'GeRot'
 
@@ -25,6 +26,18 @@ export function Topbar({ onMenuClick, themeCtx, user, onLogout }) {
         >
           <Menu size={20} />
         </button>
+
+        {user && onToggleSidebarCollapsed ? (
+          <button
+            type="button"
+            onClick={onToggleSidebarCollapsed}
+            className="hidden rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground lg:inline-flex"
+            aria-label={sidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
+            title={sidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
+          >
+            {sidebarCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
+          </button>
+        ) : null}
         <h1 className="text-lg font-semibold text-foreground">{title}</h1>
       </div>
 

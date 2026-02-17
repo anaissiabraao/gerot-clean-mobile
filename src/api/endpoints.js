@@ -9,6 +9,8 @@ const api = {
 
   // Sessão (SPA: checar auth e redirecionar ao login do backend)
   session: '/api/me',
+  sessionUpdate: '/api/me',
+  changePassword: '/api/me/password',
   teamDashboard: '/api/team-dashboard',
 
   // RAG
