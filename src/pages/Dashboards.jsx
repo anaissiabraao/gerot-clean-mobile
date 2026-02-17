@@ -42,7 +42,6 @@ function getTypeVariant(type) {
 export default function Dashboards() {
   const [regularAssets, setRegularAssets] = useState([])
   const [internalAssets, setInternalAssets] = useState([])
-  const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [selectedDash, setSelectedDash] = useState(null)
@@ -58,7 +57,6 @@ export default function Dashboards() {
       const data = await httpGet(api.teamDashboard)
       setRegularAssets(Array.isArray(data.regular_assets) ? data.regular_assets : [])
       setInternalAssets(Array.isArray(data.internal_assets) ? data.internal_assets : [])
-      setIsAdmin(!!data.is_admin)
     } catch (err) {
       setError(err.message)
       setRegularAssets([])

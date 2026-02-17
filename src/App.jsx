@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useTheme } from './hooks/useTheme'
-import { useAuth } from './context/AuthContext'
+import { useAuth } from './context/useAuth'
 import { MainLayout } from './components/layout/MainLayout'
 import env from './config/env'
 import Home from './pages/Home'
@@ -10,6 +10,12 @@ import Chat from './pages/Chat'
 import Agenda from './pages/Agenda'
 import Biblioteca from './pages/Biblioteca'
 import Perfil from './pages/Perfil'
+import Login from './pages/Login'
+
+function RequireAuth({ user, children }) {
+  if (!user) return <Navigate to="/login" replace />
+  return children
+}
 
 function App() {
   const themeCtx = useTheme()
@@ -32,16 +38,100 @@ function App() {
     return null
   }
 
+  const useLocalLogin = !!env.apiBaseUrl && !env.redirectToBackendLogin
+
   return (
     <MainLayout themeCtx={themeCtx} user={user} onLogout={logout}>
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/dashboards" element={<Dashboards />} />
-        <Route path="/indicadores" element={<Indicadores />} />
-        <Route path="/chat" element={<Chat />} />
-        <Route path="/agenda" element={<Agenda />} />
-        <Route path="/biblioteca" element={<Biblioteca />} />
-        <Route path="/perfil" element={<Perfil />} />
+        <Route
+          path="/login"
+          element={useLocalLogin ? <Login /> : <Navigate to="/" replace />}
+        />
+
+        <Route
+          path="/"
+          element={
+            env.apiBaseUrl ? (
+              <RequireAuth user={user}>
+                <Home />
+              </RequireAuth>
+            ) : (
+              <Home />
+            )
+          }
+        />
+        <Route
+          path="/dashboards"
+          element={
+            env.apiBaseUrl ? (
+              <RequireAuth user={user}>
+                <Dashboards />
+              </RequireAuth>
+            ) : (
+              <Dashboards />
+            )
+          }
+        />
+        <Route
+          path="/indicadores"
+          element={
+            env.apiBaseUrl ? (
+              <RequireAuth user={user}>
+                <Indicadores />
+              </RequireAuth>
+            ) : (
+              <Indicadores />
+            )
+          }
+        />
+        <Route
+          path="/chat"
+          element={
+            env.apiBaseUrl ? (
+              <RequireAuth user={user}>
+                <Chat />
+              </RequireAuth>
+            ) : (
+              <Chat />
+            )
+          }
+        />
+        <Route
+          path="/agenda"
+          element={
+            env.apiBaseUrl ? (
+              <RequireAuth user={user}>
+                <Agenda />
+              </RequireAuth>
+            ) : (
+              <Agenda />
+            )
+          }
+        />
+        <Route
+          path="/biblioteca"
+          element={
+            env.apiBaseUrl ? (
+              <RequireAuth user={user}>
+                <Biblioteca />
+              </RequireAuth>
+            ) : (
+              <Biblioteca />
+            )
+          }
+        />
+        <Route
+          path="/perfil"
+          element={
+            env.apiBaseUrl ? (
+              <RequireAuth user={user}>
+                <Perfil />
+              </RequireAuth>
+            ) : (
+              <Perfil />
+            )
+          }
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </MainLayout>

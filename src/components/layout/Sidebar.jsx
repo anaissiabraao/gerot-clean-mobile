@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import {
   Home,
   LayoutDashboard,
@@ -14,7 +14,7 @@ import {
   Settings,
 } from 'lucide-react'
 import env from '../../config/env'
-import { useAuth } from '../../context/AuthContext'
+import { useAuth } from '../../context/useAuth'
 
 const navItems = [
   { label: 'Início', path: '/', icon: Home },
@@ -27,7 +27,6 @@ const navItems = [
 
 export function Sidebar({ open, onClose, themeCtx, user }) {
   const { logout } = useAuth()
-  const location = useLocation()
   const isAdmin = user?.role === 'admin'
 
   const linkClasses = (isActive) =>
