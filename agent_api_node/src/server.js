@@ -706,6 +706,60 @@ app.get('/api/me', async (req, reply) => {
   return jsonResponse(reply, 200, { user: u })
 })
 
+app.get('/api/indicadores-executivos', async (req, reply) => {
+  const sessionUser = requireLogin(req, reply)
+  if (!sessionUser) return
+
+  const database = (req.query?.database || 'azportoex').toString().trim() || 'azportoex'
+  const dataInicio = (req.query?.data_inicio || '').toString().trim()
+  const dataFim = (req.query?.data_fim || '').toString().trim()
+
+  if (!upstreamFlaskUrl) {
+    return jsonResponse(reply, 501, {
+      success: false,
+      error: 'UPSTREAM_FLASK_URL não configurada no backend; endpoint de indicadores executivos indisponível',
+      panel_key: null,
+      panel_data: null,
+      leitura_executiva: null,
+      indicadores_completos: null,
+      periodo: { inicio: dataInicio || null, fim: dataFim || null },
+      database,
+      total_operacoes: 0,
+    })
+  }
+
+  const qs = new URLSearchParams()
+  if (database) qs.set('database', database)
+  if (dataInicio) qs.set('data_inicio', dataInicio)
+  if (dataFim) qs.set('data_fim', dataFim)
+
+  const url = `${upstreamFlaskUrl}/api/indicadores-executivos${qs.toString() ? `?${qs.toString()}` : ''}`
+
+  try {
+    const resp = await fetch(url, {
+      method: 'GET',
+      headers: {
+        accept: 'application/json',
+      },
+    })
+
+    const text = await resp.text()
+    if (!resp.ok) {
+      return jsonResponse(reply, resp.status, { error: text || resp.statusText })
+    }
+
+    try {
+      const parsed = JSON.parse(text)
+      return jsonResponse(reply, 200, parsed)
+    } catch {
+      return jsonResponse(reply, 502, { error: 'Resposta inválida do upstream (não JSON)' })
+    }
+  } catch (err) {
+    req.log.error({ err }, '[INDICADORES] Falha ao chamar upstream Flask')
+    return jsonResponse(reply, 502, { error: err?.message || String(err) })
+  }
+})
+
 app.put('/api/me', async (req, reply) => {
   const sessionUser = requireLogin(req, reply)
   if (!sessionUser) return
