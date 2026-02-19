@@ -117,6 +117,158 @@ function requireAdmin(req, reply) {
   return null
 }
 
+async function getAgentSetting(pool, key) {
+  try {
+    return await withTx(pool, async (client) => {
+      const res = await client.query(
+        `
+        SELECT setting_value
+        FROM agent_settings
+        WHERE setting_key = $1
+        LIMIT 1
+        `,
+        [key],
+      )
+      return res.rows?.[0]?.setting_value ?? null
+    })
+  } catch {
+    return null
+  }
+}
+
+function normalizePanelKey(value) {
+  const v = (value || '').toString().trim().toLowerCase()
+  if (v === 'ceo' || v === 'diretoria' || v === 'operacional' || v === 'projetos') return v
+  return null
+}
+
+function resolveIndicatorsPanelKey(sessionUser, assignments) {
+  const username = (sessionUser?.username || '').toString().trim().toLowerCase()
+  const dept = (sessionUser?.departamento || '').toString().trim().toLowerCase()
+  const role = (sessionUser?.role || '').toString().trim().toLowerCase()
+  const userId = sessionUser?.id
+
+  const usersMap = assignments?.users && typeof assignments.users === 'object' ? assignments.users : null
+  const rolesMap = assignments?.roles && typeof assignments.roles === 'object' ? assignments.roles : null
+  const departmentsMap = assignments?.departments && typeof assignments.departments === 'object' ? assignments.departments : null
+  const usernameMap = assignments?.usernames && typeof assignments.usernames === 'object' ? assignments.usernames : null
+
+  if (userId != null && usersMap && usersMap[String(userId)] !== undefined) {
+    return normalizePanelKey(usersMap[String(userId)])
+  }
+  if (username && usernameMap && usernameMap[username] !== undefined) {
+    return normalizePanelKey(usernameMap[username])
+  }
+  if (role && rolesMap && rolesMap[role] !== undefined) {
+    return normalizePanelKey(rolesMap[role])
+  }
+  if (dept && departmentsMap && departmentsMap[dept] !== undefined) {
+    return normalizePanelKey(departmentsMap[dept])
+  }
+
+  if (dept === 'financeiro' || dept === 'comercial' || dept === 'controladoria') return 'diretoria'
+  if (dept === 'operacional' || dept === 'atendimento') return 'operacional'
+  return null
+}
+
+function pickPanelData(indicadoresCompletos, panelKey) {
+  if (!panelKey) return { panel_data: null, leitura_executiva: null }
+  const panelMap = {
+    ceo: 'ceo_panel',
+    diretoria: 'diretoria_panel',
+    operacional: 'operacional_panel',
+    projetos: 'projetos_panel',
+  }
+  const panelId = panelMap[panelKey]
+  const indicadores = indicadoresCompletos?.indicadores
+  const leituras = indicadoresCompletos?.leituras_executivas
+  const panel_data = panelId && indicadores && typeof indicadores === 'object' ? indicadores[panelId] ?? null : null
+  const leitura_executiva = leituras && typeof leituras === 'object' ? leituras[panelKey] ?? null : null
+  return { panel_data, leitura_executiva }
+}
+
+function buildSimpleIndicators(panelData, totalOperacoes) {
+  const pd = panelData && typeof panelData === 'object' ? panelData : {}
+  const totalFretes = 0
+  const fretesMes = Number.isFinite(Number(pd.faturamento_mensal_d0)) ? Number(pd.faturamento_mensal_d0) : 0
+  const performance = Number.isFinite(Number(pd.performance_entrega_on_time_percent)) ? Number(pd.performance_entrega_on_time_percent) : 0
+  const economiaGerada = Number.isFinite(Number(pd.resultado_geral_acumulado_d5)) ? Number(pd.resultado_geral_acumulado_d5) : 0
+  return {
+    totalFretes,
+    fretesMes,
+    performance,
+    economiaGerada,
+    totalOperacoes: Number.isFinite(Number(totalOperacoes)) ? Number(totalOperacoes) : 0,
+  }
+}
+
+async function findCompletedIndicatorsRequest(pool, userId, filters) {
+  const database = (filters?.database || 'azportoex').toString().trim() || 'azportoex'
+  const dataInicio = (filters?.data_inicio || '').toString().trim() || null
+  const dataFim = (filters?.data_fim || '').toString().trim() || null
+
+  return await withTx(pool, async (client) => {
+    const res = await client.query(
+      `
+      SELECT id, status, result_data, error_message, updated_at
+      FROM agent_dashboard_requests
+      WHERE created_by = $1
+        AND category = 'indicadores_executivos'
+        AND status = 'completed'
+        AND COALESCE(filters->>'runner','') = 'indicadores_executivos'
+        AND COALESCE(filters->>'database','azportoex') = $2
+        AND COALESCE(filters->>'data_inicio','') = COALESCE($3,'')
+        AND COALESCE(filters->>'data_fim','') = COALESCE($4,'')
+      ORDER BY updated_at DESC
+      LIMIT 1
+      `,
+      [userId, database, dataInicio, dataFim],
+    )
+    return res.rows?.[0] ?? null
+  })
+}
+
+async function insertIndicatorsRequest(pool, userId, filters) {
+  return await withTx(pool, async (client) => {
+    const res = await client.query(
+      `
+      INSERT INTO agent_dashboard_requests (title, description, category, chart_types, filters, status, created_by)
+      VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, 'pending', $6)
+      RETURNING id
+      `,
+      [
+        `Indicadores Executivos ${filters.database}${filters.data_inicio || filters.data_fim ? ` (${filters.data_inicio || '...'} a ${filters.data_fim || '...'})` : ''}`,
+        'Indicadores executivos (runner indicadores_executivos)',
+        'indicadores_executivos',
+        JSON.stringify(['cards']),
+        JSON.stringify(filters),
+        userId,
+      ],
+    )
+    return res.rows?.[0]?.id ?? null
+  })
+}
+
+function normalizeIndicatorsPayloadForUser({ sessionUser, rawPayload, assignments }) {
+  const panelKey = resolveIndicatorsPanelKey(sessionUser, assignments)
+  const indicadoresCompletos = rawPayload?.indicadores_completos
+  const picked = pickPanelData(indicadoresCompletos, panelKey)
+
+  const panel_data = picked.panel_data ?? rawPayload?.panel_data ?? null
+  const leitura_executiva = picked.leitura_executiva ?? rawPayload?.leitura_executiva ?? null
+  const totalOperacoes = rawPayload?.total_operacoes
+  const indicators = buildSimpleIndicators(panel_data, totalOperacoes)
+
+  return {
+    ...rawPayload,
+    success: rawPayload?.success !== false,
+    panel_key: panelKey ?? rawPayload?.panel_key ?? null,
+    panel_data,
+    leitura_executiva,
+    indicators,
+  }
+}
+
 app.get('/api/admin/users', async (req, reply) => {
   const admin = requireAdmin(req, reply)
   if (!admin) return
@@ -714,49 +866,154 @@ app.get('/api/indicadores-executivos', async (req, reply) => {
   const dataInicio = (req.query?.data_inicio || '').toString().trim()
   const dataFim = (req.query?.data_fim || '').toString().trim()
 
-  if (!upstreamFlaskUrl) {
-    return jsonResponse(reply, 501, {
-      success: false,
-      error: 'UPSTREAM_FLASK_URL não configurada no backend; endpoint de indicadores executivos indisponível',
-      panel_key: null,
-      panel_data: null,
-      leitura_executiva: null,
-      indicadores_completos: null,
-      periodo: { inicio: dataInicio || null, fim: dataFim || null },
-      database,
-      total_operacoes: 0,
-    })
+  const filters = {
+    runner: 'indicadores_executivos',
+    database,
+    data_inicio: dataInicio || null,
+    data_fim: dataFim || null,
   }
 
-  const qs = new URLSearchParams()
-  if (database) qs.set('database', database)
-  if (dataInicio) qs.set('data_inicio', dataInicio)
-  if (dataFim) qs.set('data_fim', dataFim)
+  try {
+    const assignments = await getAgentSetting(pool, 'dashboard_indicator_assignments')
 
-  const url = `${upstreamFlaskUrl}/api/indicadores-executivos${qs.toString() ? `?${qs.toString()}` : ''}`
+    const cached = await findCompletedIndicatorsRequest(pool, sessionUser.id, filters)
+    if (cached?.result_data?.data) {
+      const normalized = normalizeIndicatorsPayloadForUser({
+        sessionUser,
+        rawPayload: cached.result_data.data,
+        assignments,
+      })
+      return jsonResponse(reply, 200, normalized)
+    }
+
+    const requestId = await insertIndicatorsRequest(pool, sessionUser.id, filters)
+    if (!requestId) {
+      return jsonResponse(reply, 500, { success: false, error: 'Falha ao criar request de indicadores' })
+    }
+
+    return jsonResponse(reply, 202, {
+      success: true,
+      status: 'pending',
+      request_id: requestId,
+      status_url: `/api/indicadores-executivos/status/${requestId}`,
+    })
+  } catch (err) {
+    req.log.error({ err }, '[INDICADORES] Erro ao criar/consultar request')
+    return jsonResponse(reply, 500, { success: false, error: err?.message || String(err) })
+  }
+})
+
+app.get('/api/indicadores-executivos/status/:requestId', async (req, reply) => {
+  const sessionUser = requireLogin(req, reply)
+  if (!sessionUser) return
+
+  const requestId = Number.parseInt(req.params.requestId, 10)
+  if (!Number.isFinite(requestId)) {
+    return jsonResponse(reply, 400, { error: 'request_id inválido' })
+  }
 
   try {
-    const resp = await fetch(url, {
-      method: 'GET',
-      headers: {
-        accept: 'application/json',
-      },
+    const assignments = await getAgentSetting(pool, 'dashboard_indicator_assignments')
+    const out = await withTx(pool, async (client) => {
+      const q = await client.query(
+        `
+        SELECT id, status, result_data, error_message
+        FROM agent_dashboard_requests
+        WHERE id = $1 AND created_by = $2 AND category = 'indicadores_executivos'
+        `,
+        [requestId, sessionUser.id],
+      )
+      if (q.rows.length === 0) {
+        const e = new Error('Request não encontrado')
+        e.statusCode = 404
+        throw e
+      }
+      return q.rows[0]
     })
 
-    const text = await resp.text()
-    if (!resp.ok) {
-      return jsonResponse(reply, resp.status, { error: text || resp.statusText })
+    if (out.status === 'completed' && out.result_data?.data) {
+      const normalized = normalizeIndicatorsPayloadForUser({
+        sessionUser,
+        rawPayload: out.result_data.data,
+        assignments,
+      })
+      return jsonResponse(reply, 200, {
+        success: true,
+        status: out.status,
+        request_id: out.id,
+        data: normalized,
+        error: out.error_message,
+      })
     }
 
-    try {
-      const parsed = JSON.parse(text)
-      return jsonResponse(reply, 200, parsed)
-    } catch {
-      return jsonResponse(reply, 502, { error: 'Resposta inválida do upstream (não JSON)' })
+    if (out.status === 'failed') {
+      return jsonResponse(reply, 200, {
+        success: false,
+        status: out.status,
+        request_id: out.id,
+        error: out.error_message,
+      })
     }
+
+    return jsonResponse(reply, 200, {
+      success: true,
+      status: out.status,
+      request_id: out.id,
+    })
   } catch (err) {
-    req.log.error({ err }, '[INDICADORES] Falha ao chamar upstream Flask')
-    return jsonResponse(reply, 502, { error: err?.message || String(err) })
+    const status = err?.statusCode || 500
+    if (status >= 500) {
+      req.log.error({ err }, '[INDICADORES] Erro ao consultar status')
+    }
+    return jsonResponse(reply, status, { error: err?.message || String(err) })
+  }
+})
+
+app.get('/api/dashboard/indicators', async (req, reply) => {
+  const sessionUser = requireLogin(req, reply)
+  if (!sessionUser) return
+
+  const database = (req.query?.database || 'azportoex').toString().trim() || 'azportoex'
+  const dataInicio = (req.query?.data_inicio || '').toString().trim()
+  const dataFim = (req.query?.data_fim || '').toString().trim()
+
+  const filters = {
+    runner: 'indicadores_executivos',
+    database,
+    data_inicio: dataInicio || null,
+    data_fim: dataFim || null,
+  }
+
+  try {
+    const assignments = await getAgentSetting(pool, 'dashboard_indicator_assignments')
+    const cached = await findCompletedIndicatorsRequest(pool, sessionUser.id, filters)
+
+    if (cached?.result_data?.data) {
+      const normalized = normalizeIndicatorsPayloadForUser({
+        sessionUser,
+        rawPayload: cached.result_data.data,
+        assignments,
+      })
+      return jsonResponse(reply, 200, {
+        success: true,
+        indicators: normalized.indicators,
+      })
+    }
+
+    const requestId = await insertIndicatorsRequest(pool, sessionUser.id, filters)
+    if (!requestId) {
+      return jsonResponse(reply, 500, { success: false, error: 'Falha ao criar request de indicadores' })
+    }
+
+    return jsonResponse(reply, 202, {
+      success: true,
+      status: 'pending',
+      request_id: requestId,
+      status_url: `/api/indicadores-executivos/status/${requestId}`,
+    })
+  } catch (err) {
+    req.log.error({ err }, '[DASHBOARD] Erro ao montar indicadores')
+    return jsonResponse(reply, 500, { success: false, error: err?.message || String(err) })
   }
 })
 

@@ -1,0 +1,1307 @@
+<html><head>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.13.2/themes/smoothness/jquery-ui.min.css" integrity="sha512-Mvnc3gzZhD8rZtNMHJkotZpdfvAHunpqankLPnj3hXpphETXpxbfr4+oNMOzF179JYu8B8/EqruGdpsH5fNYww==" crossorigin="anonymous" referrerpolicy="no-referrer">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.4/jquery.min.js" integrity="sha512-pumBsjNRGGqkPzKHndZMaAG+bir374sORyzM3uulLV14lN5LyykqNk8eEeUlUkB3U0M4FApyaHraT65ihJhDpQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.13.2/jquery-ui.min.js" integrity="sha512-57oZ/vW8ANMjR/KQ6Be9v/+/h6bq9/l3f0Oc7vn6qMqyhvPd1cvKBRWWpzu0QoneImqr2SkmO4MSqU+RpHom3Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.7.14/vue.min.js" integrity="sha512-BAMfk70VjqBkBIyo9UTRLl3TBJ3M0c6uyy2VMUrq370bWs7kchLNN9j1WiJQus9JAJVqcriIUX859JOm12LWtw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vue-resource/1.5.3/vue-resource.min.js" integrity="sha512-SzBVU+C0eJl+4BIg29X72SYgYNUI2bNVVUFfG9eg1g2jOMvBy3w2movesVS0u+IslOgFyRxuVrMrSHcnLPLN+Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<title>RodoWeb - Sistema desenvolvido por Brudam Dev</title>
+            <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+            <link href="/assets/css/brd.css" rel="stylesheet" type="text/css">
+            <link href="/assets/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+            
+            
+            
+            
+            
+            <script type="text/javascript" src="/assets/js/filesaver.js"></script>
+            <script type="text/javascript" src="/assets/js/brd.js?v1"></script>
+            <script type="text/javascript" src="/assets/js/brd-report.js?v2"></script>
+                        <link href="/css/padrao.css?t=1768410481" rel="stylesheet" type="text/css">
+<link href="/assets/css/style.css?t=1768410481" rel="stylesheet" type="text/css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.13.2/themes/smoothness/jquery-ui.min.css" integrity="sha512-Mvnc3gzZhD8rZtNMHJkotZpdfvAHunpqankLPnj3hXpphETXpxbfr4+oNMOzF179JYu8B8/EqruGdpsH5fNYww==" crossorigin="anonymous" referrerpolicy="no-referrer">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.4/jquery.min.js" integrity="sha512-pumBsjNRGGqkPzKHndZMaAG+bir374sORyzM3uulLV14lN5LyykqNk8eEeUlUkB3U0M4FApyaHraT65ihJhDpQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.13.2/jquery-ui.min.js" integrity="sha512-57oZ/vW8ANMjR/KQ6Be9v/+/h6bq9/l3f0Oc7vn6qMqyhvPd1cvKBRWWpzu0QoneImqr2SkmO4MSqU+RpHom3Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script type="text/javascript" src="/js/brudam.js?t=1768410481"></script>
+            <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+            <script type="text/javascript">
+                $(function () {
+                    Vue.http.options.emulateJSON = true;
+                    var f = "Brudam.language" == "en" ? 'Invalid Date' : 'Data Inv&aacute;lida.';
+                    var format = 'dd/mm/yy';
+                    var day = ['Domingo', 'Segunda', 'Ter&ccedil;a', 'Quarta', 'Quinta', 'Sexta', 'Sabado', 'Domingo'];
+                    var namesMin = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
+                    var namesShort = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom'];
+                    var monthNames = ['Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+                    var monthNamesShort = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+                    var nextText = 'Próximo';
+                    var prevText = 'Anterior';
+                    Vue.component('brd-datepicker',
+                            {
+                                template: '#brd-datepicker',
+                                directives: {
+                                    datepicker: {
+                                        bind: function (el, binding, vnode) {
+                                            $(el).datepicker(
+                                                    {
+                                                        dateFormat: format,
+                                                        dayNames: day,
+                                                        dayNamesMin: namesMin,
+                                                        dayNamesShort: namesShort,
+                                                        monthNames: monthNames,
+                                                        monthNamesShort: monthNamesShort, nextText: nextText,
+                                                        prevText: prevText,
+                                                        inline: true,
+                                                        onSelect: function (dateText, inst) {
+                                                            vnode.context.$emit('input', dateText);
+                                                        }
+                                                    }
+                                            );
+                                        }
+                                    }
+                                },
+                                methods: {
+                                    formatData: function (el) {
+                                        //                                var format = "  /  /    ";
+                                        var id = $(el.target).attr('id');
+                                        var v = $(el.target).val();
+                                        v = v.replace(/\D/g, "");                    //Remove tudo o que não é dígito
+                                        v = v.replace(/(\d{2})(\d)/, "$1/$2");
+                                        v = v.replace(/(\d{2})(\d)/, "$1/$2");
+
+                                        v = v.replace(/(\d{2})(\d{2})$/, "$1$2");
+                                        $('#' + id).val(v);
+                                    }
+                                }
+                            });
+                    Vue.component('brd-cidades', {
+                        template: '#brd-cidades',
+                        props: ['brd-ccidade'],
+                        directives: {
+                            autocomplete: {
+                                bind: function (el, binding, vnode) {
+                                    $(el).autocomplete({
+                                        // source: `/ajax/cidades.php`,
+                                        source: function(request, response) {
+                                            let isOrigem = $(el).attr('tipo_cidade') == "origem" ? 1 : 0;
+                                            let tipoBusca = 0;
+                                            let valorBusca = "cidade";
+                                           
+                                            $.getJSON("/ajax/cidades.php", { term: request.term, valor_busca: valorBusca }, response);
+                                        },
+                                        delay: 10,
+                                        autoFocus: true,
+                                        minLength: 0,
+                                        select: function (event, ui) {
+                                            vnode.context.$emit('update-cidade', ui.item, vnode.context._props);
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    });
+                    new Vue({
+                        el: "#brd-report",
+                        data: {
+                            form: {
+                                tipo_cadastro: 'id_cliente',
+                                coluna: 'f.fantasia',
+                                tipo_cadastro_2: 'id_cliente',
+                                coluna_2: 'f.fantasia',
+                                nome: '',
+                                nome_2: '',
+                                tipo_campo: 'autorizacao',
+                                campo_busca: '',
+                                cte_status: 8888,
+                                tipo_cte: 99,
+                                tipo_pagamento: 0,
+                                minuta_status: 0,
+                                seguradora: '',
+                                servicos: [],
+                                faturamento: 0,
+                                resp_coleta_tipo: 0,
+                                resp_coleta: '',
+                                cte_unidade: 0,
+                                resp_unidade: 0,
+                                transf_origem: '',
+                                transf_destino: '',
+                                cidade_origem: '',
+                                cidade_destino: '',
+                                cc_origem: '',
+                                cc_destino: '',
+                                tipo_data: 'data',
+                                dt_inicio: '',
+                                dt_fim: '',
+                                situacao: 0,
+                                ordem: 'id_minuta',
+                                agrupamento: 0,
+                                resp_entrega_tipo: 0,
+                                resp_entrega: '',
+                                emissor: 0
+                            }
+                        },
+                        methods: {
+                            csv: function () {
+                                BrdReport.csv({
+                                    dados: [
+                                        { data: $('#contents>thead'), type: 'head' },
+                                        { data: $('#contents>tbody'), type: 'body' },
+                                        { data: $('#brdtotais'), type: 'body' }
+                                    ],
+                                    filename: Brd.getDominio() + '_entregas_' + Brd.date() + '.csv',
+                                    contentType: "text/plain;charset=utf-8"
+                                });
+                            },
+                            print: function () {
+                                var x = $('#header').html();
+                                if (this.form.graph != 1) {
+                                    $("#contentTable").html('');
+                                } else {
+                                    $('#header').html('');
+                                }
+                                BrdReport.print($('#contents').parent().html(), "Relatorio de Performance de Entrega");
+                                $('#header').html(x);
+
+
+                            },
+                            send: function () {
+                                if (Brd.validate()) {
+                                    Brudam.loadingMessage('Montando relat&oacute;rio...', 99999);
+                                    var servicos = [];
+                                    $.each($(".servicos:checked"), function () {
+                                        servicos.push($(this).val());
+                                    });
+                                    this.form.servicos = servicos;
+                                    this.form.method = 'search';
+                                    $('.brd-hidden').hide();
+                                    $('#contents>tbody').html('');
+
+                                    //alert(this.form.graph)
+
+
+                                    this.$http.post('/ger/relatorio/entrega', this.form)
+                                            .bind(this)
+                                            .then(function (r) {
+                                                Brudam.hideMessage();
+                                                if (r.data.status == 1) {
+                                                    $('#contents>tbody').html('');
+                                                    if (parseInt(this.form.agrupamento)) {
+                                                        this.listaAgrupadaPorCliente(r);
+                                                        $("#header").addClass('ignorar_excel');
+                                                        return false;
+                                                    }
+                                                    if (!$('#content>thead').is(':visible'))
+                                                        $('#contents>thead').show();
+                                                    if (!$('#content>tfoot').is(':visible'))
+                                                        $('#contents>tfoot').show();
+
+                                                    if (r.data.dados.length > 0) {
+                                                        r.data.dados.shift();
+                                                        $('.brd-hidden').show();
+                                                    }
+                                                    $('#contents>tbody').addClass('brd-lista');
+                                                    var html = '',
+                                                            html2 = '',
+                                                            limite = 1000;
+
+                                                    var chart_totais_do_totais_dentro_do_prazo = '';
+                                                    var chart_totais_do_totais_dentro_do_prazo_ineficiencia = '';
+                                                    var chart_totais_do_totais_fora_do_prazo = '';
+                                                    var chart_totais_do_totais_fora_do_prazo_ineficiencia = '';
+                                                    var chart_totais_do_totais_sem_previsao = '';
+                                                    var chart_totais_do_totais_congelado_prazo = '';
+
+
+                                                    var totais = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+                                                    $('.botoes').hide();
+
+                                                    for (var i in r.data.dados) {
+                                                        var item = BrdReport.replaceNull(r.data.dados[i]);
+                                                        item[6] = item[6] == null || !item[6] ? '0|' : item[6];
+                                                        item[16] = item[16] == null ? '0|0|0|0|0|0|0|0|0|0|0|0|0' : item[16];
+                                                        var nt = item[6].split('|');
+                                                        var ocos = item[16].split('|');
+                                                        var inds = []
+                                                        nt = nt[0] == "0" || !nt[1] ? 'DEC' : nt[1].replace(/[,]/g, "\n");
+                                                        for (var a = 1; a < ocos.length; a++) {
+                                                            totais[a - 1] += parseInt(ocos[a]);
+
+                                                            inds.push(parseInt(ocos[a]))
+                                                        }
+                                                        var cte = ['', '']
+                                                        if (typeof item[4] != null && item[4].indexOf('-') > 0) {
+                                                            cte = item[4].split('-');
+                                                        }
+
+                                                        var nfs = [['DEC'], ['']];
+                                                        var nta = [];
+                                                        if (typeof nt != null) {
+                                                            nt = nt.split('\n');
+                                                            nfs = [[], []];
+                                                            for (var ind in nt) {
+                                                                nta = nt[ind].split("-");
+                                                                nfs[0].push(nta[0]);
+                                                                nfs[1].push(nta[1] ? nta[1] : '');
+                                                            }
+                                                        }
+                                                        var estados = item[26].replace(/,/g, '/');
+                                                        var inef = item[20] == null ? "||".split("|") : item[20].split("|");
+                                                        var linha = '<tr class="graph" minuta="' + item[0] + '"><td class="graph" height="25">' + item[0] + //MD
+                                                                '</td><td class="graph">' + item[1] + //HOUSE
+                                                                '</td><td class="graph">' + item[2] + //UNIDADE
+                                                                '</td><td class="graph">' + item[3] + //DATA
+                                                                '</td><td id="cte?"  class="graph" rpt="hide">' + item[4] + 
+                                                                '</td><td rpt="show" class="graph">' + cte[0] + //CTE
+                                                                '</td><td rpt="show">' + item[25] + //MODAL
+                                                                '</td><td rpt="show" class="graph">' + cte[1] + //SERIE
+                                                                '</td><td class="graph">' + item[5] +
+                                                                '</td><td rpt="hide" data-fix="true" class="graph">' + nt +
+                                                                '</td><td rpt="show" class="graph">' + nfs[0].join("\n") +
+                                                                '</td><td rpt="show" class="graph">' + nfs[1].join("\n") +
+                                                                '</td><td class="graph">' + item[7] +
+                                                                '</td><td class="graph">' + item[8] + ' - ' + item[10] +
+                                                                '</td><td class="graph">' + item[9] + ' - ' + item[11] +
+                                                                '</td><td rpt="show" class="graph">' + item[17] +
+                                                                '</td><td rpt="show" class="graph">' + item[18] +
+                                                                '</td><td rpt="show" class="graph">' + item[19] +
+                                                                '</td><td rpt="show">' + item[18] +'/'+ item[19] +
+                                                                '</td><td class="graph">' + item[12] +
+                                                                '</td><td class="graph">' + item[22] +
+                                                                '</td><td class="graph">' + item[23] +
+                                                                '</td><td class="graph">' + item[24] +
+                                                                '</td><td class="graph">' + item[13] +
+                                                                '</td><td class="graph">' + item[14] +
+                                                                '</td><td class="graph">' + item[15] +
+                                                                '</td><td class="graph">' + item[21] +
+                                                                '</td><td class="graph" rpt="show">' + inef[0] +
+                                                                '</td><td class="graph" rpt="show">' + inef[1] +
+                                                                '</td><td class="graph" rpt="show">' + inef[2] +
+                                                                '</td><td class="graph">' + ocos[0] +
+                                                                '</td></tr>';
+                                                        if (i < 1000) {
+                                                            html += linha;
+                                                        }
+
+                                                        html2 += linha;
+
+
+
+                                                        if (inds[10] == 1 || inds[11] == 1) {
+                                                            chart_totais_do_totais_dentro_do_prazo += linha;
+                                                        } else if (inds[8] == 1 || inds[9] == 1) {
+                                                            chart_totais_do_totais_dentro_do_prazo_ineficiencia += linha;
+                                                        } else if (inds[7] == 1 || inds[6] == 1) {
+                                                            chart_totais_do_totais_fora_do_prazo += linha;
+                                                        } else if (inds[5] == 1 || inds[4] == 1) {
+                                                            chart_totais_do_totais_fora_do_prazo_ineficiencia += linha;
+                                                        } else if (inds[3] == 1 || inds[2] == 1) {
+                                                            chart_totais_do_totais_sem_previsao += linha;
+                                                        } else {
+                                                            chart_totais_do_totais_congelado_prazo += linha;
+                                                        }
+
+
+                                                    }
+
+                                                    if (r.data.dados.length > limite && this.form.graph != 1) {
+                                                        var dt_inicio = this.form.dt_inicio;
+                                                        var dt_fim = this.form.dt_fim;
+                                                        Brd.confirm({
+                                                            msg: "O resultado da sua pesquisa trouxe mais de " + limite + " registros\nGostaria de visualizar os primeiros " + limite + " registros ou baixar o arquivo CSV?",
+                                                            btn: {
+                                                                VISUALIZAR: function () {
+                                                                    $("#contentTable").hide();
+                                                                    $("#contents").show();
+                                                                    $('#contents>tbody').html(html);
+                                                                },
+                                                                CSV: function () {
+                                                                    var name = Brd.getDominio() + '_entregas_' + Brd.date() + '.csv';
+                                                                    BrdReport.csv({
+                                                                        dados: [{data: $('#contents>thead'), type: 'head'},
+                                                                            {
+                                                                                data: $('<tbody>' + html2 + '</tbody>'),
+                                                                                type: 'body'
+                                                                            }],
+                                                                        filename: name,
+                                                                        contentType: "text/plain;charset=utf-8"
+                                                                    });
+                                                                    $('#contents>tbody').html('<tr><td colspan="' + $('#contents thead th').length + '" class="brd-titulo">Resumo de entregas do per&iacute;odo de ' + dt_inicio + ' &agrave; ' + dt_fim + '</td></tr>');
+
+                                                                    //$('#contents>table>tbody').html('<tr><td colspan="' + $('th', $('#contents>table>thead')).length + '" class="brd-titulo">Resumo de entregas do per&iacute;odo de ' + dt_inicio + ' &agrave; ' + dt_fim + '</td></tr>');
+                                                                }
+                                                            }
+                                                        });
+                                                    } else {
+                                                        var totais_do_totais_dentro_do_prazo = (totais[10] + totais[11]) * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0]);
+                                                        var totais_do_totais_dentro_do_prazo_ineficiencia = (totais[8] + totais[9]) * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0]);
+                                                        var totais_do_totais_fora_do_prazo = (totais[7] + totais[6]) * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0]);
+                                                        var totais_do_totais_fora_do_prazo_ineficiencia = (totais[5] + totais[4]) * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0]);
+                                                        var totais_do_totais_sem_previsao = (totais[3] + totais[2]) * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0]);
+                                                        var totais_do_totais_congelado_prazo = totais[0] * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[0] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11]);
+
+
+                                                        console.log(this.form.graph)
+                                                        if (this.form.graph != 1) {
+                                                            $('#contents>tbody').html(BrdReport.decodeHTMLEntities(html2));
+
+                                                            $("#contents").show();
+                                                            $("#contentTable").hide();
+
+                                                        } else {
+                                                            if (this.form.graph == 1) {
+                                                                google.charts.load('current', {'packages': ['corechart']});
+                                                                google.charts.setOnLoadCallback(drawChart);
+                                                                $("#contents").hide();
+                                                                $("#contentTable").show();
+
+                                                                // Define the chart to be drawn.
+                                                                function drawChart() {
+                                                                    var data = new google.visualization.DataTable();
+                                                                    data.addColumn('string', 'Topping');
+                                                                    data.addColumn('number', 'Slices');
+                                                                    data.addRows([
+                                                                        ['Dentro do prazo', totais_do_totais_dentro_do_prazo],
+                                                                        ['Dentro do prazo ineficiencia', totais_do_totais_dentro_do_prazo_ineficiencia],
+                                                                        ['Fora do prazo', totais_do_totais_fora_do_prazo],
+                                                                        ['Fora do prazo ineficiencia', totais_do_totais_fora_do_prazo_ineficiencia],
+                                                                        ['Fora do prazo sem previsão', totais_do_totais_sem_previsao],
+                                                                        ['Prazo congelado', totais_do_totais_congelado_prazo]
+                                                                    ]);
+                                                                    var options = {
+                                                                        'title': 'Gráfico relatorio de entregas',
+                                                                        'width': $(window).width() * 0.5,
+                                                                        'height': 400
+                                                                    };
+
+                                                                    var chart = new google.visualization.PieChart(document.getElementById('contentTable'));
+                                                                    chart.draw(data, options);
+
+
+                                                                    google.visualization.events.addListener(chart, 'select', () => {
+                                                                        var selection = chart.getSelection()[0];
+
+
+                                                                        if (selection === undefined) {
+                                                                            return;
+                                                                        }
+
+
+                                                                        console.log(ocos);
+
+                                                                        OpenDialog(selection.row);
+
+
+                                                                    });
+
+
+                                                                    function OpenDialog(num) {
+                                                                        var html = "";
+                                                                        switch (num) {
+                                                                            case 0:
+                                                                                html = chart_totais_do_totais_dentro_do_prazo;
+                                                                                break;
+
+                                                                            case 2:
+                                                                                html = chart_totais_do_totais_fora_do_prazo;
+                                                                                break;
+                                                                            case 3:
+                                                                                html = chart_totais_do_totais_fora_do_prazo_ineficiencia;
+                                                                                break;
+                                                                            case 1:
+                                                                                html = chart_totais_do_totais_dentro_do_prazo_ineficiencia;
+                                                                                break;
+                                                                            case 5:
+                                                                                html = chart_totais_do_totais_congelado_prazo;
+                                                                                break;
+                                                                        }
+                                                                        var thead = "<tr><th>MD</th><th>House</th><th>Unidade</th><th>Data</th><th>CTE</th><th>Manifesto</th><th>Nota Fiscal</th><th>Cliente</th><th>Remetente</th><th>Destinatário</th><th>Trecho</th><th>Resp Entrega</th><th>Coleta</th><th>Data Coleta</th><th>Prev. Entrega Data</th><th>Prev. Entrega Hora</th><th>Entrega</th><th>Hora Entrega</th><th>Status</th></tr>";
+
+                                                                        $("#relatorio").html("<table class='graph' style='width: 100%'>" + thead + html + "</table>").dialog({
+                                                                            autoOpen: false,
+                                                                            height: 530,
+                                                                            width: 1600,
+                                                                            modal: true,
+                                                                            buttons: {
+                                                                                "Fechar": function () {
+                                                                                    $('#relatorio').html("").hide();
+                                                                                    $(this).dialog("destroy");
+                                                                                }
+                                                                            },
+                                                                            close: function () {
+                                                                                $('#relatorio').html("").hide();
+                                                                                $(this).dialog("destroy");
+                                                                            }
+                                                                        }).dialog("open");
+                                                                        $(".graph").css("border", "1px dashed black");
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+
+                                                    }
+
+                                                    $('#brdtotais>tbody>tr:eq(0)>td:eq(1)').text(totais[10] + " (" + (totais[10] * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                                    $('#brdtotais>tbody>tr:eq(0)>td:eq(2)').text(totais[11] + " (" + (totais[11] * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                                    $('#brdtotais>tbody>tr:eq(0)>td:eq(3)').text(totais[10] + totais[11] + " (" + ((totais[10] + totais[11]) * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                                    $('#brdtotais>tbody>tr:eq(1)>td:eq(1)').text(totais[8] + " (" + (totais[8] * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                                    $('#brdtotais>tbody>tr:eq(1)>td:eq(2)').text(totais[9] + " (" + (totais[9] * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                                    $('#brdtotais>tbody>tr:eq(1)>td:eq(3)').text(totais[8] + totais[9] + " (" + ((totais[8] + totais[9]) * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                                    $('#brdtotais>tbody>tr:eq(2)>td:eq(1)').text(totais[6] + " (" + (totais[6] * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                                    $('#brdtotais>tbody>tr:eq(2)>td:eq(2)').text(totais[7] + " (" + (totais[7] * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                                    $('#brdtotais>tbody>tr:eq(2)>td:eq(3)').text(totais[7] + totais[6] + " (" + ((totais[7] + totais[6]) * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                                    $('#brdtotais>tbody>tr:eq(3)>td:eq(1)').text(totais[4] + " (" + (totais[4] * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                                    $('#brdtotais>tbody>tr:eq(3)>td:eq(2)').text(totais[5] + " (" + (totais[5] * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                                    $('#brdtotais>tbody>tr:eq(3)>td:eq(3)').text(totais[5] + totais[4] + " (" + ((totais[5] + totais[4]) * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                                    $('#brdtotais>tbody>tr:eq(4)>td:eq(1)').text(totais[2] + " (" + (totais[2] * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                                    $('#brdtotais>tbody>tr:eq(4)>td:eq(2)').text(totais[3] + " (" + (totais[3] * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                                    $('#brdtotais>tbody>tr:eq(4)>td:eq(3)').text(totais[3] + totais[2] + " (" + ((totais[3] + totais[2]) * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                                    $('#brdtotais>tbody>tr:eq(5)>td:eq(1)').text(totais[0] + " (" + (totais[0] * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[0] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11])).toFixed(2) + "%)");
+                                                    $('#brdtotais>tbody>tr:eq(5)>td:eq(2)').text("0 (0.00%)");
+                                                    $('#brdtotais>tbody>tr:eq(5)>td:eq(3)').text(totais[0] + " (" + (totais[0] * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[0] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11])).toFixed(2) + "%)");
+                                                    $('#brdtotais>tbody>tr:eq(6)>td:eq(1)').text(totais[0] + totais[8] + totais[4] + totais[2] + totais[6] + totais[10] + " (" + ((totais[8] + totais[4] + totais[2] + totais[6] + totais[10]) * 100 / (totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[9] + totais[8] + totais[4] + totais[5])).toFixed(2) + "%)");
+                                                    $('#brdtotais>tbody>tr:eq(6)>td:eq(2)').text(totais[9] + totais[5] + totais[3] + totais[7] + totais[11] + " (" + ((totais[9] + totais[5] + totais[3] + totais[7] + totais[11]) * 100 / (totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[9] + totais[8] + totais[4] + totais[5])).toFixed(2) + "%)");
+                                                    $('#brdtotais>tbody>tr:eq(6)>td:eq(3)').text(totais[0] + totais[9] + totais[5] + totais[8] + totais[4] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + " (100" + "%)");
+                                                } else {
+                                                    Brd.message(r.data.message);
+                                                }
+                                                $('.botoes').show();
+                                                $("#header").removeClass('ignorar_excel');
+                                            });
+                                }
+                            },
+                            updateCidade: function (c, p) {
+                                this.form[p.brdCcidade] = c.id;
+                            },
+                            listaAgrupadaPorCliente: function (lista) {
+                                var cabecalho = lista.data.dados[0];
+
+                                if (lista.data.dados.length > 0) {
+                                    lista.data.dados.shift();
+                                    $('.brd-hidden').show();
+                                }
+                                $('#contents>thead').hide();
+                                $('#contents>tfoot').hide();
+                                $('#contents>tbody').removeClass('brd-lista');
+                                //agrupa os dados por cliente
+                                var dadosAgrupados = this.agrupaDadosPorCliente(lista.data.dados);
+
+                                Brd.hideMessage();
+                                var html = '',
+                                        html2 = '',
+                                        limite = 1000;
+                                var totais = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+                                $('.botoes').hide();
+                                dadosAgrupados.forEach(function (dadosCliente, index) {
+                                    var html = '',
+                                            html2 = '';
+                                    totais = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+                                    html += '<tr><td><h2 class="entregaREALIZADA">' + dadosCliente.cliente + '</h2></td></tr>' +
+                                            '<tr><td><table width="100%" id="' + dadosCliente.cliente + '">' +
+                                            '<thead><tr>' +
+                                                '<th width="3%">MD</th>' +
+                                                '<th width="3%">HOUSE</th>' +
+                                                '<th width="3%">UNIDADE</th>' +
+                                                '<th width="4%">DATA</th>' +
+                                                '<th width="2%">CTE</th>' +
+                                                '<th width="2%" rpt="show">MODAL</th>' +
+                                                '<th width="2%" rpt="show">SERIE</th>' +
+                                                '<th width="4%">MANIFESTO</th>' +
+                                                '<th width="4%">NOTA FISCAL</th>' +
+                                                '<th width="4%" rpt="show">SERIE</th>' +
+                                                '<th width="8%">CLIENTE</th>' +
+                                                '<th width="10%">REMETENTE</th>' +
+                                                '<th width="10%">DESTINATARIO</th>' +
+                                                '<th width="2%" rpt="show">CIDADE DESTINO</th>' +
+                                                '<th width="2%" rpt="show">UF DESTINO</th>' +
+                                                '<th width="2%" rpt="show">REGIAO</th>' +
+                                                '<th width="2%" rpt="show">ESTADOS/REGIAO</th>' +
+                                                '<th width="5%">TRECHO</th>' +
+                                                '<th width="10%">RESP ENTREGA</th>' +
+                                                '<th width="2%">COLETA</th>' +
+                                                '<th width="4%">DATA COLETA</th>' +
+                                                '<th width="4%">PREV. ENTREGA DATA</th>' +
+                                                '<th width="4%">PREV. ENTREGA HORA</th>' +
+                                                '<th width="4%">ENTREGA</th>' +
+                                                '<th width="4%">HORA ENTREGA</th>' +
+                                                '<th width="2%" rpt="show">DATA DA OCORRÊNCIA INEF.</th>' +
+                                                '<th width="2%" rpt="show">HORA DA OCORRÊNCIA INEF.</th>' +
+                                                '<th width="2%" rpt="show">OCORRÊNCIA INEF.</th>' +
+                                                '<th width="4%">STATUS</th>' +
+                                            '</tr></thead>' +
+                                            '<tbody class="brd-lista">';
+                                    for (var i in dadosCliente.data) {
+                                        var item = BrdReport.replaceNull(dadosCliente.data[i]);
+                                        item[6] = item[6] == null || !item[6] ? '0|' : item[6];
+                                        item[16] = item[16] == null ? '0|0|0|0|0|0|0|0|0|0|0|0|0' : item[16];
+                                        var nt = item[6].split('|');
+                                        var ocos = item[16].split('|');
+                                        nt = nt[0] == "0" || !nt[1] ? 'DEC' : nt[1].replace(/[,]/g, "\n");
+                                        for (var a = 1; a < ocos.length; a++) {
+                                            totais[a - 1] += parseInt(ocos[a]);
+                                        }
+                                        var cte = ['', '']
+                                        if (typeof item[4] != null && item[4].indexOf('-') > 0) {
+                                            cte = item[4].split('-');
+                                        }
+                                        var nfs = [['DEC'], ['']];
+                                        var nta = [];
+                                        if (typeof nt != null) {
+                                            nt = nt.split('\n');
+                                            nfs = [[], []];
+                                            for (var ind in nt) {
+                                                nta = nt[ind].split("-");
+                                                nfs[0].push(nta[0]);
+                                                nfs[1].push(nta[1] ? nta[1] : '');
+                                            }
+                                        }
+                                        var inef = item[20] == null ? "||".split("|") : item[20].split("|");
+                                        var linha = '<tr class="graph" minuta="' + item[0] + '"><td class="graph" height="25">' + item[0] +
+                                                '</td><td class="graph">' + item[1] +
+                                                '</td><td class="graph">' + item[2] +
+                                                '</td><td class="graph">' + item[3] +
+                                                '</td><td id="cte?"  class="graph" rpt="hide">' + item[4] +
+                                                '</td><td rpt="show" class="graph">' + cte[0] +
+                                                '<td rpt="show" class="graph">' + item[24] + '</td>' +
+                                                '</td><td rpt="show" class="graph">' + cte[1] +
+                                                '</td><td class="graph">' + item[5] +
+                                                '</td><td rpt="hide" class="graph">' + nt +
+                                                '</td><td rpt="show" class="graph">' + nfs[0].join(", ") +
+                                                '</td><td rpt="show" class="graph">' + nfs[1].join(", ") +
+                                                '</td><td class="graph">' + item[7] +
+                                                '</td><td class="graph">' + item[8] + '\n' + item[10] +
+                                                '</td><td class="graph">' + item[9] + '\n' + item[11] +
+                                                '</td><td rpt="show" class="graph">' + item[17] +
+                                                '</td><td rpt="show" class="graph">' + item[18] +
+                                                '</td><td rpt="show" class="graph">' + item[19] +
+                                                '</td><td rpt="show">' + item[25] +
+                                                '</td><td class="graph">' + item[12] +
+                                                '</td><td class="graph">' + item[22] +
+                                                '</td><td class="graph">' + item[23] +
+                                                '</td><td class="graph">' + item[24] +
+                                                '</td><td class="graph">' + item[13] +
+                                                '</td><td class="graph">' + item[14] +
+                                                '</td><td class="graph">' + item[15] +
+                                                '</td><td class="graph">' + item[21] +
+                                                '</td><td class="graph" rpt="show">' + inef[0] +
+                                                '</td><td class="graph" rpt="show">' + inef[1] +
+                                                '</td><td class="graph" rpt="show">' + inef[2] +
+                                                '</td><td class="graph">' + ocos[0] +
+                                                '</td></tr>';
+                                        if (i < 1000) {
+                                            html += linha;
+                                        }
+                                        html2 += linha;
+                                    }
+                                    var clienteId = dadosCliente.cliente.replace(/\W+/g, "_");
+                                    html += '</tbody>' +
+                                            '<tfoot>' +
+                                            '<tr>' +
+                                            '<td colspan="16">' +
+                                            '<table width="50%" id="' + clienteId + 'totais">' +
+                                            '<thead>' +
+                                            '<tr>' +
+                                            '<td>RESUMO</td>' +
+                                            '<td>EM ABERTO</td>' +
+                                            '<td>ENTREGUES</td>' +
+                                            '<td>TOTAL</td>' +
+                                            '</tr>' +
+                                            '</thead>' +
+                                            '<tbody class="brd-lista">' +
+                                            '<tr>' +
+                                            '<td>DENTRO DO PRAZO</td>' +
+                                            '<td align="center"> (nan%)</td>' +
+                                            '<td align="center"> (nan%)</td>' +
+                                            '<td align="center">0 (nan%)</td>' +
+                                            '</tr>' +
+                                            '<tr>' +
+                                            '<td style="font-weight: bold;">DENTRO DO PRAZO - INEFICIENCIA DO CLIENTE</td>' +
+                                            '<td align="center"></td>' +
+                                            '<td align="center"></td>' +
+                                            '<td align="center"></td>' +
+                                            '</tr>' +
+                                            '<tr>' +
+                                            '<td style="font-weight: bold;">FORA DO PRAZO</td>' +
+                                            '<td align="center"></td>' +
+                                            '<td align="center"></td>' +
+                                            '<td align="center"></td>' +
+                                            '</tr>' +
+                                            '<tr>' +
+                                            '<td style="font-weight: bold;">FORA DO PRAZO - INEFICIENCIA DO CLIENTE</td>' +
+                                            '<td align="center"></td>' +
+                                            '<td align="center"></td>' +
+                                            '<td align="center"></td>' +
+                                            '</tr>' +
+                                            '<tr>' +
+                                            '<td style="font-weight: bold;">SEM PREVIS&Atilde;O</td>' +
+                                            '<td align="center"></td>' +
+                                            '<td align="center"></td>' +
+                                            '<td align="center"></td>' +
+                                            '</tr>' +
+                                            '<tr>' +
+                                            '<td style="font-weight: bold;">PRAZO CONGELADO</td>' +
+                                            '<td align="center"></td>' +
+                                            '<td align="center"></td>' +
+                                            '<td align="center"></td>' +
+                                            '</tr>' +
+                                            '<tr style="font-weight: bold;">' +
+                                            '<td height="30" align="center" valign="middle" class="novo">TOTAL</td>' +
+                                            '<td height="30" align="center" valign="middle" class="novo"></td>' +
+                                            '<td height="30" align="center" valign="middle" class="novo"></td>' +
+                                            '<td height="30" align="center" valign="middle" class="novo"></td>' +
+                                            '</tr>' +
+                                            '</tbody>' +
+                                            '</table>' +
+                                            '</td>' +
+                                            '</tr>' +
+                                            '</tfoot>' +
+                                            '</table></td></tr>';
+                                    $('#contents>tbody').append(html);
+                                    var totais_do_totais_dentro_do_prazo = (totais[10] + totais[11]) * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0]);
+                                    var totais_do_totais_dentro_do_prazo_ineficiencia = (totais[8] + totais[9]) * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0]);
+                                    var totais_do_totais_fora_do_prazo = (totais[7] + totais[6]) * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0]);
+                                    var totais_do_totais_fora_do_prazo_ineficiencia = (totais[5] + totais[4]) * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0]);
+                                    var totais_do_totais_sem_previsao = (totais[3] + totais[2]) * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0]);
+                                    var totais_do_totais_congelado_prazo = totais[0] * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[0] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11]);
+                                    $('#' + clienteId + 'totais>tbody>tr:eq(0)>td:eq(1)').text(totais[10] + " (" + (totais[10] * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                    $('#' + clienteId + 'totais>tbody>tr:eq(0)>td:eq(2)').text(totais[11] + " (" + (totais[11] * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                    $('#' + clienteId + 'totais>tbody>tr:eq(0)>td:eq(3)').text(totais[10] + totais[11] + " (" + ((totais[10] + totais[11]) * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                    $('#' + clienteId + 'totais>tbody>tr:eq(1)>td:eq(1)').text(totais[8] + " (" + (totais[8] * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                    $('#' + clienteId + 'totais>tbody>tr:eq(1)>td:eq(2)').text(totais[9] + " (" + (totais[9] * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                    $('#' + clienteId + 'totais>tbody>tr:eq(1)>td:eq(3)').text(totais[8] + totais[9] + " (" + ((totais[8] + totais[9]) * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                    $('#' + clienteId + 'totais>tbody>tr:eq(2)>td:eq(1)').text(totais[6] + " (" + (totais[6] * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                    $('#' + clienteId + 'totais>tbody>tr:eq(2)>td:eq(2)').text(totais[7] + " (" + (totais[7] * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                    $('#' + clienteId + 'totais>tbody>tr:eq(2)>td:eq(3)').text(totais[7] + totais[6] + " (" + ((totais[7] + totais[6]) * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                    $('#' + clienteId + 'totais>tbody>tr:eq(3)>td:eq(1)').text(totais[4] + " (" + (totais[4] * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                    $('#' + clienteId + 'totais>tbody>tr:eq(3)>td:eq(2)').text(totais[5] + " (" + (totais[5] * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                    $('#' + clienteId + 'totais>tbody>tr:eq(3)>td:eq(3)').text(totais[5] + totais[4] + " (" + ((totais[5] + totais[4]) * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                    $('#' + clienteId + 'totais>tbody>tr:eq(4)>td:eq(1)').text(totais[2] + " (" + (totais[2] * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                    $('#' + clienteId + 'totais>tbody>tr:eq(4)>td:eq(2)').text(totais[3] + " (" + (totais[3] * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                    $('#' + clienteId + 'totais>tbody>tr:eq(4)>td:eq(3)').text(totais[3] + totais[2] + " (" + ((totais[3] + totais[2]) * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[0])).toFixed(2) + "%)");
+                                    $('#' + clienteId + 'totais>tbody>tr:eq(5)>td:eq(1)').text(totais[0] + " (" + (totais[0] * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[0] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11])).toFixed(2) + "%)");
+                                    $('#' + clienteId + 'totais>tbody>tr:eq(5)>td:eq(2)').text("0 (0.00%)");
+                                    $('#' + clienteId + 'totais>tbody>tr:eq(5)>td:eq(3)').text(totais[0] + " (" + (totais[0] * 100 / (totais[8] + totais[9] + totais[4] + totais[5] + totais[3] + totais[0] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11])).toFixed(2) + "%)");
+                                    $('#' + clienteId + 'totais>tbody>tr:eq(6)>td:eq(1)').text(totais[0] + totais[8] + totais[4] + totais[2] + totais[6] + totais[10] + " (" + ((totais[8] + totais[4] + totais[2] + totais[6] + totais[10]) * 100 / (totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[9] + totais[8] + totais[4] + totais[5])).toFixed(2) + "%)");
+                                    $('#' + clienteId + 'totais>tbody>tr:eq(6)>td:eq(2)').text(totais[9] + totais[5] + totais[3] + totais[7] + totais[11] + " (" + ((totais[9] + totais[5] + totais[3] + totais[7] + totais[11]) * 100 / (totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + totais[9] + totais[8] + totais[4] + totais[5])).toFixed(2) + "%)");
+                                    $('#' + clienteId + 'totais>tbody>tr:eq(6)>td:eq(3)').text(totais[0] + totais[9] + totais[5] + totais[8] + totais[4] + totais[3] + totais[2] + totais[6] + totais[10] + totais[7] + totais[11] + " (" + (totais_do_totais_dentro_do_prazo + totais_do_totais_dentro_do_prazo_ineficiencia + totais_do_totais_fora_do_prazo + totais_do_totais_fora_do_prazo_ineficiencia + totais_do_totais_sem_previsao + totais_do_totais_congelado_prazo).toFixed(2) + "%)");
+                                });
+
+
+                            },
+                            agrupaDadosPorCliente: function (dados) {
+                                groups = dados.reduce(function (r, o) {
+                                    var m = o[7];
+                                    (r[m]) ? r[m].data.push(o) : r[m] = {cliente: o[7], data: [o]};
+                                    return r;
+                                }, {});
+                                var result = Object.keys(groups).map(function (k) {
+                                    return groups[k];
+                                });
+                                return result;
+
+                            }
+                        }
+                    });
+
+                    $("#question").on("click", function () {
+                        $("#janela-ajuda").dialog({width: 700});
+                    });
+                    $("#selecionaServico").selectable({
+                        nome: "servicos[]",
+                        class: "servicos",
+                        multiplo: true,
+                        todos: true,
+                        dados: {
+                            "Servicos": {"21":"DEDICADO X AGENDAMENTO NAO RASTREADO","22":"DEDICADO X AGENDAMENTO RASTREADO","8":"ECONOMICO_250","38":"EXPRESSO_200","4":"EXPRESSO_250","40":"LOTACAO","37":"PERSONALIZADO","39":"PERSONALIZADO SIDER\/ABERTO","23":"REPASSE","5":"SERVICO LOGISTICO","34":"SUBCONTRATO_ECONOMICO","35":"SUBCONTRATO_EXPRESSO","36":"SUBCONTRATO_PERSONALIZADO"}                        },
+                        checked: ['']
+                    });
+                });
+            </script>
+        </head>
+        <body leftmargin="0" topmargin="0" marginwidth="0" marginheight="0"><div id="showMessageBrudam" style="background-color: rgb(255, 255, 153); border-radius: 8px; padding: 10px; text-align: center; border: 1px solid rgb(195, 209, 236); height: auto; width: 1880px; margin-top: 396px; font: bold 18px Verdana, Geneva, sans-serif; z-index: 99990; position: fixed; color: rgb(51, 51, 51);"><img src="/img/load.gif"> Montando relatório...</div>
+        <center>
+            <template id="brd-datepicker">
+                <input @input="$emit('input', $event.target.value)" v-datepicker="" v-on:keypress="formatData">
+            </template>
+            <template id="brd-cidades">
+                <input @input="$emit('input', $event.target.value)" v-autocomplete="">
+            </template>
+            <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+                <tbody><tr align="center" valign="middle">
+                    <td height="56" colspan="2" align="center" valign="middle" bgcolor="#0066FF" class="fundobanner">
+                        <!-- Google tag (gtag.js) -->
+<script async="" src="https://www.googletagmanager.com/gtag/js?id=G-WCZ1LQDNYZ"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-WCZ1LQDNYZ');
+</script><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer">
+<link href="/css/topo.css?t=1768410481" rel="stylesheet" type="text/css">
+<link href="/assets/css/Search.css?t=1768410481" rel="stylesheet" type="text/css">
+<script type="text/javascript" src="/js/brudam.js?t=1768410481"></script>
+<table width="100%" cellspacing="0" cellpadding="0" heigth="60" id="table_search_7B6r5dvvrdvA65DVDsjadn">
+    <input type="hidden" name="cookieNewer" id="cookieNewer" value="">
+    <tbody><tr>
+        <td class="fundobannerLogo">
+            <a href="/inicio.php">
+                <div id="logo_cliente">
+                    <img src="data:image/gif;base64,R0lGODdhtAAwAPcAAAwKPIyKjMTGxPyGVPxmLOTm5ExKbKSmpPzGrMTCxCwqVGxqhPT29JSWrLS2tNTW1PymhOTi5PyWbPx2PPy2lBwaRPzm3KyurIyOjMzOzDw6ZHx6lFxafPzWxPz+/JyenPx+TPyOXKSmtHR2fPz27Ly+vNze3PyujPyedPy+pCQiTPTy9IyOpPzezBQSRMzKzPxuNOzu7FRSdPzOvDQyXKyuvNTS1ERCZISGnLS2xNza3Px6TPy6pISCnGRihJyetPySbPz6/PyihPzu5AwOPMTG1PxqLOzq7KyqrPzKtGxujJyanPyqhPx6RPy6nBweTLSytJSSlMzO3Hx+lPzazPyCTPySZKyqvHRyjPz69PyylPyifCQmVJSSpPzi1FRWdDQ2XERGbIyKpPzy7MTGzPyKXOTm7ExOdKSmrPzGtMTCzCwuXGxqjPT2/Ly6vNTW3OTi7PyadPx2RPy2nBwaTPzq5KyutIyOlMzO1Dw+ZFxefPzWzKSipPyOZKSmvPz29Ly+zLSyxLy6zKSitJyarPzCrPxyPHR2lBQWRPzSvGRmhNze5PyulPyefCQiVPze1MzK1Ozu9NTS3ERCbISGpNza5Pzu7AwORPxqNPyqjHx+nPyCVJSSrFRWfDQ2ZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACwAAAAAtAAwAAAI/gA9CBxIsKDBgwgTKlzIkOEjKg0jSpxIsaLFixgzCkyRSaPHjyBDitQYpFGckShTqlyJccyAMllYypxJc+UjQ1X+1NzJsyfFJJjkDPFJtKhRD1oIwLBwtKnTlUHiEDAC8anVqxotbSJAYAbWr2Al3uSaIqzZswYRcCVwAq3bsxDWbnlLF+ufPmv71N3rtA6ItZti8h3scyzXJiQIK96ZxshaQ3UWS5Z5Yi1XppMzj8wCxDKBqppDe6yz1XIS0agzUjHk2UlqyXWSJJlBO9GMRJgjpvFMgMlryVn+8pYzJmIm3id/w4bBm8CAIAv/dPYcQnlmKs0JJEfol3cV6NYn/qttDgHh6uE6w2eu3FyLwULNYQxVr1lq80IE2fOOLDBIDUJicKIGeANVwgIWlEBC0BF+cMICIUUItMggP1Bo4Q8rCGQgggoOVEchIILoFRWFEOjBbPQNlMUA2UGUhQQtLgjAGjKEcQkYZgyEBQB5+JAHABxk6MEVAITBwSRFrhCIAkxeggiTCuS4Y48/ctCGQEkQIEcTOzRhhQdeEOCeQIkQkEaKA/0hR3xJ7JCdVwSZAcAgEqrAgUAbXBLIQIFcoodARC4ikBqXiEGQAooQhIULewrU558nEsAfQVtgUlwQTeiFpoeYZJddWQUdAcAPOtLhQSUAaFIQDgAoeAUR/oIKpEEnh7JRIAA9FNQDAHh4sNukA40BQyMezCHppgQ94ilvjBxkxiV0CqSEIx6IAUCOMqoa6EBcYHFoogJRcm2oqUYK7EDwdQDDmMgONMOyciEkKqmnPrGABxyocJACMgwJQCVBRKCICrEKhOhA+R7ExZ27bXHCCYzAKdAmRoBgYrtIwQtEQnLmwcYXLtwQiQdnrHEQDWcMSQQRAADARSUFKWCrQGfQcHLKu5UBhBVA4DfQcdthPBCM2T2XkKgyYNGDIAPpYapBdCRKZBFwBEKHDzGDi+8TB0Vt7kF1GGHFZ0ITFERpnlmskJz0EsQJrwVJAQAh/sbaABHYGqz1/ttSFATJ3L4eaxAQm5y9SdkEjTGBZ4akd/ScBh3hQr8EdVLByK/GugjkA8k8kBkufFGQDHSMnOW5HpTZgQctEOBa2UrAbEGnXMFgiQdqNOrsqAf9AIAPcHhgxgIA+AEoAAU7MrPeBBHye45m+HDJFQLthpsF2Hug5pcCNWKp0BsA4IigrROASWRFuOCCGvJybtAVXACAyIw5DLStQIpw8W1B8MsPAA31wxJvLFGZ3FgCE0FDk7VatoYjpE4OTJFEBVqGCEkgJBJXSsgb1AAzs40sTR8UyAqEVBBJcLAgQRjDGCyhwuL8wXEC+UNikOU8ALAMAJPIoAci8ISWtewJ/h3cyxEciDhBXMKHRwQAuFbgCSS2jAvBM5sDoPAAN5TAAzGwgQde4AEd/MENb8iAG44QAzdw0QEJ0AEUHLCCBHjABgw4wgoc4IYYeCABboBOBOq4Rx0MsYtdDAIeGXABPjDgBWNMgAA2BQkXtOyGT8xQI33YsiPSIIQDQUIQkECGCEABCR6IQgLsIIA3eACUSPiAB0pgAyiUoABQYIAOMMAAOyAhAzqwQxA+AAUygpIPQWjDATzAhwxoEZUOKIAH3BCBFaABlCu4wKYqQQcb+pBlFRyIH6yZRJblgYQCAWUAohCEO0ThCLYcphvcwAcH6IAPO3SDOT0QSz6goQRQ/kgAEnQgTTTA0wNo8MARDoDIO7rhAac85T+H6YEDfKCOL2CoeuAQPycC4BKAKIi4HklJA+jwlJtMwAsSEAMoXIABIyiADg4ASoDagA9mcOURoLACUB5AmgEwwRJeAIUXlECRXRRAApbwhg88AArvfMMt3fkCB4yUDzaIwAOWQJ9I0ICjHG0bQZRASZYdkVYDydAK2hCDmIzQAyv4gwmCQMJmojUIDFgBW9GaIQYEwQREPAK2YhABD9w1CFmIwBEYEAHo6CCPehVoAVawCAao5wga6KoPKYGQIJzhEpC05vLAIkeh/eFH1qwkAJSgEAaANok+3ADizLIBLrj2ta7VE8NHD3KEMyDiCa/FrSNEsNqIBAQAOw==" alt="Brudam Rodoweb" border="0">
+                </div>
+            </a>
+            <input type="hidden" id="zQ65xxbF3BXbmhCMIWu0VEzYj" value="0">
+        </td>
+        <td class="fundobannerTopo">
+            <div id="menusMODULOS">
+                <div class="nav-modulos">
+                    <ul id="nav">
+                        <li class="notification_li">
+                            <span id="notification_count"></span>
+                            <a href="#" id="notificationLink">
+                                <i class="fa fa-bell" aria-hidden="true" id="fa"></i>
+                            </a>
+                            <div id="notificationContainer">
+                                <div id="notificationTitle"><span>Avisos</span> <a id="notificationAllRead" href="#">Marcar todas como lidas</a></div>
+                                <div id="notificationsBody" class="notifications scroll-minis"></div>
+                            </div>
+                        </li>
+                        <li class="notification_li">
+                            <span id="notification_count"></span>
+                            <a href="#" id="favoritosLink">
+                                <i class="fa fa-star star" aria-hidden="true"></i>
+                            </a>
+                        </li>
+                        <li class="notification_li">
+                            <a href="#" id="suporteLink">
+                                <i class="fa fa-phone" aria-hidden="true"></i>
+                            </a>
+                            <div id="favoritosContainer">
+                                <div id="favoritosTitle"><span>Meus atalhos favoritos</span></div>
+                                <div id="favoritosBody" class="notifications scroll-minis">
+
+                                </div>
+                                <div id="favoritosFooter" align="center"><a href="#" id="addNovoAtalho">Incluir novo atalho</a></div>
+                            </div>
+                        </li>
+                        <li class="notification_li">
+                            <a href="#" id="novidadesLink">
+                                <i class="fa fa-newspaper" aria-hidden="true"></i>
+                            </a>
+                            <div id="novidadesContainer">
+                                <div id="novidadesTitle"><span>Atualizações recentes</span></div>
+                                <div id="novidadesBody" class="notifications scroll-minis"></div>
+                            </div>
+                        </li>
+                                                    <li class="notification_li suporte_compact" id="btn_search_7B6r5dvvrdvA65DVDsjadn1">
+                            <a href="#" id="btn_search_7B6r5dvvrdvA65DVDsjadn" class="btn_search_7B6r5dvvrdvA65DVDsjadn novidadesLink">
+                                <i class="fa fa-search" aria-hidden="true"></i>
+                            </a>
+
+
+
+                            <div id="suporteContainer">
+                                <div id="suporteTitle"><span>Suporte / Atendimento</span></div>
+                                <div id="suporteBody" class="notifications scroll-minis">
+                                    <div class="cl_top4">
+                                        <div class="cl_top1">
+                                            <i class="far fa-life-ring cl_top2"></i>
+                                        </div>
+                                        <div class="cl_top3">
+                                            <div class="cl_top7">
+                                                <span>Abrir / Verificar chamados</span>
+                                            </div>
+                                            <div class="cl_top5">
+                                                <a href="#" openticket="fGF6cG9ydG9leA==">Abrir novo chamado para suporte ou acompanhar os chamados existentes.</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="cl_top4">
+                                        <div class="cl_top1">
+                                            <i class="fa fa-comments cl_top2"></i>
+                                        </div>
+                                        <div class="cl_top3">
+                                            <div class="cl_top7">
+                                                <span>Atendimento online</span>
+                                            </div>
+                                            <div class="cl_top5">
+                                                <a href="#" opensupport="">Fale com suporte / tire suas dúvidas</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                                                    </div>
+                            </div>
+                        </li>
+
+
+                                                    <li class="notification_li cl_top8">
+                            <input name="codigo_opcao" type="text" id="codigo_opcao" size="3" maxlength="3" placeholder="Atalho">
+                        </li>
+                    </ul>
+                </div>
+                <div class="cl_top10">
+                    <ul id="navr">
+                        <li class="notification_li menus_topo_5bd059c854ec4">
+                            <a href="#" id="menuCompactLink">
+                                <i class="fa fa-ellipsis-v" aria-hidden="true"></i>
+                            </a>
+                            <div id="menuCompactContainer">
+                                <div id="menuCompactBody" class="notifications">
+                                    <div class="menu_compacto_5bd059c854ec4 menu_compacto_portaria_5bd059c854ec4">
+                                                  <a href="/portaria">Portaria</a>
+                                              </div><div class="menu_compacto_5bd059c854ec4 menu_compacto_estoque_5bd059c854ec4">
+                                                  <a href="/estoque">Estoque</a>
+                                              </div><div class="menu_compacto_5bd059c854ec4 menu_compacto_frota_5bd059c854ec4">
+                                                  <a href="/frota">Frota</a>
+                                              </div><div class="menu_compacto_5bd059c854ec4 menu_compacto_ferramentas_5bd059c854ec4">
+                                                  <a href="/ferramentas">Ferramentas</a>
+                                              </div><div class="menu_compacto_5bd059c854ec4 menu_compacto_fiscal_5bd059c854ec4">
+                                                  <a href="/fiscal">Fiscal</a>
+                                              </div><div class="menu_compacto_5bd059c854ec4 menu_compacto_sistema_5bd059c854ec4">
+                                                  <a href="/sistema">Sistema</a>
+                                              </div><div class="menu_compacto_5bd059c854ec4 menu_compacto_operacional_5bd059c854ec4">
+                                                  <a href="/operacional">Operacional</a>
+                                              </div><div class="menu_compacto_5bd059c854ec4 menu_compacto_financeiro_5bd059c854ec4">
+                                                  <a href="/financeiro">Financeiro</a>
+                                              </div><div class="menu_compacto_5bd059c854ec4 menu_compacto_gerencia_5bd059c854ec4">
+                                                  <a href="/gerencia">Gerencia</a>
+                                              </div><div class="menu_compacto_5bd059c854ec4 menu_compacto_comercial_5bd059c854ec4">
+                                                  <a href="/comercial">Comercial</a>
+                                              </div><div class="menu_compacto_5bd059c854ec4 menu_compacto_cadastro_5bd059c854ec4">
+                                                  <a href="/cadastro">Cadastro</a>
+                                              </div><div class="menu_compacto_5bd059c854ec4 menu_compacto_sac_5bd059c854ec4">
+                                                  <a href="/sac">Sac</a>
+                                              </div>                                </div>
+                            </div>
+                        </li>
+                        <li class="notification_li menus_topo_5bd059c854ec4a">
+                            <a href="/sair.php">
+                                <i class="fa fa-sign-out" aria-hidden="true"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <a href="/portaria">
+                                <div class="modulos_5bd059c854ec4 menu_topo_portaria_5bd059c854ec4">
+                                    <span>Portaria</span>
+                                </div>
+                              </a><a href="/estoque">
+                                <div class="modulos_5bd059c854ec4 menu_topo_estoque_5bd059c854ec4">
+                                    <span>Estoque</span>
+                                </div>
+                              </a><a href="/frota">
+                                <div class="modulos_5bd059c854ec4 menu_topo_frota_5bd059c854ec4">
+                                    <span>Frota</span>
+                                </div>
+                              </a><a href="/ferramentas">
+                                <div class="modulos_5bd059c854ec4 menu_topo_ferramentas_5bd059c854ec4">
+                                    <span>Ferramentas</span>
+                                </div>
+                              </a><a href="/fiscal">
+                                <div class="modulos_5bd059c854ec4 menu_topo_fiscal_5bd059c854ec4">
+                                    <span>Fiscal</span>
+                                </div>
+                              </a><a href="/sistema">
+                                <div class="modulos_5bd059c854ec4 menu_topo_sistema_5bd059c854ec4">
+                                    <span>Sistema</span>
+                                </div>
+                              </a><a href="/operacional">
+                                <div class="modulos_5bd059c854ec4 menu_topo_operacional_5bd059c854ec4">
+                                    <span>Operacional</span>
+                                </div>
+                              </a><a href="/financeiro">
+                                <div class="modulos_5bd059c854ec4 menu_topo_financeiro_5bd059c854ec4">
+                                    <span>Financeiro</span>
+                                </div>
+                              </a><a href="/gerencia">
+                                <div class="modulos_5bd059c854ec4_ATIVO menu_topo_gerencia_5bd059c854ec4">
+                                    <span>Gerencia</span>
+                                </div>
+                              </a><a href="/comercial">
+                                <div class="modulos_5bd059c854ec4 menu_topo_comercial_5bd059c854ec4">
+                                    <span>Comercial</span>
+                                </div>
+                              </a><a href="/cadastro">
+                                <div class="modulos_5bd059c854ec4 menu_topo_cadastro_5bd059c854ec4">
+                                    <span>Cadastro</span>
+                                </div>
+                              </a><a href="/sac">
+                                <div class="modulos_5bd059c854ec4 menu_topo_sac_5bd059c854ec4">
+                                    <span>Sac</span>
+                                </div>
+                              </a>                    <div class="menu_suporte_5bd059c854ec4">
+                        <div class="modulos_5bd059c854ec4 link_chat" title="Fale com suporte / Tire suas dúvidas" opensupport="">
+                            <strong>Atendimento</strong>
+                        </div>
+                                        <div class="modulos_5bd059c854ec4 cl_top9 link_chat" title="Portal de Clientes / Chamados" openticket="fGF6cG9ydG9leA==">
+                        <strong>Suporte</strong>
+                    </div>
+                    </div>
+                    <div notification_id="" id="msg_view" title="&nbsp;">
+                        <div>
+                            <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                <thead>
+                                    <tr>
+                                        <td align="left" class="tituloAzul" height="40" id="view_title"></td>
+                                        <td align="right" class="tituloAzul" height="40"><i class="fa fa-calendar cl_top6"></i> &nbsp;<span id="view_data" class="cl_top6"></span></td>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td align="left" class="textoAzul" colspan="2" height="40" id="view_msg"></td>
+                                    </tr>
+                                    <tr>
+                                        <td align="left" colspan="2" height="40" id="view_status">&nbsp;</td>
+                                    </tr>
+                                    <tr>
+                                        <td align="left" class="textoAzul" colspan="2" height="20">&nbsp;</td>
+                                    </tr>
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td align="right" class="linhaup" colspan="2" height="50">
+                                            <table>
+                                                <tbody><tr>
+                                                    <td class="cl_top11">
+                                                        <button type="button" class="btn-dialog-cinza" id="view_solve"> Resolver</button>
+                                                    </td>
+                                                    <td>
+                                                        <button type="button" class="btn-dialog-cinza" id="view_close"> Fechar</button>
+                                                    </td>
+                                                </tr>
+                                            </tbody></table>
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                    <div id="janelaAdicionaAtalho" title="Adicionar novo atalho favorito">
+                        <table width="200px" border="0" cellspacing="8" cellpadding="4" id="gridCentro">
+                            <tbody><tr>
+                                <td height="35" colspan="2" class="tituloAzul">Adicionar novo atalho</td>
+                            </tr>
+                            <tr>
+                                <td height="45" colspan="2">
+                                    <table width="100%" border="0" cellspacing="2" cellpadding="5">
+                                        <tbody><tr>
+                                            <td width="170px;"><strong>Atalho:</strong></td>
+                                            <td><strong>Título:</strong></td>
+                                        </tr>
+                                        <tr>
+                                            <td width="170px;">
+                                                <input name="cod_atalho" type="text" size="10" class="classIMPUT" id="cod_atalho_top" mascara="int" maxlength="3" autocomplete="off">
+                                            </td>
+                                            <td>
+                                                <input name="titulo_atalho" type="text" class="classIMPUT" id="titulo_atalho" size="30" maxlength="45" autocomplete="off">
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td height="25" valign="bottom" colspan="2"><strong>Descrição:</strong></td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="2" height="40">
+                                                <input name="desc_atalho" type="text" class="classIMPUT" id="desc_atalho" size="43" maxlength="100" autocomplete="off">
+                                            </td>
+                                        </tr>
+                                    </tbody></table>
+                                </td>
+                            </tr>
+                        </tbody></table>
+                    </div>
+                    <div notification_id="" id="news_view" title="&nbsp;">
+                        <div>
+                            <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                <thead>
+                                    <tr>
+                                        <td align="left" class="tituloAzul" height="40" id="news_title"></td>
+                                        <td align="right" class="tituloAzul" height="40"><i class="fa fa-calendar cl_top6"></i> &nbsp;<span id="news_data" class="cl_top6"></span></td>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td align="left" class="textoAzul" colspan="2" height="40">
+                                            <div id="news_msg"></div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td align="left" class="textoAzul" colspan="2" height="20">&nbsp;</td>
+                                    </tr>
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td align="right" class="linhaup" colspan="2" height="50">
+                                            <table>
+                                                <tbody><tr>
+                                                    <td>
+                                                        <button type="button" class="btn-dialog-cinza" id="news_close"> Fechar</button>
+                                                    </td>
+                                                </tr>
+                                            </tbody></table>
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+            </div>
+        </td>
+    </tr>
+</tbody><div class="task-content_fast_b5b037a785226" id="fast_search_7B6r5dvvrdvA65DVDsjadn" title="Search Fast Atalhos - Sistema">   
+                <input class="input_fast_b5b037a785226" disabled="" placeholder="Navegação rápida" type="text" id="search_fast_b5b037a785226">
+                <input type="submit" value="" disabled="">           
+            </div>
+            <div class="task-content_b5b037a785226" id="modal_search_7B6r5dvvrdvA65DVDsjadn" title="Search Atalhos - Sistema" style="display: none;">
+                <div class="task-container_b5b037a785226" id="task-container_b5b037a785226">
+                    <div class="flex-content_b5b037a785226 justify-center_b5b037a785226">
+                      <div class="input_b5b037a785226 search_b5b037a785226">
+                        <input type="submit" value="">
+                        <input type="text" id="search_input_b5b037a785226" placeholder="Digite aqui para pesquisar">
+                        <span></span>
+                      </div>
+                    </div>
+                    <div class="grid_b5b037a785226">
+                        <div class="grid_column_b5b037a785226">
+                            <div class="btn-modulo_b5b037a7852262" modulo="sac">
+                                <span></span> 
+                                <b>SAC</b>
+                                <b class="o_b5b037a7852262">(<span id="total_sac_btn-modulo_b5b037a7852262">0</span>)</b>
+                            </div>
+                            <div class="btn-modulo_b5b037a7852262" modulo="cadastro">
+                                <span></span> 
+                                <b>CADASTRO</b>
+                                <b class="o_b5b037a7852262">(<span id="total_cadastro_btn-modulo_b5b037a7852262">0</span>)</b>  
+                            </div>
+                            <div class="btn-modulo_b5b037a7852262" modulo="comercial">
+                                <span></span> 
+                                <b>COMERCIAL</b>
+                                <b class="o_b5b037a7852262">(<span id="total_comercial_btn-modulo_b5b037a7852262">0</span>)</b> 
+                            </div>
+                            <div class="btn-modulo_b5b037a7852262" modulo="gerencia">
+                                <span></span> 
+                                <b>GERENCIA</b>
+                                <b class="o_b5b037a7852262">(<span id="total_gerencia_btn-modulo_b5b037a7852262">0</span>)</b> 
+                            </div>
+                            <div class="btn-modulo_b5b037a7852262" modulo="financeiro">
+                                <span></span> 
+                                <b>FINANCEIRO</b>
+                                <b class="o_b5b037a7852262">(<span id="total_financeiro_btn-modulo_b5b037a7852262">0</span>)</b> 
+                            </div>
+                            <div class="btn-modulo_b5b037a7852262" modulo="operacional">
+                                <span></span> 
+                                <b>OPERACIONAL</b>
+                                <b class="o_b5b037a7852262">(<span id="total_operacional_btn-modulo_b5b037a7852262">0</span>)</b> 
+                            </div>
+                            <div class="btn-modulo_b5b037a7852262" modulo="sistema">
+                                <span></span> 
+                                <b>SISTEMA</b>
+                                <b class="o_b5b037a7852262">(<span id="total_sistema_btn-modulo_b5b037a7852262">0</span>)</b> 
+                            </div>
+                            <div class="btn-modulo_b5b037a7852262" modulo="fiscal">
+                                <span></span> 
+                                <b>FISCAL</b>
+                                <b class="o_b5b037a7852262">(<span id="total_fiscal_btn-modulo_b5b037a7852262">0</span>)</b> 
+                            </div>
+                            <div class="btn-modulo_b5b037a7852262" modulo="ferramentas">
+                                <span></span> 
+                                <b>FERRAMENTAS</b>
+                                <b class="o_b5b037a7852262">(<span id="total_ferramentas_btn-modulo_b5b037a7852262">0</span>)</b> 
+                            </div>
+                            <div class="btn-modulo_b5b037a7852262" modulo="frota">
+                                <span></span> 
+                                <b>FROTA</b>
+                                <b class="o_b5b037a7852262">(<span id="total_frota_btn-modulo_b5b037a7852262">0</span>)</b> 
+                            </div>
+                            <div class="btn-modulo_b5b037a7852262" modulo="estoque">
+                                <span></span> 
+                                <b>ESTOQUE</b>
+                                <b class="o_b5b037a7852262">(<span id="total_estoque_btn-modulo_b5b037a7852262">0</span>)</b> 
+                            </div>
+                              <div class="btn-modulo_b5b037a7852262" modulo="portaria">
+                                <span></span> 
+                                <b>PORTARIA</b>
+                                <b class="o_b5b037a7852262">(<span id="total_portaria_btn-modulo_b5b037a7852262">0</span>)</b>    
+                            </div>
+                        </div>
+                        <div class="grid_column_b5b037a785226 pad_20_35_b5b037a7852262">
+                            <div class="title-div-container_b5b037a7852262">
+                                <span></span>
+                                <!-- <img referrerpolicy="no-referrer" src="/img/Search-Light.png" id="imgSearch" alt="Pesquisar."> -->
+                                <b id="result_search_b5b037a785226"></b>
+                            </div>
+                            <div id="loading_search_b5b037a785226" style="display: none">
+                                <div class="loading_b5b037a785226 element_b5b037a785226 title_b5b037a785226"></div>
+                                <div class="loading_b5b037a785226 element_b5b037a785226 title_b5b037a785226"></div>
+                                <div class="loading_b5b037a785226 element_b5b037a785226 title_b5b037a785226"></div>
+                                <div class="loading_b5b037a785226 element_b5b037a785226 title_b5b037a785226"></div>
+                                <div class="loading_b5b037a785226 element_b5b037a785226 title_b5b037a785226"></div>
+                            </div>
+                            <div class="grid-container_b5b037a785226">
+                                <div class="grid_search_b5b037a785226" id="scrollbar_b5b037a7852262"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div></table>
+<script type="text/javascript" src="/assets/js/Search.js?t=1768410481"></script>
+<script type="text/javascript" src="/js/topo.js?t=1768410481"></script>
+                    </td>
+                </tr>
+                <tr align="center" valign="middle">
+                    <td height="30" colspan="2" align="center" valign="middle">
+                        <link href="/css/gerencia.css?t=1768410481" rel="stylesheet" type="text/css">
+<nav>
+    <ul class="menu">
+    <li><a rel="noopener noreferrer" href="#"><i class="fa fa-users" aria-hidden="true"></i>&nbsp; Funcionários</a>
+    <ul class="gerencia">
+    <li><a rel="noopener noreferrer" href="/gerencia/funcionarios.php?acao=1">034 - Funcionários</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/cargos.php?acao=0">665 - Cargos e Funções</a></li>
+    </ul>
+    </li>
+    <li>
+    <a rel="noopener noreferrer" href="#"><i class="fa fa-line-chart" aria-hidden="true"></i>&nbsp; Metas/Faturamento</a>
+    <ul class="gerencia">
+    <li><a rel="noopener noreferrer" href="/gerencia/metasFaturamento.php">212 - Metas de faturamento</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/minuta_receita.php">394 - Responsável pela Receita</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_projecao.php">565 - Previsão de Faturamento</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/acompanhamentoBudget.php">633 - Acompanhamento de Budget</a></li>
+    </ul>
+    </li>
+    <li>
+    <a rel="noopener noreferrer" href="#"><i class="fa fa-lock" aria-hidden="true"></i>&nbsp; Seguro</a>
+    <ul class="gerencia">
+    <li><a rel="noopener noreferrer" href="/gerencia/seguradoras.php?acao=1">037 - Seguradoras</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_seguro.php?acao=0">039 - Relatório por Carga</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_seguro_nota.php?acao=0">255 - Relatório por Notas</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_logSeguro.php">199 - Log de Averbação</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_averbacao_mdfe.php">641&nbsp;-&nbsp;Log&nbsp;de&nbsp;Averbação&nbsp;de&nbsp;MDF-e</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/averbacao_mdfe.php">642&nbsp;-&nbsp;Averbação&nbsp;Integrada&nbsp;de&nbsp;MDFe</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_seguro_mdfe.php">643&nbsp;-&nbsp;Relatório&nbsp;por&nbsp;Carga&nbsp;de&nbsp;MDFe</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/averbacao_manual.php">409 - Averbação Integrada</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/indice_rcfdc.php">053 - Indices RCFD-C</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/indiceseguro.php">055 - Indices RCTR-C</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/rctac.php">417 - Indices RCTA-C</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_motorista_seguro.php">233 - Relatório por Motoristas</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_motorista_ddr.php">272 - Venc. Carta DDR</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/lista_seguro_automatico.php">575 - Configuração de Seguro Automático</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_averbacao.php">609 - Relatório&nbsp;de&nbsp;Avebações&nbsp;de&nbsp;Cargas</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/averbacao_segundaria.php">682 - Averbação secundária manual</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/averbacao_manual_coleta.php">313 - Averbação Manual de Coleta</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_averbacao_coleta.php">329 - Averbação Manual de Coleta</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/averbacao_adicional.php">102 - Averbação Adicional</a></li>
+    </ul>
+    </li>
+
+    <li>
+    <a rel="noopener noreferrer" href="#"><i class="fa fa-building" aria-hidden="true"></i>&nbsp; Unidades</a>
+    <ul class="gerencia">
+    <li><a rel="noopener noreferrer" href="/gerencia/unidades.php">040 - Ver Unidades</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/base_calculos.php">383 - Base de Calculos</a></li>
+    </ul>
+    </li>
+
+    <li><a rel="noopener noreferrer" href="#"><i class="fa fa-pie-chart" aria-hidden="true"></i>&nbsp; Graficos</a>
+    <ul class="gerencia">
+    <li><a rel="noopener noreferrer" href="/gerencia/faturamento_data.php">210 - Faturamento/Meta</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/resumo_cliente.php">211 - Principais Clientes - Geral</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/principais_clientes.php">230 - Principais Clientes - Ramo</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_negocio.php">198 - Análise de negócios</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_gerencial.php">398 - Análise de Gerenciamento</a></li>
+    </ul>
+    </li>
+
+    <li>
+    <a rel="noopener noreferrer" href="#"><i class="fa fa-table" aria-hidden="true"></i>&nbsp; Relatórios</a>
+    <ul class="gerencia ul_module menu_margin">
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_custo_operacao.php?acao=0">147 - Extrato de Operação</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_cte_complementar.php">465 - Relatório de Operação</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_margem.php">226 - Margem Operação</a></li><li><a rel="noopener noreferrer" href="/gerencia/margem_operacao_consolidado.php">264 - Margem Operação Consolidado</a></li>
+      <li><a rel="noopener noreferrer" href="/gerencia/relatorio_margem_minuta.php">390 - Margem Minuta</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_margem_veiculo.php">381 - Margem Por Veiculo</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_margem_vendedor.php">391 - Margem Por Vendedor</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_uf.php">377 - Margem&nbsp;por&nbsp;UF</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_vendedor.php?acao=0">148 - Comissão Vendedor</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_base.php?acao=0">160 - Comissão Base</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_producao_vendedor.php">152 - Produção Vendedor</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_venda.php?acao=1">149 - Extrato de Consolidado</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_contas.php">173 - Extrato de Lançamentos</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_awb_minuta.php">315 - Extrato de Operação por AWB</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/lista_consumoVeiculos.php">182 - Consumo Veículos</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_entrega.php">376 - Performance de Entrega</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_coleta.php">382 - Performance de Coletas</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_receita.php">412 - Relatório de Receita</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_personalizado.php">387 - Relatórios personalizados</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_comparativo_emissao.php">550 - Comparativo Emissão</a></li>
+    <li><a rel="noopener noreferrer" href="/ger/relatorio/regiao">611 - Relatório de Entregas por Região</a></li>
+    <li><a rel="noopener noreferrer" href="/ger/relatorio/unidade">621 - Relatório de Entregas por Base</a></li>
+    <li><a rel="noopener noreferrer" href="/ger/relatorio/agente">645 - Relatório de Entregas por Agente</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_avaliacao_motoristas.php">661 - Relatório Avaliação de Motorista</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/relatorio_avaliacao_manifesto.php">662 - Relatório Avaliação de Manifesto</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/performance_app.php">686 - Relatório de Baixas por Motorista no APP e Bonificação</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/performancePorBaixas.php">715 - Relatório de Baixas de Coletas no APP</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/lista_prejuizos.php">703 - Lista de Prejuizos</a></li>
+    <li><a rel="noopener noreferrer" href="/gerencia/minuta_prejuizo.php">704 - Incluir Minutas com Prejuizo</a></li>
+    <li><a rel="noopener noreferrer" href="/ger/relatorio/rota">725 - Relatório de Entregas por Rota</a></li>
+    
+    </ul>
+    </li>
+    </ul>
+    </nav>                    </td>
+                </tr>
+                <tr align="center" valign="top">
+                    <td height="800" colspan="2" align="center">
+                        <table width="95%" border="0" cellspacing="0" cellpadding="0" id="brd-report"><tbody><tr><td height="24" colspan="2">&nbsp;</td></tr> <tr><td width="81%" align="left" valign="bottom"><table width="100" height="50" border="0" cellpadding="0" cellspacing="0"><tbody><tr><td width="767" height="50" align="left" valign="top" bgcolor="#FFFFFF" class="quadro"><form method="post" name="brd-report" data-gtm-form-interact-id="0"><table width="100%" border="0" cellspacing="6" cellpadding="0"><tbody><tr><td height="26" colspan="5" align="left" valign="middle" class="entregaREALIZADA">376 - Relatório de Entregas
+                                                            </td> <td align="right" valign="middle" class="entregaREALIZADA"><span id="question" class="fa fa-2x fa-question-circle"></span></td></tr> <tr><td height="14" align="left" valign="middle"><select class="brd-input-submit"><option value="id_cliente">Cliente</option> <option value="id_origem">Remetente</option> <option value="id_destino">Destinatário</option> <option value="id_expedidor">Expedidor</option> <option value="id_entrega">Recebedor</option> <option value="id_armador">Cia Aerea</option> <option value="controlador">Controlador</option></select> <select class="brd-input-submit"><option value="f.fantasia">Fantasia</option> <option value="f.cnpj">C.N.P.J</option> <option value="f.razao">Razao Social</option> <option value="r.rota">Cidade</option> <option value="r.uf">Estado</option> <option value="r.praca">Praca</option> <option value="r.sigla">Sigla</option></select></td> <td align="left" valign="middle"><select class="brd-input-submit"><option value="id_destino">Destinatário</option> <option value="id_cliente">Cliente</option> <option value="id_origem">Remetente</option> <option value="id_expedidor">Expedidor</option> <option value="id_entrega">Recebedor</option></select> <select class="brd-input-submit"><option value="f.fantasia">Fantasia</option> <option value="f.cnpj">C.N.P.J</option> <option value="f.razao">Razao Social</option> <option value="r.rota">Cidade</option> <option value="r.uf">Estado</option> <option value="r.praca">Praca</option> <option value="r.sigla">Sigla</option></select></td> <td rowspan="2"><table height="58"><tbody><tr><td width="50%"><select class="brd-input-submit"><option value="autorizacao">Autorizacao
+                                                                                </option> <option value="armador_minuta">Despacho
+                                                                                </option> <option value="coleta_numero">Coleta
+                                                                                </option> <option value="ctrc_cliente">CTE Cliente
+                                                                                </option> <option value="cte_numero">CTE</option> <option value="cte_chave">CTE - Chave
+                                                                                </option> <option value="cte_cfop">CTE - CFOP</option> <option value="fatura_id">Fatura</option> <option value="edi_lote">Lote EDI</option> <option value="id_manifesto">Manifesto
+                                                                                </option> <option value="id_minuta">Minuta</option> <option value="total_volumes">Volumes
+                                                                                </option> <option value="frete_total">Total Frete
+                                                                                </option></select></td> <td>Status Minuta</td></tr> <tr><td><input type="text" size="12" maxlength="45" class="brd-input-submit"></td> <td width="50%"><select class="brd-input-submit"><option value="0">TODAS</option> <option value="1">SEM PREVISAO</option> <optgroup label="EM ABERTO"><option value="2">FORA DO PRAZO</option> <option value="3">NO PRAZO</option></optgroup> <optgroup label="ENTREGUE"><option value="4">FORA DO PRAZO</option> <option value="5">NO PRAZO</option></optgroup> <option value="6">PRAZO CONGELADO</option></select></td></tr></tbody></table></td> <td align="left" valign="middle">Status CTe</td> <td align="left" valign="middle">Tipo CTe</td> <td align="left" valign="middle">Tipo Pagamento</td> <td align="left" valign="middle">Unidade emissora
+                                                                CTe
+                                                            </td></tr> <tr><td height="21" align="left" valign="top"><input type="text" size="26" maxlength="50" autocomplete="off" class="brd-input-submit brd-upper"></td> <td height="21" align="left" valign="top"><input type="text" size="26" maxlength="50" autocomplete="off" class="brd-input-submit brd-upper"></td> <td align="left" valign="middle"><select class="brd-input-submit"><option value="0">TODAS</option><option value="6">ENVIADO</option><option value="7">AUTORIZADO</option><option value="8">REPROVADO</option><option value="9">CANCELADO</option><option value="10">INUTILIZADO</option><option value="9999">NAO EMITIDO</option> <option value="7777">ANULADOS</option> <option value="8888">AUT. / NAO EMIT.</option> <option value="8889">AUT. (SUBSTITUIDO)</option></select></td> <td><select class="brd-input-submit"><option value="99">TODOS</option><option value="0">CTE NORMAL</option><option value="3">CTE SUBSTITUTO</option></select></td> <td><select class="brd-input-submit" style="width: 100%;"><option value="0">TODOS</option><option value="1">A VISTA</option><option value="2">FATURADO</option><option value="3">CORTESIA</option><option value="5">A VISTA/FATURADO</option></select></td> <td width="159" align="left" valign="middle"><select class="brd-input-submit"><option value="0">TODAS</option><option value="6">FILIAL SP</option><option value="5">MATRIZ</option></select></td></tr> <tr><td height="14" align="left" valign="middle">Seguradora</td> <td align="left" valign="middle">Situação
+                                                                Financeiro
+                                                            </td> <td align="left" valign="middle"><table width="100%"><tbody><tr><td width="32%">Serviço</td> <td width="78%">Trecho</td></tr></tbody></table></td> <td align="left" valign="middle"><select class="brd-input-submit" style="width: 100%;"><option value="0">Resp. Coleta - Todos</option> <option value="2">Agente</option> <option value="1">Próprio</option> <option value="3">Terceiro</option></select></td> <td width="159" align="left" valign="bottom"><table width="100%"><tbody><tr><td width="50%">Cidade Origem</td> <td width="50%">Cidade Destino</td></tr></tbody></table></td> <td align="left" valign="bottom">Unidade responsável pelo cliente</td></tr> <tr><td height="14" align="left" valign="middle"><input type="text" size="25" maxlength="25" class="brd-input-submit brd-upper"></td> <td align="left" valign="middle"><select class="brd-input-submit" style="width: 100%;"><option value="0">Todos</option> <option value="1">Faturado - Pago</option> <option value="2">Faturado - Pendente</option> <option value="3">Faturado - Atraso</option> <option value="4">Faturados - Todos</option> <option value="5">Disponivel para Fat.</option> <option value="6">Faturado a Vencer</option></select></td> <td align="left" valign="middle"><input type="button" id="selecionaServico" value="Serviços" class="BOTAO w-86 mw-none"><div class="selectable selectableElements" id="selecionaServicosel" style="display: none;"><div><fieldset><legend> <input type="checkbox" class="marcarTodos"> <strong>Servicos</strong> </legend><div class="paramsDivElement"><input type="checkbox" class="servicos" id="servicos_0" value="4" name="servicos[]" data-gtm-form-interact-field-id="0"> <label for="servicos_0" class="cursor-pointer">EXPRESSO_250</label></div><div class="paramsDivElement"><input type="checkbox" class="servicos" id="servicos_1" value="5" name="servicos[]"> <label for="servicos_1" class="cursor-pointer">SERVICO LOGISTICO</label></div><div class="paramsDivElement"><input type="checkbox" class="servicos" id="servicos_2" value="8" name="servicos[]" data-gtm-form-interact-field-id="1"> <label for="servicos_2" class="cursor-pointer">ECONOMICO_250</label></div><div class="paramsDivElement"><input type="checkbox" class="servicos" id="servicos_3" value="21" name="servicos[]"> <label for="servicos_3" class="cursor-pointer">DEDICADO X AGENDAMENTO NAO RASTREADO</label></div><div class="paramsDivElement"><input type="checkbox" class="servicos" id="servicos_4" value="22" name="servicos[]"> <label for="servicos_4" class="cursor-pointer">DEDICADO X AGENDAMENTO RASTREADO</label></div><div class="paramsDivElement"><input type="checkbox" class="servicos" id="servicos_5" value="23" name="servicos[]"> <label for="servicos_5" class="cursor-pointer">REPASSE</label></div><div class="paramsDivElement"><input type="checkbox" class="servicos" id="servicos_6" value="34" name="servicos[]" data-gtm-form-interact-field-id="2"> <label for="servicos_6" class="cursor-pointer">SUBCONTRATO_ECONOMICO</label></div><div class="paramsDivElement"><input type="checkbox" class="servicos" id="servicos_7" value="35" name="servicos[]" data-gtm-form-interact-field-id="3"> <label for="servicos_7" class="cursor-pointer">SUBCONTRATO_EXPRESSO</label></div><div class="paramsDivElement"><input type="checkbox" class="servicos" id="servicos_8" value="36" name="servicos[]" data-gtm-form-interact-field-id="4"> <label for="servicos_8" class="cursor-pointer">SUBCONTRATO_PERSONALIZADO</label></div><div class="paramsDivElement"><input type="checkbox" class="servicos" id="servicos_9" value="37" name="servicos[]" data-gtm-form-interact-field-id="5"> <label for="servicos_9" class="cursor-pointer">PERSONALIZADO</label></div><div class="paramsDivElement"><input type="checkbox" class="servicos" id="servicos_10" value="38" name="servicos[]" data-gtm-form-interact-field-id="6"> <label for="servicos_10" class="cursor-pointer">EXPRESSO_200</label></div><div class="paramsDivElement"><input type="checkbox" class="servicos" id="servicos_11" value="39" name="servicos[]"> <label for="servicos_11" class="cursor-pointer">PERSONALIZADO SIDER/ABERTO</label></div><div class="paramsDivElement"><input type="checkbox" class="servicos" id="servicos_12" value="40" name="servicos[]"> <label for="servicos_12" class="cursor-pointer">LOTACAO</label></div><br></fieldset></div></div> <input type="text" size="7" maxlength="3" class="brd-input-submit brd-upper"> <input type="text" size="7" maxlength="3" class="brd-input-submit brd-upper"></td> <td align="left" valign="middle"><input type="text" size="27" maxlength="25" class="brd-input-submit brd-upper"></td> <td width="159" align="left" valign="middle"><table width="100%"><tbody><tr><td width="50%"><input type="hidden"> <input class="brd-input-submit mw-90" autocomplete="off" type="text" id="cidade_origem_input" tipo_cidade="origem" value=""></td> <td width="50%"><input type="hidden"> <input class="brd-input-submit mw-90" autocomplete="off" type="text" id="cidade_destino_input" tipo_cidade="destino" value=""></td></tr></tbody></table></td> <td width="159" align="left" valign="middle"><select class="brd-input-submit"><option value="0">TODAS</option><option value="6">FILIAL SP</option><option value="5">MATRIZ</option></select></td></tr> <tr><td height="14" align="left" valign="middle"><select class="brd-input-submit" style="width: 100%;"><option value="data">DATA EMISSAO</option> <option value="cte_data">Data CT-E</option> <option value="coleta_data">Data Coleta</option> <option value="data_entrega">Data Entrega</option> <option value="data_incluido">Data Incluido</option> <option value="prev_entrega">Data Prev. Entrega</option></select></td> <td align="left" valign="middle">Situação</td> <td align="left" valign="middle" rowspan="2"><table height="58"><tbody><tr><td width="50%" height="50%">Ordem</td> <td>Agrupamento</td></tr> <tr><td height="50%"><select class="brd-input-submit" style="width: 100%;"><option value="id_minuta">MINUTA</option> <option value="cte_numero">CTE</option> <option value="cte_data">DATA CTE</option> <option value="entrega_data">DATA ENTREGA
+                                                                                </option> <option value="data">DATA MINUTA</option> <option value="fatura_id">FATURA</option> <option value="id_cliente">CLIENTE</option> <option value="id_origem">REMETENTE</option> <option value="id_destino">DESTINATARIO
+                                                                                </option> <option value="id_armador">CIA TRANSF
+                                                                                </option> <option value="coleta_resp_id">RESP COLETA
+                                                                                </option> <option value="entrega_resp_id">RESP
+                                                                                    ENTREGA
+                                                                                </option></select></td> <td><select class="brd-input-submit" style="width: 100%;"><option value="0">NENHUM</option> <option value="1">CLIENTE</option></select></td></tr></tbody></table></td> <td align="left" valign="middle"><select class="brd-input-submit" style="width: 100%;"><option value="0">Resp. Entrega - Todos</option> <option value="2">Agente</option> <option value="1">Próprio</option> <option value="3">Terceiro</option></select></td> <td align="left" valign="middle">Emissor</td> <td align="left" valign="middle">Grafico</td></tr> <tr><td height="27" align="left" valign="top" style="white-space: nowrap;"><input id="dp1768410481573" class="brd-input-submit-required brd-data" size="11" maxlength="10" value=""> <input id="dp1768410481574" class="brd-input-submit-required brd-data" size="11" maxlength="10" value=""></td> <td align="left" valign="top"><select class="brd-input-submit" style="width: 100%;"><option value="0">TODAS</option> <option value="1">FINALIZADAS</option> <option value="2">SEM RECEBEDOR</option></select></td> <td align="left" valign="top"><input type="text" size="27" maxlength="25" class="brd-input-submit brd-upper"></td> <td width="159" align="left" valign="bottom"><select class="brd-input-submit"><option value="0">TODOS</option><option value="405">A.SOUZA</option><option value="29999">ACESSO.CLIENTE</option><option value="698">ACQUA.HENRIQUE</option><option value="420">ADONIS</option><option value="530">AERO01</option><option value="531">AERO02</option><option value="532">AERO03</option><option value="449">ALAN</option><option value="509">ALESSANDRA</option><option value="524">ALINE.LIMA</option><option value="347">ALOGIS</option><option value="477">ALOGIS</option><option value="30020">ANTONIO</option><option value="658">ARJ</option><option value="631">AVILA</option><option value="635">BELAFLOR</option><option value="640">BELAFLOR</option><option value="453">BIGTRANSPORTE</option><option value="591">BRAVIA.SEBASTIAN</option><option value="628">BRD.ALEXANDRESOARES</option><option value="358">BRD.ALEXJUNIOR</option><option value="659">BRD.ALEXPAULA</option><option value="664">BRD.ANDERSONSANTOS</option><option value="281">BRD.ANDREALVES</option><option value="30037">BRD.ANDRESSASOUZA</option><option value="661">BRD.BARBARACORREA</option><option value="660">BRD.BIANCAMOREIRA</option><option value="461">BRD.BRUNASANTOS</option><option value="391">BRD.BRUNOPEREIRA</option><option value="643">BRD.CINTIAMIRANDA</option><option value="576">BRD.CYNTHIAHOLANDA</option><option value="291">BRD.DANIELCARVALHO</option><option value="670">BRD.ELISANDROBORGONHI</option><option value="596">BRD.ELISAVIEIRA</option><option value="325">BRD.FABIOOLIVEIRA</option><option value="290">BRD.FILIPEMARTINS</option><option value="481">BRD.GABRIELABONEBERG</option><option value="299">BRD.GABRIELSILVA</option><option value="361">BRD.GERSONBRAZIL</option><option value="304">BRD.GUILHERMEALMEIDA</option><option value="371">BRD.GUILHERMEOLIVEIRA</option><option value="478">BRD.GUILHERMEPACHECO</option><option value="573">BRD.IGORCARVALHO</option><option value="577">BRD.JESSICAALVES</option><option value="326">BRD.JOAOARAUJO</option><option value="626">BRD.JOAOMARTINS</option><option value="627">BRD.KARINABARBOZA</option><option value="467">BRD.KAUANASEIXAS</option><option value="30019">BRD.KAUANFERREIRA</option><option value="285">BRD.LEONARDOSACCO</option><option value="493">BRD.LUCASSANTOS</option><option value="682">BRD.MARIASANTOS</option><option value="588">BRD.PALOMARAMOS</option><option value="587">BRD.PAULOPEREIRA</option><option value="485">brd.pedroavila</option><option value="402">BRD.RAFAELMENEZES</option><option value="572">BRD.RAMONFISCHER</option><option value="578">BRD.RENATAOLIVEIRA</option><option value="293">BRD.RENATOFONTANELLA</option><option value="556">BRD.ROGERLUIS</option><option value="642">BRD.SIMONESILVA</option><option value="508">BRD.TARCILAFIGUEIREDO</option><option value="392">BRD.TASSIANEMENEZES </option><option value="301">BRD.THIAGOFRANCISCO</option><option value="563">BRD.VICTORFRANCISCO</option><option value="308">BRD.VINICIUSSANTOS</option><option value="363">BRD.VINICIUSTOILLIER</option><option value="401">BRD.VITORIAVARGAS</option><option value="203">BRENDA</option><option value="672">BRENDA.ELICIA</option><option value="331">BRUNA</option><option value="455">BRUNA_SANTOS</option><option value="261">BRUTALLE</option><option value="646">BSG MAURO</option><option value="329">CARGOBENTO</option><option value="349">CARGOBENTO1</option><option value="458">CARLOS</option><option value="503">CARLOS</option><option value="648">CB.SABRINA</option><option value="676">CELTIC</option><option value="636">CEOS EMISSAO</option><option value="612">CEOS HORIZON</option><option value="275">CFG</option><option value="353">CFG</option><option value="677">CKS.JULIA</option><option value="613">CKS.JULIANO</option><option value="655">CKS.LOGISTICA</option><option value="656">CKS.MAURO</option><option value="317">CLAUDIO</option><option value="564">COMEXPORT2</option><option value="433">CONEXAOMINAS</option><option value="213">CONTABIL</option><option value="350">DANI</option><option value="403">DANIELA</option><option value="412">DANIELA.SILVA</option><option value="440">DENIS</option><option value="630">DJK</option><option value="512">EDSON</option><option value="513">EDSON</option><option value="514">EDSON</option><option value="515">EDSON</option><option value="30025">EDUARDA</option><option value="510">EDUARDO</option><option value="690">EVERSON.ITACORDA</option><option value="250">FALCAO</option><option value="413">FALCAO</option><option value="348">FEDERALEXPRESS</option><option value="205">FG</option><option value="496">FLUXO CONFECCAO LTDA</option><option value="559">FORTE.LOGISTICA</option><option value="547">FREESJK</option><option value="611">GATTO.PTX</option><option value="30008">GILBERTO</option><option value="528">GLOBAL02</option><option value="529">GLOBAL03</option><option value="527">GLOBAL123</option><option value="334">GLOG</option><option value="595">GRITSCH.RAFAEL</option><option value="542">GUILHERMEHOFF.SC</option><option value="414">GUSTAVO</option><option value="520">HELTON</option><option value="200">INFRAERO</option><option value="495">INOVARE - IMPORTACAO E COMERCIO LTDA</option><option value="30000">INTEGRACAO API</option><option value="30002">INTEGRACAO BRUDAM</option><option value="30001">INTEGRACAO CIA</option><option value="407">IRINEU</option><option value="367">ITAUAN</option><option value="425">JABSON</option><option value="459">JACKSON</option><option value="30042">JAIR</option><option value="30009">JARAUJO</option><option value="473">JAZIEL</option><option value="312">JESUS</option><option value="318">JONI</option><option value="319">JOSE</option><option value="457">JOSENIR</option><option value="399">JP</option><option value="568">KARLAPX</option><option value="499">KELVIN YI</option><option value="501">KELVIN.PAMPAS</option><option value="411">L.GUSTAVO</option><option value="408">LAZARO</option><option value="305">LEANDRO</option><option value="320">LEANDROSILVA</option><option value="327">LEGG</option><option value="448">LEONARDO</option><option value="374">LEUDO</option><option value="665">LOGISTICA.BKTEX</option><option value="346">LOGPRESS</option><option value="423">LUCIANO</option><option value="460">LUIZ_EDUARDO</option><option value="488">M66</option><option value="332">MARCIO</option><option value="343">MARCO</option><option value="427">MARCO</option><option value="418">MARCOS</option><option value="30030">MARCUS</option><option value="344">MARIANO1</option><option value="30017">MARTINS</option><option value="321">MATHEUS</option><option value="322">MAURICIO</option><option value="584">MAXITRADE JAQUELINE</option><option value="486">MAYARA GOBETTI</option><option value="207">MBBM</option><option value="206">MBM</option><option value="201">MCM</option><option value="647">MERIDIAN</option><option value="404">MMARQUES</option><option value="204">MP</option><option value="464">MTZ.GUSTAVO.RODRIGUES</option><option value="633">MUESTRA</option><option value="3">NOTIFICACAO</option><option value="632">OPA</option><option value="546">OPERACIONALSUL</option><option value="379">OTACILIO</option><option value="548">OZIEL OLIVEIRA</option><option value="406">PABLO</option><option value="462">PABLO GUSTAVO</option><option value="345">PAETHUS</option><option value="415">PAETHUS</option><option value="497">PAMPAS BRASILEIRO COMERCIAL LTDA</option><option value="436">PATRICK</option><option value="618">PHARMA.CAMILA</option><option value="650">PRISCILA</option><option value="663">PXDIEGO</option><option value="662">PXRAISSA</option><option value="569">PXVANESSA</option><option value="567">PXWISTON</option><option value="324">RAFAELASSIS</option><option value="550">RANGER</option><option value="545">RATRANS</option><option value="674">RFM</option><option value="666">RFM.LOGISTICA</option><option value="215">ROBERTO</option><option value="456">ROBERTO</option><option value="689">ROBERTO FAST</option><option value="675">ROBO.BRUDAM</option><option value="30012">ROBSON</option><option value="300">RODRIGO</option><option value="30014">RONI</option><option value="691">RR.CRISTIANE</option><option value="30023">SABRINA</option><option value="644">SACRAMENTO</option><option value="410">SANDRO</option><option value="511">SAPICO.URIEL</option><option value="624">SC.ABRAAO</option><option value="616">SC.ALICE</option><option value="483">SC.ALLAN</option><option value="310">SC.ANA</option><option value="598">SC.ANAJULIA</option><option value="673">SC.ANDRE</option><option value="480">SC.ARLON</option><option value="551">SC.BERNARDO</option><option value="603">SC.BRUNAGOMES</option><option value="585">SC.CAIOMATIAS</option><option value="667">SC.CARLOS</option><option value="580">SC.CELIO</option><option value="549">SC.CLAUDICSON</option><option value="505">SC.DIEGO</option><option value="538">SC.DIEGOMELO</option><option value="678">SC.DOUGLAS</option><option value="629">SC.EDUARDADIAS</option><option value="692">SC.ELDNER</option><option value="668">SC.ELIAS</option><option value="472">SC.FABRICIO</option><option value="669">SC.FABRICIO_SILVA</option><option value="639">SC.FRANCISCO</option><option value="609">SC.GABRIELCARVALHO</option><option value="560">SC.GABRIELMACHADO</option><option value="558">SC.GESSICA</option><option value="625">SC.HAUAN</option><option value="506">SC.HELITON</option><option value="463">SC.IGOR</option><option value="561">SC.ISABELY</option><option value="523">SC.ISADORA</option><option value="683">SC.ISAIAS</option><option value="680">SC.ITACORDA</option><option value="605">SC.J.AGUINALDO</option><option value="574">SC.JACK</option><option value="615">SC.JANAINA</option><option value="694">SC.JESSICA</option><option value="504">SC.JOAO</option><option value="651">SC.JOAO_GABRIEL</option><option value="606">SC.JOAO_VITOR</option><option value="649">SC.JOAO.ELEO</option><option value="684">SC.JOAOARAUJO</option><option value="696">SC.JOAOCARLOS</option><option value="641">SC.JOICE</option><option value="487">SC.JOSE_AGUINALDO</option><option value="652">SC.JOSE.FRANCISCO</option><option value="601">SC.JULIA</option><option value="608">SC.JULIASOUSA</option><option value="491">SC.LARA</option><option value="679">SC.LAURA</option><option value="575">SC.LETICIA</option><option value="610">SC.LETICIAK</option><option value="597">SC.LUCASRAFAEL</option><option value="594">SC.LUIZ</option><option value="498">SC.LUIZA</option><option value="693">SC.MAGDIEL</option><option value="654">SC.MARCELO</option><option value="582">SC.MARCELY</option><option value="543">SC.MARIA</option><option value="695">SC.MARIANNA</option><option value="489">SC.MATHEUS</option><option value="593">SC.MIRIAM</option><option value="541">SC.MODULATTO</option><option value="638">SC.NELSON</option><option value="592">SC.OTONIEL</option><option value="494">SC.PEDRO</option><option value="637">SC.PEDRO.SOARES</option><option value="583">SC.PEDROHENRIQUE</option><option value="614">SC.PETER</option><option value="30005">SC.RAFAEL</option><option value="540">SC.RAFAELLA</option><option value="555">SC.SERGIO</option><option value="697">SC.SHELEN</option><option value="565">SC.SILVIO</option><option value="571">SC.STEFANY</option><option value="562">SC.THAIS</option><option value="604">SC.THARLES</option><option value="599">SC.THAYANNE</option><option value="535">SC.THIAGO</option><option value="544">SC.TIAGO</option><option value="521">SC.TRAMONTIN</option><option value="536">SC.VANESSA</option><option value="657">SC.VITORIA</option><option value="688">SC.WELLINGTON</option><option value="620">SC.WILSON</option><option value="653">SEGER.MIKAELY</option><option value="645">SEGER.ROBERTO</option><option value="2">SISTEMA</option><option value="607">SP.JULIA</option><option value="351">TATIANE</option><option value="522">TBM</option><option value="518">TECADI</option><option value="417">THIAGO</option><option value="619">THIAGO.GAVIOLLI</option><option value="681">THOMPSON</option><option value="208">TIAGO</option><option value="386">TORDIVELLI</option><option value="381">UBERLANDIAEXPRESS</option><option value="209">URIEL</option><option value="330">VALEN</option><option value="311">VALMI</option><option value="216">VEX</option><option value="409">WILLIAM</option><option value="623">WILLIAN.KONICA</option><option value="686">WINWIN</option><option value="687">WINWIN</option></select></td> <td width="159" align="left" valign="bottom"><select class="brd-input-submit" style="width: 100%;"><option value="0">Nenhum</option> <option value="1">Grafico Pizza</option></select></td> <td rowspan="2" align="right" valign="bottom"><input name="enviar" type="button" value="PESQUISAR" class="brd-button"></td></tr></tbody></table></form></td></tr></tbody></table></td> <td width="19%" align="right" valign="bottom" class="brd-hidden" style="display: none;"><table width="149" border="0" cellspacing="8" cellpadding="0"><tbody><tr><td width="112"><input type="image" src="/img/bt_imprimir.gif" value="Enviar"></td> <td width="112"><input type="image" src="/img/bt_excel_fat.gif" value="Enviar"></td></tr></tbody></table></td></tr> <tr style="margin-bottom: 10px;"><td height="" colspan="2" align="center" valign="top" class="quadro" style="border: none;"><div id="contentTable"></div> <table width="100%" border="0" cellspacing="1" cellpadding="0" id="contents"><thead><tr id="header"><th width="3%">MD</th> <th width="3%">HOUSE</th> <th width="3%">UNIDADE</th> <th width="4%">DATA</th> <th width="2%" rpt="hide">CTE</th> <th width="2%" rpt="show">CTE</th> <th width="4%" rpt="show">MODAL</th> <th width="2%" rpt="show">SÉRIE</th> <th width="4%">MANIFESTO</th> <th width="4%" rpt="hide">NOTA FISCAL</th> <th width="2%" rpt="show">NF</th> <th width="2%" rpt="show">SÉRIE</th> <th width="8%">CLIENTE</th> <th width="10%">REMETENTE</th> <th width="10%">DESTINATARIO</th> <th width="10%" rpt="show">CIDADE DESTINO</th> <th width="10%" rpt="show">UF DESTINO</th> <th width="10%" rpt="show">REGIAO</th> <th width="10%" rpt="show">ESTADOS/REGIAO</th> <th width="5%">TRECHO</th> <th width="10%">RESP ENTREGA</th> <th width="2%">COLETA</th> <th width="4%">DATA COLETA</th> <th width="4%">PREV. ENTREGA DATA</th> <th width="4%">PREV. ENTREGA HORA</th> <th width="4%">ENTREGA</th> <th width="4%">HORA ENTREGA</th> <th width="4%" rpt="show">DATA DA OCORRÊNCIA INEF.</th> <th width="4%" rpt="show">HORA DA OCORRÊNCIA INEF.</th> <th width="4%" rpt="show">OCORRÊNCIA INEF.</th> <th width="4%">STATUS</th></tr></thead> <tbody class="brd-lista"></tbody> <tfoot><tr><td colspan="16"><table width="50%" id="brdtotais"><thead><tr><td>RESUMO</td> <td>EM ABERTO</td> <td>ENTREGUES</td> <td>TOTAL</td></tr></thead> <tbody class="brd-lista"><tr><td>DENTRO DO PRAZO</td> <td align="center"> (nan%)</td> <td align="center"> (nan%)</td> <td align="center">0 (nan%)</td></tr> <tr><td style="font-weight: bold;">DENTRO DO PRAZO - INEFICIENCIA DO
+                                                                    CLIENTE
+                                                                </td> <td align="center"></td> <td align="center"></td> <td align="center"></td></tr> <tr><td style="font-weight: bold;">FORA DO PRAZO</td> <td align="center"></td> <td align="center"></td> <td align="center"></td></tr> <tr><td style="font-weight: bold;">FORA DO PRAZO - INEFICIENCIA DO
+                                                                    CLIENTE
+                                                                </td> <td align="center"></td> <td align="center"></td> <td align="center"></td></tr> <tr><td style="font-weight: bold;">SEM PREVISÃO</td> <td align="center"></td> <td align="center"></td> <td align="center"></td></tr> <tr><td style="font-weight: bold;">PRAZO CONGELADO</td> <td align="center"></td> <td align="center"></td> <td align="center"></td></tr> <tr style="font-weight: bold;"><td height="30" align="center" valign="middle" class="novo">TOTAL
+                                                                </td> <td height="30" align="center" valign="middle" class="novo"></td> <td height="30" align="center" valign="middle" class="novo"></td> <td height="30" align="center" valign="middle" class="novo"></td></tr></tbody></table></td></tr></tfoot></table></td></tr> <tr><td height="60" colspan="2" align="right" valign="bottom" class="brd-hidden" style="display: none;"><table width="149" border="0" cellspacing="8" cellpadding="0"><tbody><tr><td width="112"><input type="image" src="/img/bt_imprimir.gif" value="Enviar"></td> <td width="112"><input type="image" src="/img/bt_excel_fat.gif" value="Enviar"></td></tr></tbody></table></td></tr></tbody></table>
+                    </td>
+                </tr>
+            </tbody></table>
+        </center>
+        <div id="relatorio"></div>
+        <div id="janela-ajuda" title="Ajuda" style="display: none;">
+            <strong style="font-size: 1.5em;">FUNCIONAMENTO</strong>\n\n
+            As comparações são feitas levando em consideração a data da previsão
+            com a quantia de dias úteis definidas no prazo, que podem variar conforme serviço, trecho e afins.
+            \nQuando exister ocorrências de congelamento o prazo fica com o tempo restante em situação
+            de aguardo para a resolução do mesmo. Para situações sem previsão
+            especificada o mesmo irá se classificar como SEM PREVISÃO.\n\n
+            <strong>DENTRO DO PRAZO</strong> - Entregas que ocorreram sem atraso no prazo de entrega e sem nenhuma ocorrência
+            que gerasse ineficiência por parte do cliente.\n\n
+            <strong>DENTRO DO PRAZO (IN.CLIENTE)</strong> - Entregas que ocorreram sem atraso no prazo de entrega e com uma
+            ou mais ocorrências que gerasse ineficiência por parte do cliente.\n\n
+            <strong>FORA DO PRAZO</strong> - Entregas que ocorreram com atraso no prazo de entrega e sem nenhuma ocorrência
+            que gerasse ineficiência por parte do cliente.\n\n
+            <strong>FORA DO PRAZO (IN.CLIENTE)</strong> - Entregas que ocorreram com atraso no prazo de entrega e com uma ou
+            mais ocorrências que gerasse ineficiência por parte do cliente.\n\n
+            <strong>SEM PREVISÃO</strong> - Entregas que não possuem prazo e por isso não podem ter sua
+            eficiência medida.\n\n
+            <strong>PRAZO CONGELADO</strong> - Entregas que possuem uma ou mais ocorrências que congelaram o prazo de
+            entrega e aguardam resolução.
+            \n\n<strong>DICA IMPORTANTE</strong>\nOs parâmetros de ineficiência das ocorrências são
+            definidas através do atalho 006 (Tipos de Ocorrência) e para configurar as situações
+            de congelamento e descongelamento de prazos de entrega utiliza-se o atalho 558 (Congelamento de Prazo).
+        </div>
+    
+    
+    <ul id="ui-id-1" tabindex="0" class="ui-menu ui-widget ui-widget-content ui-autocomplete ui-front" unselectable="on" style="display: none;"></ul><div role="status" aria-live="assertive" aria-relevant="additions" class="ui-helper-hidden-accessible"></div><ul id="ui-id-2" tabindex="0" class="ui-menu ui-widget ui-widget-content ui-autocomplete ui-front" unselectable="on" style="display: none;"></ul><div role="status" aria-live="assertive" aria-relevant="additions" class="ui-helper-hidden-accessible"></div><div id="ui-datepicker-div" class="ui-datepicker ui-widget ui-widget-content ui-helper-clearfix ui-corner-all" style="position: absolute; top: 345px; left: 170.062px; z-index: 1; display: none;"><div class="ui-datepicker-header ui-widget-header ui-helper-clearfix ui-corner-all"><a class="ui-datepicker-prev ui-corner-all" data-handler="prev" data-event="click" title="Anterior"><span class="ui-icon ui-icon-circle-triangle-w">Anterior</span></a><a class="ui-datepicker-next ui-corner-all" data-handler="next" data-event="click" title="Próximo"><span class="ui-icon ui-icon-circle-triangle-e">Próximo</span></a><div class="ui-datepicker-title"><span class="ui-datepicker-month">Janeiro</span>&nbsp;<span class="ui-datepicker-year">2026</span></div></div><table class="ui-datepicker-calendar"><thead><tr><th scope="col" class="ui-datepicker-week-end"><span title="Domingo">D</span></th><th scope="col"><span title="Segunda">S</span></th><th scope="col"><span title="Terça">T</span></th><th scope="col"><span title="Quarta">Q</span></th><th scope="col"><span title="Quinta">Q</span></th><th scope="col"><span title="Sexta">S</span></th><th scope="col" class="ui-datepicker-week-end"><span title="Sabado">S</span></th></tr></thead><tbody><tr><td class=" ui-datepicker-week-end ui-datepicker-other-month ui-datepicker-unselectable ui-state-disabled">&nbsp;</td><td class=" ui-datepicker-other-month ui-datepicker-unselectable ui-state-disabled">&nbsp;</td><td class=" ui-datepicker-other-month ui-datepicker-unselectable ui-state-disabled">&nbsp;</td><td class=" ui-datepicker-other-month ui-datepicker-unselectable ui-state-disabled">&nbsp;</td><td class=" " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="1">1</a></td><td class=" " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="2">2</a></td><td class=" ui-datepicker-week-end " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="3">3</a></td></tr><tr><td class=" ui-datepicker-week-end " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="4">4</a></td><td class=" " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="5">5</a></td><td class=" " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="6">6</a></td><td class=" " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="7">7</a></td><td class=" " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="8">8</a></td><td class=" " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="9">9</a></td><td class=" ui-datepicker-week-end " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="10">10</a></td></tr><tr><td class=" ui-datepicker-week-end " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="11">11</a></td><td class=" " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="12">12</a></td><td class=" " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="13">13</a></td><td class=" ui-datepicker-days-cell-over  ui-datepicker-today" data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default ui-state-highlight ui-state-hover" href="#" aria-current="false" data-date="14">14</a></td><td class=" " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="15">15</a></td><td class=" " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="16">16</a></td><td class=" ui-datepicker-week-end " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="17">17</a></td></tr><tr><td class=" ui-datepicker-week-end " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="18">18</a></td><td class=" " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="19">19</a></td><td class=" " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="20">20</a></td><td class=" " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="21">21</a></td><td class=" " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="22">22</a></td><td class=" " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="23">23</a></td><td class=" ui-datepicker-week-end " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="24">24</a></td></tr><tr><td class=" ui-datepicker-week-end " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="25">25</a></td><td class=" " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="26">26</a></td><td class=" " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="27">27</a></td><td class=" " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="28">28</a></td><td class=" " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="29">29</a></td><td class=" " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="30">30</a></td><td class=" ui-datepicker-week-end " data-handler="selectDay" data-event="click" data-month="0" data-year="2026"><a class="ui-state-default" href="#" aria-current="false" data-date="31">31</a></td></tr></tbody></table></div></body></html>

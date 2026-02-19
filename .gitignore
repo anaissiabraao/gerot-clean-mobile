@@ -81,4 +81,6 @@ node_modules/.vite/
 
 .backup
 *.backup
-backup
+
+.env
+*.env

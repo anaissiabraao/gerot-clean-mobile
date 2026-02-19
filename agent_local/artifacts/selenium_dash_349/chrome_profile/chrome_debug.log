@@ -1,0 +1,18 @@
+[14236:16096:0114/140738.119:INFO:components\enterprise\browser\controller\chrome_browser_cloud_management_controller.cc:206] No machine level policy manager exists.
+[14236:16096:0114/140742.424:INFO:CONSOLE:0] "[DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o", source: https://azportoex.brudam.com.br/index.php (0)
+[14236:16096:0114/140745.175:INFO:CONSOLE:0] "Access to fetch at 'https://azportoex.motor.brudam.com.br/login/set-cookie/bfaa44895b6bf5672bd6fe7adf45db03' from origin 'https://azportoex.brudam.com.br' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource.", source: https://azportoex.brudam.com.br/index.php (0)
+[14236:16096:0114/140745.177:INFO:CONSOLE:378] "Fetch error: TypeError: Failed to fetch", source: https://azportoex.brudam.com.br/assets/js/login.js?v1 (378)
+[14236:16096:0114/140745.361:INFO:CONSOLE:349] "Success: [object Object]", source: https://azportoex.brudam.com.br/assets/js/login.js?v1 (349)
+[14236:16096:0114/140745.361:INFO:CONSOLE:333] "Uncaught (in promise) TypeError: (intermediate value) is not iterable", source: https://azportoex.brudam.com.br/assets/js/login.js?v1 (333)
+[14236:16096:0114/140746.625:INFO:CONSOLE:119] "false", source: https://azportoex.brudam.com.br/assets/js/NPS.js?1768410466 (119)
+[14236:16096:0114/140746.626:INFO:CONSOLE:92] "false", source: https://azportoex.brudam.com.br/assets/js/Notice.js?1768410466 (92)
+[14236:16096:0114/140746.798:INFO:CONSOLE:117] "false", source: https://azportoex.brudam.com.br/assets/js/Notice.js?1768410466 (117)
+[14236:26628:0114/140747.221:ERROR:google_apis\gcm\engine\registration_request.cc:292] Registration response error message: PHONE_REGISTRATION_ERROR
+[14236:26628:0114/140747.222:ERROR:google_apis\gcm\engine\registration_request.cc:292] Registration response error message: PHONE_REGISTRATION_ERROR
+[14236:26628:0114/140747.223:ERROR:google_apis\gcm\engine\registration_request.cc:292] Registration response error message: PHONE_REGISTRATION_ERROR
+[14236:26628:0114/140748.338:ERROR:google_apis\gcm\engine\mcs_client.cc:700]   Error code: 401  Error message: Authentication Failed: wrong_secret
+[14236:26628:0114/140748.338:ERROR:google_apis\gcm\engine\mcs_client.cc:702] Failed to log in to GCM, resetting connection.
+[14236:16096:0114/140755.300:INFO:CONSOLE:92] "false", source: https://azportoex.brudam.com.br/assets/js/Notice.js?1768410475 (92)
+[14236:16096:0114/140755.303:INFO:CONSOLE:119] "false", source: https://azportoex.brudam.com.br/assets/js/NPS.js?1768410475 (119)
+[14236:16096:0114/140755.505:INFO:CONSOLE:117] "false", source: https://azportoex.brudam.com.br/assets/js/Notice.js?1768410475 (117)
+[14236:26628:0114/140808.292:ERROR:google_apis\gcm\engine\registration_request.cc:292] Registration response error message: DEPRECATED_ENDPOINT
