@@ -7,7 +7,7 @@ import logging
 import gzip
 import base64
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from pathlib import Path
 
 # Mudar para o diretório do script
@@ -399,7 +399,6 @@ def execute_dashboard(dash: dict) -> dict:
 
             if not data_inicio or not data_fim:
                 hoje = datetime.now().date()
-                from datetime import date
                 data_inicio = date(hoje.year, hoje.month, 1).strftime("%Y-%m-%d")
                 data_fim = hoje.strftime("%Y-%m-%d")
 
@@ -578,7 +577,6 @@ def execute_dashboard(dash: dict) -> dict:
             data_fim = (filters.get("data_fim") or "").strip()
             if not data_inicio or not data_fim:
                 hoje = datetime.now().date()
-                from datetime import date
                 data_inicio = date(hoje.year, hoje.month, 1).strftime("%Y-%m-%d")
                 data_fim = hoje.strftime("%Y-%m-%d")
             di = data_inicio.replace("-", "")
