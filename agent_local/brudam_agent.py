@@ -425,24 +425,50 @@ def execute_dashboard(dash: dict) -> dict:
                 conn_m = get_mysql_connection(database)
                 cur = conn_m.cursor()
 
+                def _table_columns(table_name: str) -> set:
+                    try:
+                        cur.execute(f"SHOW COLUMNS FROM {table_name}")
+                        cols = cur.fetchall() or []
+                        out = set()
+                        for row in cols:
+                            name = row.get('Field') if isinstance(row, dict) else None
+                            if name:
+                                out.add(str(name))
+                        return out
+                    except Exception:
+                        return set()
+
+                minuta_cols = _table_columns('minuta')
+                coleta_cols = _table_columns('coleta')
+
+                def _sel(col: str, alias: str = None, table_alias: str = 'm') -> str:
+                    a = alias or col
+                    if table_alias == 'm':
+                        ok = col in minuta_cols
+                    else:
+                        ok = col in coleta_cols
+                    if ok:
+                        return f"{table_alias}.{col} AS {a}"
+                    return f"NULL AS {a}"
+
                 send_dashboard_progress(dash_id, [f"[{datetime.now().isoformat()}] Buscando operações (minuta)..."], percent=15, text="Buscando minutas...")
 
-                q_minuta = """
+                q_minuta = f"""
                     SELECT
                         m.id_minuta AS id_operacao,
                         m.id_minuta AS id_minuta,
-                        m.coleta_numero AS id_coleta,
+                        {_sel('coleta_numero', 'id_coleta', 'm')},
                         'Entrega' AS tipo_operacao,
-                        m.data AS data_operacao,
+                        {_sel('data', 'data_operacao', 'm')},
                         NULL AS coleta_data,
-                        m.total_nf_valor AS valor_nf,
-                        m.total_peso AS peso,
-                        m.total_volumes AS volume,
-                        m.total_cubo AS cubagem,
-                        m.status,
-                        m.prev_entrega_data,
-                        m.prev_entrega,
-                        m.data_entrega AS entrega_data
+                        {_sel('total_nf_valor', 'valor_nf', 'm')},
+                        {_sel('total_peso', 'peso', 'm')},
+                        {_sel('total_volumes', 'volume', 'm')},
+                        {_sel('total_cubo', 'cubagem', 'm')},
+                        {_sel('status', 'status', 'm')},
+                        {_sel('prev_entrega_data', 'prev_entrega_data', 'm')},
+                        {_sel('prev_entrega', 'prev_entrega', 'm')},
+                        {_sel('data_entrega', 'entrega_data', 'm')}
                     FROM minuta m
                     WHERE m.data >= %s AND m.data <= %s
                 """
@@ -471,21 +497,21 @@ def execute_dashboard(dash: dict) -> dict:
                     has_coleta = False
 
                 if has_coleta:
-                    q_coleta = """
+                    q_coleta = f"""
                         SELECT
                             c.id_coleta AS id_operacao,
                             c.id_coleta AS id_coleta,
                             NULL AS id_minuta,
                             'Coleta' AS tipo_operacao,
-                            c.data AS data_operacao,
-                            c.data AS coleta_data,
-                            c.total_nf_valor AS valor_nf,
-                            c.total_peso AS peso,
-                            c.total_volumes AS volume,
-                            c.total_cubo AS cubagem,
-                            c.status,
-                            c.prev_entrega_data,
-                            c.prev_entrega,
+                            {_sel('data', 'data_operacao', 'c')},
+                            {_sel('data', 'coleta_data', 'c')},
+                            {_sel('total_nf_valor', 'valor_nf', 'c')},
+                            {_sel('total_peso', 'peso', 'c')},
+                            {_sel('total_volumes', 'volume', 'c')},
+                            {_sel('total_cubo', 'cubagem', 'c')},
+                            {_sel('status', 'status', 'c')},
+                            {_sel('prev_entrega_data', 'prev_entrega_data', 'c')},
+                            {_sel('prev_entrega', 'prev_entrega', 'c')},
                             NULL AS entrega_data
                         FROM coleta c
                         WHERE c.data >= %s AND c.data <= %s
