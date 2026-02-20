@@ -202,6 +202,25 @@ function buildSimpleIndicators(panelData, totalOperacoes) {
   }
 }
 
+function extractDashboardResultPayload(resultData) {
+  const rd = resultData && typeof resultData === 'object' ? resultData : null
+  if (!rd) return null
+
+  if (rd.payload && typeof rd.payload === 'object') {
+    return rd.payload
+  }
+
+  if (rd.data && typeof rd.data === 'object' && !Array.isArray(rd.data)) {
+    return rd.data
+  }
+
+  if (rd.data && Array.isArray(rd.data)) {
+    return { rows: rd.data }
+  }
+
+  return null
+}
+
 async function findCompletedIndicatorsRequest(pool, userId, filters) {
   const database = (filters?.database || 'azportoex').toString().trim() || 'azportoex'
   const dataInicio = (filters?.data_inicio || '').toString().trim() || null
@@ -877,10 +896,11 @@ app.get('/api/indicadores-executivos', async (req, reply) => {
     const assignments = await getAgentSetting(pool, 'dashboard_indicator_assignments')
 
     const cached = await findCompletedIndicatorsRequest(pool, sessionUser.id, filters)
-    if (cached?.result_data?.data) {
+    const cachedPayload = extractDashboardResultPayload(cached?.result_data)
+    if (cachedPayload) {
       const normalized = normalizeIndicatorsPayloadForUser({
         sessionUser,
-        rawPayload: cached.result_data.data,
+        rawPayload: cachedPayload,
         assignments,
       })
       return jsonResponse(reply, 200, normalized)
@@ -931,10 +951,11 @@ app.get('/api/indicadores-executivos/status/:requestId', async (req, reply) => {
       return q.rows[0]
     })
 
-    if (out.status === 'completed' && out.result_data?.data) {
+    const payload = extractDashboardResultPayload(out.result_data)
+    if (out.status === 'completed' && payload) {
       const normalized = normalizeIndicatorsPayloadForUser({
         sessionUser,
-        rawPayload: out.result_data.data,
+        rawPayload: payload,
         assignments,
       })
       return jsonResponse(reply, 200, {
@@ -988,10 +1009,11 @@ app.get('/api/dashboard/indicators', async (req, reply) => {
     const assignments = await getAgentSetting(pool, 'dashboard_indicator_assignments')
     const cached = await findCompletedIndicatorsRequest(pool, sessionUser.id, filters)
 
-    if (cached?.result_data?.data) {
+    const cachedPayload = extractDashboardResultPayload(cached?.result_data)
+    if (cachedPayload) {
       const normalized = normalizeIndicatorsPayloadForUser({
         sessionUser,
-        rawPayload: cached.result_data.data,
+        rawPayload: cachedPayload,
         assignments,
       })
       return jsonResponse(reply, 200, {

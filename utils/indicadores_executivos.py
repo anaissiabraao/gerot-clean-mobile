@@ -71,7 +71,12 @@ def calcular_performance_entrega_on_time(operacoes: List[Dict[str, Any]]) -> Dic
     Calcula performance de entrega On Time (%)
     Considera entregas com data prevista vs data real
     """
-    entregas = [op for op in operacoes if op.get('tipo_operacao', '').lower() in ['entrega', 'minuta'] or 'entrega' in str(op.get('tipo', '')).lower()]
+    entregas = [
+        op
+        for op in operacoes
+        if str(op.get('tipo_operacao') or '').strip().lower() in ['entrega', 'minuta']
+        or 'entrega' in str(op.get('tipo') or '').strip().lower()
+    ]
     
     if not entregas:
         return {
@@ -192,7 +197,8 @@ def calcular_participacao_faturamento(operacoes: List[Dict[str, Any]]) -> Dict[s
         vendedor = op.get('vendedor_nome') or op.get('vendedor') or ''
         
         # Heuristica: se tem vendedor nomeado, e vendedor; senao, corporativo
-        if vendedor and vendedor.strip() and vendedor.lower() not in ['n/a', 'none', '']:
+        vendedor_str = str(vendedor).strip()
+        if vendedor_str and vendedor_str.lower() not in ['n/a', 'none', '']:
             faturamento_vendedores += valor_nf
             quantidade_vendedores += 1
         else:
@@ -224,7 +230,7 @@ def calcular_inadimplencia(operacoes: List[Dict[str, Any]]) -> Dict[str, Any]:
     valor_inadimplente = 0.0
     
     for op in operacoes:
-        status = (op.get('status_descricao') or op.get('status') or '').lower()
+        status = str(op.get('status_descricao') or op.get('status') or '').strip().lower()
         
         # Considera finalizada se status contem 'final' ou 'conclu'
         if 'final' in status or 'conclu' in status:
@@ -266,7 +272,11 @@ def calcular_nivel_operacao_atendimento(operacoes: List[Dict[str, Any]]) -> Dict
         }
     
     # Taxa de atendimento (operacoes definidas / total)
-    operacoes_definidas = sum(1 for op in operacoes if 'pend' not in (op.get('status_descricao') or op.get('status') or '').lower())
+    operacoes_definidas = sum(
+        1
+        for op in operacoes
+        if 'pend' not in str(op.get('status_descricao') or op.get('status') or '').strip().lower()
+    )
     taxa_atendimento = (operacoes_definidas / total_operacoes * 100) if total_operacoes > 0 else 0
     
     # Tempo medio (aproximacao)
@@ -777,7 +787,7 @@ def _extrair_data_real(op: Dict[str, Any]) -> Optional[date]:
 
 def _classificar_criticidade_simples(op: Dict[str, Any]) -> str:
     """Classificacao simples de criticidade"""
-    status = (op.get('status_descricao') or op.get('status') or '').lower()
+    status = str(op.get('status_descricao') or op.get('status') or '').strip().lower()
     data_ref = _extrair_data_operacao(op)
     
     if 'final' in status:
