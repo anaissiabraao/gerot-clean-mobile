@@ -268,6 +268,7 @@ const DEFAULT_INDICATOR_PANEL_MODELS = {
       { key: 'participacao_vendedores_percent', label: 'Participação vendedores (%)', format: 'percent' },
       { key: 'custos_dia', label: 'Custos do dia', format: 'currency' },
       { key: 'lucro_liquido_sobre_faturamento', label: 'Lucro líquido / faturamento', format: 'percent' },
+      { key: 'fluxo_caixa_d5', label: 'Fluxo de caixa (D+5)', format: 'currency', status: 'fluxo_caixa' },
     ],
     widgets: [
       {
@@ -285,8 +286,13 @@ const DEFAULT_INDICATOR_PANEL_MODELS = {
   },
   operacional: {
     cards: [
-      { key: 'performance_entrega_on_time_percent', label: 'Performance On Time (%)', format: 'percent', status: 'performance_entrega' },
-      { key: 'nivel_operacao_atendimento', label: 'Nível de operação', format: 'text', status: 'nivel_operacao' },
+      { key: 'performance_entrega_on_time_percent', label: 'Performance de entrega', format: 'percent', status: 'performance_entrega' },
+      { key: 'resultado_composicoes_rotas_dia.faturamento_total', label: 'Resultado das composições do dia', format: 'currency' },
+      { key: 'resultado_composicoes_rotas_dia.total_rotas', label: 'Rotas (dia)', format: 'number' },
+      { key: 'faturamento_mensal_d0', label: 'Faturamento mensal (D+0)', format: 'currency' },
+      { key: 'faturamento_acumulado_d0', label: 'Faturamento acumulado (D+0)', format: 'currency' },
+      { key: 'nivel_operacao_atendimento.nivel', label: 'Nível de Operação e Atendimento', format: 'text', status: 'nivel_operacao' },
+      { key: 'nivel_operacao_atendimento.descricao', label: 'Descrição', format: 'text' },
     ],
     widgets: [
       {
@@ -338,7 +344,9 @@ function buildIndicatorCards(panelKey, panelData, modelsSetting) {
       const key = String(it.key)
       const label = it.label !== undefined ? String(it.label) : key
       const format = it.format !== undefined ? String(it.format) : 'number'
-      const value = pd[key]
+      const value = key.includes('.')
+        ? key.split('.').reduce((acc, part) => (acc && typeof acc === 'object' ? acc[part] : undefined), pd)
+        : pd[key]
       const statusKey = it.status !== undefined ? String(it.status) : null
       const status = statusKey && statusObj ? statusObj[statusKey] ?? null : null
       return { key, label, value, format, status }
@@ -389,7 +397,13 @@ function buildIndicatorWidgets(panelKey, panelData, modelsSetting) {
 
       let rows = []
       if (Array.isArray(raw)) {
-        rows = raw.map((v) => (typeof v === 'object' && v ? v : { value: v }))
+        rows = raw.map((v) => {
+          if (typeof v === 'object' && v) return v
+          if (cols.length === 1 && cols[0] && cols[0].key) {
+            return { [String(cols[0].key)]: v }
+          }
+          return { value: v }
+        })
       } else if (raw && typeof raw === 'object') {
         // suporta map { nome: { faturamento: ... } }
         rows = Object.entries(raw).map(([k, v]) => {
