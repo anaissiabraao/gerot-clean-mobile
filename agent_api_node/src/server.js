@@ -78,9 +78,50 @@ async function ensureAgentSettingsKeyUnique(pool) {
 
 await ensureAgentSettingsKeyUnique(pool)
 
+async function ensureRoomBookingsTable(pool) {
+  try {
+    await withTx(pool, async (client) => {
+      await client.query(
+        `
+        CREATE TABLE IF NOT EXISTS room_bookings (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL,
+          room VARCHAR(50) NOT NULL,
+          title VARCHAR(200) NOT NULL,
+          date DATE NOT NULL,
+          start_time TIME NOT NULL,
+          end_time TIME NOT NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+          is_active BOOLEAN NOT NULL DEFAULT TRUE
+        )
+        `,
+      )
+      await client.query('CREATE INDEX IF NOT EXISTS idx_room_bookings_user_date ON room_bookings(user_id, date)')
+    })
+    app.log.info('[DB] room_bookings table OK')
+  } catch (err) {
+    app.log.error({ err }, '[DB] Falha ao garantir tabela room_bookings')
+  }
+}
+
+await ensureRoomBookingsTable(pool)
+
 app.addHook('onRequest', async (req, reply) => {
   if (req.url.startsWith('/api/agent/')) {
+    const isHealth = req.url === '/api/agent/health' || req.url.startsWith('/api/agent/health?')
+    const isLibrary = req.url.startsWith('/api/agent/library/')
     if (!verifyAgentApiKey(req)) {
+      if (isHealth) {
+        return
+      }
+      if (isLibrary) {
+        const u = getSessionUser(req)
+        const isAdmin = (u?.role || '').toString().toLowerCase() === 'admin'
+        if (isAdmin) {
+          return
+        }
+      }
       return jsonResponse(reply, 401, { error: 'API Key inválida' })
     }
   }
@@ -553,6 +594,356 @@ app.get('/api/admin/users', async (req, reply) => {
   } catch (err) {
     req.log.error({ err }, '[ADMIN] Erro ao listar usuários')
     return jsonResponse(reply, 500, { error: err?.message || String(err) })
+  }
+})
+
+app.put('/api/admin/users/:id', async (req, reply) => {
+  const admin = requireAdmin(req, reply)
+  if (!admin) return
+
+  const userId = Number.parseInt(req.params?.id, 10)
+  if (!Number.isFinite(userId)) {
+    return jsonResponse(reply, 400, { error: 'user_id inválido' })
+  }
+
+  if (!req.body || typeof req.body !== 'object') {
+    return jsonResponse(reply, 400, { error: 'Body inválido' })
+  }
+
+  const fields = {
+    username: req.body.username !== undefined ? String(req.body.username || '').trim() : undefined,
+    role: req.body.role !== undefined ? String(req.body.role || '').trim() : undefined,
+    nome_completo: req.body.nome_completo !== undefined ? String(req.body.nome_completo || '').trim() : undefined,
+    email: req.body.email !== undefined ? String(req.body.email || '').trim() : undefined,
+    departamento: req.body.departamento !== undefined ? String(req.body.departamento || '').trim() : undefined,
+    is_active: req.body.is_active !== undefined ? Boolean(req.body.is_active) : undefined,
+  }
+
+  try {
+    const out = await withTx(pool, async (client) => {
+      const cols = await client.query(
+        `
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'users_new'
+          AND column_name IN ('username','role','nome_completo','email','departamento','is_active')
+        `,
+      )
+      const colset = new Set(cols.rows.map((r) => r.column_name))
+
+      const sets = []
+      const vals = []
+      let i = 1
+
+      for (const [k, v] of Object.entries(fields)) {
+        if (v === undefined) continue
+        if (!colset.has(k)) continue
+        sets.push(`${k} = $${i++}`)
+        vals.push(v === '' ? null : v)
+      }
+
+      if (!sets.length) {
+        const e = new Error('Nenhum campo para atualizar')
+        e.statusCode = 400
+        throw e
+      }
+
+      vals.push(userId)
+      const q = await client.query(
+        `
+        UPDATE users_new
+        SET ${sets.join(', ')}, updated_at = NOW()
+        WHERE id = $${i}
+        RETURNING id, username, role, nome_completo, departamento, email, is_active
+        `,
+        vals,
+      )
+      if (q.rows.length === 0) {
+        const e = new Error('Usuário não encontrado')
+        e.statusCode = 404
+        throw e
+      }
+      return q.rows[0]
+    })
+    return jsonResponse(reply, 200, { success: true, user: out })
+  } catch (err) {
+    const status = err?.statusCode || 500
+    if (status >= 500) req.log.error({ err }, '[ADMIN] Erro ao atualizar usuário')
+    return jsonResponse(reply, status, { error: err?.message || String(err) })
+  }
+})
+
+app.delete('/api/admin/users/:id', async (req, reply) => {
+  const admin = requireAdmin(req, reply)
+  if (!admin) return
+
+  const userId = Number.parseInt(req.params?.id, 10)
+  if (!Number.isFinite(userId)) {
+    return jsonResponse(reply, 400, { error: 'user_id inválido' })
+  }
+
+  try {
+    await withTx(pool, async (client) => {
+      const q = await client.query(
+        `
+        UPDATE users_new
+        SET is_active = false, updated_at = NOW()
+        WHERE id = $1
+        `,
+        [userId],
+      )
+      if (q.rowCount === 0) {
+        const e = new Error('Usuário não encontrado')
+        e.statusCode = 404
+        throw e
+      }
+    })
+    return jsonResponse(reply, 200, { success: true })
+  } catch (err) {
+    const status = err?.statusCode || 500
+    if (status >= 500) req.log.error({ err }, '[ADMIN] Erro ao desativar usuário')
+    return jsonResponse(reply, status, { error: err?.message || String(err) })
+  }
+})
+
+app.get('/api/library/catalog', async (req, reply) => {
+  const admin = requireAdmin(req, reply)
+  if (!admin) return
+
+  if (!upstreamFlaskUrl) {
+    return jsonResponse(reply, 200, { success: true, items: [] })
+  }
+
+  try {
+    const resp = await fetch(`${upstreamFlaskUrl}/api/agent/library/catalog`, {
+      headers: { cookie: req.headers.cookie || '' },
+    })
+    const text = await resp.text()
+    if (!resp.ok) {
+      return jsonResponse(reply, resp.status, { error: text || resp.statusText })
+    }
+    let json
+    try {
+      json = JSON.parse(text)
+    } catch {
+      return jsonResponse(reply, 502, { error: 'Resposta inválida do upstream' })
+    }
+    return jsonResponse(reply, 200, json)
+  } catch (err) {
+    req.log.error({ err }, '[LIBRARY] Erro ao carregar catálogo')
+    return jsonResponse(reply, 500, { error: err?.message || String(err) })
+  }
+})
+
+app.post('/api/library/run', async (req, reply) => {
+  const admin = requireAdmin(req, reply)
+  if (!admin) return
+
+  if (!upstreamFlaskUrl) {
+    return jsonResponse(reply, 502, { error: 'UPSTREAM_FLASK_URL não configurado' })
+  }
+
+  const body = req.body && typeof req.body === 'object' ? req.body : null
+  if (!body) return jsonResponse(reply, 400, { error: 'Body inválido' })
+
+  try {
+    const resp = await fetch(`${upstreamFlaskUrl}/api/agent/library/run`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: req.headers.cookie || '' },
+      body: JSON.stringify(body),
+    })
+    const text = await resp.text()
+    if (!resp.ok) {
+      return jsonResponse(reply, resp.status, { error: text || resp.statusText })
+    }
+    let json
+    try {
+      json = JSON.parse(text)
+    } catch {
+      return jsonResponse(reply, 502, { error: 'Resposta inválida do upstream' })
+    }
+    return jsonResponse(reply, 200, json)
+  } catch (err) {
+    req.log.error({ err }, '[LIBRARY] Erro ao iniciar run')
+    return jsonResponse(reply, 500, { error: err?.message || String(err) })
+  }
+})
+
+app.get('/api/room-bookings', async (req, reply) => {
+  const sessionUser = requireLogin(req, reply)
+  if (!sessionUser) return
+
+  const limit = clampInt(req.query?.limit, 1, 500, 200)
+
+  try {
+    const out = await withTx(pool, async (client) => {
+      const q = await client.query(
+        `
+        SELECT id, room, title, date,
+               start_time AS time_start,
+               end_time AS time_end,
+               created_at, updated_at
+        FROM room_bookings
+        WHERE user_id = $1 AND is_active = true
+        ORDER BY date DESC, start_time DESC
+        LIMIT $2
+        `,
+        [sessionUser.id, limit],
+      )
+      return q.rows
+    })
+    return jsonResponse(reply, 200, out)
+  } catch (err) {
+    req.log.error({ err }, '[AGENDA] Erro ao listar agendamentos')
+    return jsonResponse(reply, 500, { error: err?.message || String(err) })
+  }
+})
+
+app.post('/api/room-bookings', async (req, reply) => {
+  const sessionUser = requireLogin(req, reply)
+  if (!sessionUser) return
+
+  const b = req.body && typeof req.body === 'object' ? req.body : null
+  if (!b) return jsonResponse(reply, 400, { error: 'Body inválido' })
+
+  const title = String(b.title || '').trim()
+  const room = String(b.room || '').trim()
+  const date = String(b.date || '').trim()
+  const timeStart = String(b.time_start || '').trim()
+  const timeEnd = String(b.time_end || '').trim()
+
+  if (!title || !room || !date || !timeStart || !timeEnd) {
+    return jsonResponse(reply, 400, { error: 'Campos obrigatórios: title, room, date, time_start, time_end' })
+  }
+
+  try {
+    const out = await withTx(pool, async (client) => {
+      const q = await client.query(
+        `
+        INSERT INTO room_bookings (user_id, room, title, date, start_time, end_time)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id, room, title, date,
+                  start_time AS time_start,
+                  end_time AS time_end,
+                  created_at, updated_at
+        `,
+        [sessionUser.id, room, title, date, timeStart, timeEnd],
+      )
+      return q.rows[0]
+    })
+    return jsonResponse(reply, 200, { success: true, booking: out })
+  } catch (err) {
+    req.log.error({ err }, '[AGENDA] Erro ao criar agendamento')
+    return jsonResponse(reply, 500, { error: err?.message || String(err) })
+  }
+})
+
+app.put('/api/room-bookings/:id', async (req, reply) => {
+  const sessionUser = requireLogin(req, reply)
+  if (!sessionUser) return
+
+  const id = Number.parseInt(req.params?.id, 10)
+  if (!Number.isFinite(id)) return jsonResponse(reply, 400, { error: 'id inválido' })
+
+  const b = req.body && typeof req.body === 'object' ? req.body : null
+  if (!b) return jsonResponse(reply, 400, { error: 'Body inválido' })
+
+  const title = b.title !== undefined ? String(b.title || '').trim() : undefined
+  const room = b.room !== undefined ? String(b.room || '').trim() : undefined
+  const date = b.date !== undefined ? String(b.date || '').trim() : undefined
+  const timeStart = b.time_start !== undefined ? String(b.time_start || '').trim() : undefined
+  const timeEnd = b.time_end !== undefined ? String(b.time_end || '').trim() : undefined
+
+  try {
+    const out = await withTx(pool, async (client) => {
+      const sets = []
+      const vals = []
+      let i = 1
+
+      if (title !== undefined) {
+        sets.push(`title = $${i++}`)
+        vals.push(title)
+      }
+      if (room !== undefined) {
+        sets.push(`room = $${i++}`)
+        vals.push(room)
+      }
+      if (date !== undefined) {
+        sets.push(`date = $${i++}`)
+        vals.push(date)
+      }
+      if (timeStart !== undefined) {
+        sets.push(`start_time = $${i++}`)
+        vals.push(timeStart)
+      }
+      if (timeEnd !== undefined) {
+        sets.push(`end_time = $${i++}`)
+        vals.push(timeEnd)
+      }
+      if (!sets.length) {
+        const e = new Error('Nenhum campo para atualizar')
+        e.statusCode = 400
+        throw e
+      }
+
+      vals.push(id)
+      vals.push(sessionUser.id)
+      const q = await client.query(
+        `
+        UPDATE room_bookings
+        SET ${sets.join(', ')}, updated_at = NOW()
+        WHERE id = $${i++} AND user_id = $${i} AND is_active = true
+        RETURNING id, room, title, date,
+                  start_time AS time_start,
+                  end_time AS time_end,
+                  created_at, updated_at
+        `,
+        vals,
+      )
+      if (q.rows.length === 0) {
+        const e = new Error('Agendamento não encontrado')
+        e.statusCode = 404
+        throw e
+      }
+      return q.rows[0]
+    })
+    return jsonResponse(reply, 200, { success: true, booking: out })
+  } catch (err) {
+    const status = err?.statusCode || 500
+    if (status >= 500) req.log.error({ err }, '[AGENDA] Erro ao atualizar agendamento')
+    return jsonResponse(reply, status, { error: err?.message || String(err) })
+  }
+})
+
+app.delete('/api/room-bookings/:id', async (req, reply) => {
+  const sessionUser = requireLogin(req, reply)
+  if (!sessionUser) return
+
+  const id = Number.parseInt(req.params?.id, 10)
+  if (!Number.isFinite(id)) return jsonResponse(reply, 400, { error: 'id inválido' })
+
+  try {
+    await withTx(pool, async (client) => {
+      const q = await client.query(
+        `
+        UPDATE room_bookings
+        SET is_active = false, updated_at = NOW()
+        WHERE id = $1 AND user_id = $2 AND is_active = true
+        `,
+        [id, sessionUser.id],
+      )
+      if (q.rowCount === 0) {
+        const e = new Error('Agendamento não encontrado')
+        e.statusCode = 404
+        throw e
+      }
+    })
+    return jsonResponse(reply, 200, { success: true })
+  } catch (err) {
+    const status = err?.statusCode || 500
+    if (status >= 500) req.log.error({ err }, '[AGENDA] Erro ao excluir agendamento')
+    return jsonResponse(reply, status, { error: err?.message || String(err) })
   }
 })
 

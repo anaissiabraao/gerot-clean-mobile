@@ -30,8 +30,8 @@ const api = {
   environmentUpload: (id) => `/api/environments/${id}/upload`,
 
   // Agent library
-  libraryCatalog: '/api/agent/library/catalog',
-  libraryRun: '/api/agent/library/run',
+  libraryCatalog: '/api/library/catalog',
+  libraryRun: '/api/library/run',
   libraryRunById: (runId) => `/api/agent/library/run/${runId}`,
 
   // Dashboard gen
