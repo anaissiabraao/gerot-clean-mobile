@@ -50,6 +50,7 @@ const api = {
 
   // Relatórios / indicadores
   indicadoresExecutivos: '/api/indicadores-executivos',
+  dashboardIndicators: '/api/dashboard/indicators',
   relatorioEntregas: '/api/relatorio-entregas',
   relatorioEntregasStatus: (requestId) => `/api/relatorio-entregas/status/${requestId}`,
   relatorioResultadosRequest: '/api/agent/relatorio-resultados/request',

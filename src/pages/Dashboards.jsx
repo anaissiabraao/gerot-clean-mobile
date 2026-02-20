@@ -1,15 +1,17 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { ExternalLink, BarChart2, Monitor, Eye } from 'lucide-react'
 import { httpGet } from '../services/httpClient'
 import api from '../api/endpoints'
 import env from '../config/env'
 import { Card, CardTitle, CardDescription } from '../components/ui/Card'
+import { KpiCard } from '../components/ui/KpiCard'
 import { ChartCard } from '../components/ui/ChartCard'
+import { FilterBar } from '../components/ui/FilterBar'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { Modal } from '../components/ui/Modal'
 import { EmptyState } from '../components/ui/EmptyState'
-import { SkeletonCard } from '../components/ui/Skeleton'
+import { SkeletonCard, SkeletonKpi } from '../components/ui/Skeleton'
 
 /** Converte asset_config.chart (template Chart.js) para formato do ChartCard: { type, title, labels, datasets } */
 function assetToChartConfig(asset) {
@@ -46,6 +48,18 @@ export default function Dashboards() {
   const [error, setError] = useState(null)
   const [selectedDash, setSelectedDash] = useState(null)
 
+  const [indFilters, setIndFilters] = useState({
+    data_inicio: '',
+    data_fim: '',
+    database: '',
+  })
+  const [indLoading, setIndLoading] = useState(false)
+  const [indError, setIndError] = useState(null)
+  const [indRequestId, setIndRequestId] = useState(null)
+  const [indStatusUrl, setIndStatusUrl] = useState(null)
+  const [indStatus, setIndStatus] = useState(null)
+  const [indicators, setIndicators] = useState(null)
+
   const [relEntregasRequestId, setRelEntregasRequestId] = useState(null)
   const [relEntregasStatus, setRelEntregasStatus] = useState(null)
   const [relEntregasData, setRelEntregasData] = useState(null)
@@ -56,7 +70,120 @@ export default function Dashboards() {
     loadTeamDashboard()
   }, [])
 
+  const handleIndFilterChange = useCallback((id, value) => {
+    setIndFilters((prev) => ({ ...prev, [id]: value }))
+  }, [])
+
+  const handleIndReset = useCallback(() => {
+    setIndFilters({ data_inicio: '', data_fim: '', database: '' })
+    setIndicators(null)
+    setIndError(null)
+    setIndRequestId(null)
+    setIndStatusUrl(null)
+    setIndStatus(null)
+  }, [])
+
+  const indFilterConfig = useMemo(
+    () => [
+      { id: 'data_inicio', label: 'Data Início', type: 'date', value: indFilters.data_inicio },
+      { id: 'data_fim', label: 'Data Fim', type: 'date', value: indFilters.data_fim },
+      {
+        id: 'database',
+        label: 'Base de Dados',
+        type: 'select',
+        value: indFilters.database,
+        options: [
+          { value: '', label: 'Padrão' },
+          { value: 'azportoex', label: 'MATRIZ (azportoex)' },
+          { value: 'portoexsp', label: 'FILIAL (portoexsp)' },
+        ],
+      },
+    ],
+    [indFilters]
+  )
+
+  const handleIndApply = useCallback(async () => {
+    setIndLoading(true)
+    setIndError(null)
+    setIndStatus(null)
+    setIndicators(null)
+    setIndRequestId(null)
+    setIndStatusUrl(null)
+
+    try {
+      const params = {}
+      if (indFilters.data_inicio) params.data_inicio = indFilters.data_inicio
+      if (indFilters.data_fim) params.data_fim = indFilters.data_fim
+      if (indFilters.database) params.database = indFilters.database
+
+      const qs = new URLSearchParams(params).toString()
+      const url = qs ? `${api.dashboardIndicators}?${qs}` : api.dashboardIndicators
+      const res = await httpGet(url)
+
+      if (res?.status === 'pending' && res?.request_id && res?.status_url) {
+        setIndRequestId(res.request_id)
+        setIndStatusUrl(res.status_url)
+        setIndStatus('pending')
+        return
+      }
+
+      const inds = res?.indicators
+      if (!inds || typeof inds !== 'object') {
+        throw new Error('Resposta inválida: indicators ausente')
+      }
+      setIndicators(inds)
+      setIndStatus('completed')
+    } catch (e) {
+      setIndError(e?.message || 'Erro ao carregar indicadores')
+    } finally {
+      setIndLoading(false)
+    }
+  }, [indFilters])
+
   const isRelatorioEntregas376 = selectedDash?.asset_config?.internal_key === 'relatorio_entregas_376'
+
+  useEffect(() => {
+    if (!indRequestId || !indStatusUrl) return
+
+    let timer = null
+    let cancelled = false
+
+    const poll = async () => {
+      try {
+        const st = await httpGet(indStatusUrl)
+        if (cancelled) return
+        const status = st?.status || null
+        setIndStatus(status)
+
+        if (status === 'completed') {
+          const inds = st?.data?.indicators
+          if (!inds || typeof inds !== 'object') {
+            setIndError('Resposta inválida: indicators ausente')
+            return
+          }
+          setIndicators(inds)
+          return
+        }
+
+        if (status === 'failed') {
+          setIndError(st?.error || 'Falha ao gerar indicadores')
+          return
+        }
+
+        timer = setTimeout(poll, 2000)
+      } catch (e) {
+        if (cancelled) return
+        setIndError(e?.message || 'Erro ao consultar status dos indicadores')
+      }
+    }
+
+    poll()
+
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+    }
+  }, [indRequestId, indStatusUrl])
 
   useEffect(() => {
     if (!isRelatorioEntregas376) return
@@ -257,6 +384,56 @@ export default function Dashboards() {
           Atualizar
         </Button>
       </div>
+
+      <FilterBar
+        filters={indFilterConfig}
+        onChange={handleIndFilterChange}
+        onReset={handleIndReset}
+        onApply={handleIndApply}
+      />
+
+      {indLoading ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <SkeletonKpi key={i} />
+          ))}
+        </div>
+      ) : indError ? (
+        <Card className="border-destructive/20 bg-destructive/5">
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-sm text-destructive">{indError}</p>
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground">Status</p>
+              <p className="text-xs font-medium text-foreground">{indStatus || '—'}</p>
+            </div>
+          </div>
+        </Card>
+      ) : indicators ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="stagger-child">
+            <KpiCard label="Total Fretes" value={(Number(indicators.totalFretes || 0) || 0).toLocaleString('pt-BR')} />
+          </div>
+          <div className="stagger-child">
+            <KpiCard label="Fretes/Mês" value={(Number(indicators.fretesMes || 0) || 0).toLocaleString('pt-BR')} />
+          </div>
+          <div className="stagger-child">
+            <KpiCard label="Performance" value={`${(Number(indicators.performance || 0) || 0).toFixed(1)}%`} />
+          </div>
+          <div className="stagger-child">
+            <KpiCard label="Economia" value={(Number(indicators.economiaGerada || 0) || 0).toLocaleString('pt-BR')} />
+          </div>
+        </div>
+      ) : (
+        <Card className="border-dashed">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">Aplique os filtros para carregar os indicadores do Dashboard.</p>
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground">Status</p>
+              <p className="text-xs font-medium text-foreground">{indStatus || '—'}</p>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {loading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

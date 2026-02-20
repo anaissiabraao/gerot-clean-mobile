@@ -233,14 +233,14 @@ async function insertIndicatorsRequest(pool, userId, filters) {
     const res = await client.query(
       `
       INSERT INTO agent_dashboard_requests (title, description, category, chart_types, filters, status, created_by)
-      VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, 'pending', $6)
+      VALUES ($1, $2, $3, $4::text[], $5::jsonb, 'pending', $6)
       RETURNING id
       `,
       [
         `Indicadores Executivos ${filters.database}${filters.data_inicio || filters.data_fim ? ` (${filters.data_inicio || '...'} a ${filters.data_fim || '...'})` : ''}`,
         'Indicadores executivos (runner indicadores_executivos)',
         'indicadores_executivos',
-        JSON.stringify(['cards']),
+        ['cards'],
         JSON.stringify(filters),
         userId,
       ],
@@ -1510,14 +1510,14 @@ app.get('/api/relatorio-entregas', async (req, reply) => {
       const res = await client.query(
         `
         INSERT INTO agent_dashboard_requests (title, description, category, chart_types, filters, status, created_by)
-        VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, 'pending', $6)
+        VALUES ($1, $2, $3, $4::text[], $5::jsonb, 'pending', $6)
         RETURNING id
         `,
         [
           `Relatório Entregas ${database}${dataInicio || dataFim ? ` (${dataInicio || '...'} a ${dataFim || '...'})` : ''}`,
           'Relatório de Entregas por Status (Script 376)',
           'relatorio_entregas',
-          JSON.stringify(['pie', 'table']),
+          Array.isArray(['pie', 'table']) ? ['pie', 'table'] : [],
           JSON.stringify(filters),
           sessionUser.id,
         ],
