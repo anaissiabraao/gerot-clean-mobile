@@ -685,14 +685,12 @@ app.delete('/api/admin/users/:id', async (req, reply) => {
 
   try {
     await withTx(pool, async (client) => {
-      const q = await client.query(
-        `
-        UPDATE users_new
-        SET is_active = false, updated_at = NOW()
-        WHERE id = $1
-        `,
-        [userId],
-      )
+      // Limpar dependências que normalmente devem ser removidas junto com o usuário
+      // (se a base tiver FK ON DELETE SET NULL, isso é redundante, mas ajuda quando não houver).
+      await client.query('DELETE FROM asset_assignments WHERE user_id = $1', [userId])
+      await client.query('DELETE FROM room_bookings WHERE user_id = $1', [userId])
+
+      const q = await client.query('DELETE FROM users_new WHERE id = $1', [userId])
       if (q.rowCount === 0) {
         const e = new Error('Usuário não encontrado')
         e.statusCode = 404
@@ -701,8 +699,12 @@ app.delete('/api/admin/users/:id', async (req, reply) => {
     })
     return jsonResponse(reply, 200, { success: true })
   } catch (err) {
+    if (err?.code === '23503') {
+      // foreign_key_violation
+      return jsonResponse(reply, 409, { error: 'Não foi possível excluir: há registros vinculados a este usuário.' })
+    }
     const status = err?.statusCode || 500
-    if (status >= 500) req.log.error({ err }, '[ADMIN] Erro ao desativar usuário')
+    if (status >= 500) req.log.error({ err }, '[ADMIN] Erro ao excluir usuário')
     return jsonResponse(reply, status, { error: err?.message || String(err) })
   }
 })
