@@ -59,6 +59,9 @@ export default function Dashboards() {
   const [indStatusUrl, setIndStatusUrl] = useState(null)
   const [indStatus, setIndStatus] = useState(null)
   const [indicators, setIndicators] = useState(null)
+  const [indCards, setIndCards] = useState(null)
+  const [indPanelKey, setIndPanelKey] = useState(null)
+  const [indLeitura, setIndLeitura] = useState(null)
 
   const [relEntregasRequestId, setRelEntregasRequestId] = useState(null)
   const [relEntregasStatus, setRelEntregasStatus] = useState(null)
@@ -77,10 +80,30 @@ export default function Dashboards() {
   const handleIndReset = useCallback(() => {
     setIndFilters({ data_inicio: '', data_fim: '', database: '' })
     setIndicators(null)
+    setIndCards(null)
+    setIndPanelKey(null)
+    setIndLeitura(null)
     setIndError(null)
     setIndRequestId(null)
     setIndStatusUrl(null)
     setIndStatus(null)
+  }, [])
+
+  const formatIndicatorValue = useCallback((value, format) => {
+    const fmt = (format || 'number').toString()
+    if (fmt === 'percent') {
+      const n = Number(value)
+      return Number.isFinite(n) ? `${n.toFixed(1)}%` : '—'
+    }
+    if (fmt === 'currency') {
+      const n = Number(value)
+      if (!Number.isFinite(n)) return '—'
+      return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+    }
+    const n = Number(value)
+    if (Number.isFinite(n)) return n.toLocaleString('pt-BR')
+    if (value === null || value === undefined || value === '') return '—'
+    return String(value)
   }, [])
 
   const indFilterConfig = useMemo(
@@ -107,6 +130,9 @@ export default function Dashboards() {
     setIndError(null)
     setIndStatus(null)
     setIndicators(null)
+    setIndCards(null)
+    setIndPanelKey(null)
+    setIndLeitura(null)
     setIndRequestId(null)
     setIndStatusUrl(null)
 
@@ -132,6 +158,9 @@ export default function Dashboards() {
         throw new Error('Resposta inválida: indicators ausente')
       }
       setIndicators(inds)
+      setIndCards(Array.isArray(res?.cards) ? res.cards : null)
+      setIndPanelKey(res?.panel_key ? String(res.panel_key) : null)
+      setIndLeitura(res?.leitura_executiva ? String(res.leitura_executiva) : null)
       setIndStatus('completed')
     } catch (e) {
       setIndError(e?.message || 'Erro ao carregar indicadores')
@@ -162,6 +191,9 @@ export default function Dashboards() {
             return
           }
           setIndicators(inds)
+          setIndCards(Array.isArray(st?.data?.cards) ? st.data.cards : null)
+          setIndPanelKey(st?.data?.panel_key ? String(st.data.panel_key) : null)
+          setIndLeitura(st?.data?.leitura_executiva ? String(st.data.leitura_executiva) : null)
           return
         }
 
@@ -409,19 +441,56 @@ export default function Dashboards() {
           </div>
         </Card>
       ) : indicators ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="stagger-child">
-            <KpiCard label="Total Fretes" value={(Number(indicators.totalFretes || 0) || 0).toLocaleString('pt-BR')} />
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="stagger-child">
+              <KpiCard label="Total Fretes" value={(Number(indicators.totalFretes || 0) || 0).toLocaleString('pt-BR')} />
+            </div>
+            <div className="stagger-child">
+              <KpiCard label="Fretes/Mês" value={(Number(indicators.fretesMes || 0) || 0).toLocaleString('pt-BR')} />
+            </div>
+            <div className="stagger-child">
+              <KpiCard label="Performance" value={`${(Number(indicators.performance || 0) || 0).toFixed(1)}%`} />
+            </div>
+            <div className="stagger-child">
+              <KpiCard label="Economia" value={(Number(indicators.economiaGerada || 0) || 0).toLocaleString('pt-BR')} />
+            </div>
           </div>
-          <div className="stagger-child">
-            <KpiCard label="Fretes/Mês" value={(Number(indicators.fretesMes || 0) || 0).toLocaleString('pt-BR')} />
-          </div>
-          <div className="stagger-child">
-            <KpiCard label="Performance" value={`${(Number(indicators.performance || 0) || 0).toFixed(1)}%`} />
-          </div>
-          <div className="stagger-child">
-            <KpiCard label="Economia" value={(Number(indicators.economiaGerada || 0) || 0).toLocaleString('pt-BR')} />
-          </div>
+
+          {(indPanelKey || indLeitura) && (
+            <Card>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Painel</p>
+                  <p className="text-sm font-medium text-foreground">{indPanelKey || '—'}</p>
+                </div>
+                {indLeitura && (
+                  <div className="flex-1">
+                    <p className="text-xs text-muted-foreground">Leitura executiva</p>
+                    <p className="text-sm text-foreground">{indLeitura}</p>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {Array.isArray(indCards) && indCards.length > 0 && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {indCards.map((c, idx) => (
+                <Card key={`${c.key || 'card'}-${idx}`} className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">{c.label || c.key}</p>
+                      <p className="mt-1 text-xl font-bold text-foreground">{formatIndicatorValue(c.value, c.format)}</p>
+                    </div>
+                    <Badge variant={c.status === 'red' ? 'destructive' : c.status === 'green' ? 'success' : 'default'}>
+                      {c.status || '—'}
+                    </Badge>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       ) : (
         <Card className="border-dashed">

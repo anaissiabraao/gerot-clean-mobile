@@ -60,6 +60,24 @@ app.addContentTypeParser(
 
 const pool = createPool()
 
+async function ensureAgentSettingsKeyUnique(pool) {
+  try {
+    await withTx(pool, async (client) => {
+      await client.query(
+        `
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_settings_key
+        ON agent_settings(setting_key)
+        `,
+      )
+    })
+    app.log.info('[DB] agent_settings(setting_key) unique index OK')
+  } catch (err) {
+    app.log.error({ err }, '[DB] Falha ao garantir unique index em agent_settings(setting_key)')
+  }
+}
+
+await ensureAgentSettingsKeyUnique(pool)
+
 app.addHook('onRequest', async (req, reply) => {
   if (req.url.startsWith('/api/agent/')) {
     if (!verifyAgentApiKey(req)) {
@@ -136,6 +154,21 @@ async function getAgentSetting(pool, key) {
   }
 }
 
+async function setAgentSetting(pool, key, value) {
+  return await withTx(pool, async (client) => {
+    await client.query(
+      `
+      INSERT INTO agent_settings (setting_key, setting_value, updated_at)
+      VALUES ($1, $2::jsonb, NOW())
+      ON CONFLICT (setting_key)
+      DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = NOW()
+      `,
+      [key, JSON.stringify(value ?? null)],
+    )
+    return true
+  })
+}
+
 function normalizePanelKey(value) {
   const v = (value || '').toString().trim().toLowerCase()
   if (v === 'ceo' || v === 'diretoria' || v === 'operacional' || v === 'projetos') return v
@@ -200,6 +233,53 @@ function buildSimpleIndicators(panelData, totalOperacoes) {
     economiaGerada,
     totalOperacoes: Number.isFinite(Number(totalOperacoes)) ? Number(totalOperacoes) : 0,
   }
+}
+
+const DEFAULT_INDICATOR_PANEL_MODELS = {
+  ceo: [
+    { key: 'resultado_geral_acumulado_d5', label: 'Resultado geral acumulado (D+5)', format: 'currency', status: 'resultado_geral' },
+    { key: 'performance_entrega_on_time_percent', label: 'Performance On Time (%)', format: 'percent', status: 'performance_entrega' },
+    { key: 'faturamento_mensal_d0', label: 'Faturamento mensal (D+0)', format: 'currency' },
+    { key: 'faturamento_acumulado_d0', label: 'Faturamento acumulado (D+0)', format: 'currency' },
+    { key: 'valor_operacoes_negativas_d5', label: 'Operações negativas (D+5)', format: 'currency', status: 'operacoes_negativas' },
+    { key: 'fluxo_caixa_atual', label: 'Fluxo de caixa atual', format: 'currency', status: 'fluxo_caixa' },
+  ],
+  diretoria: [
+    { key: 'faturamento_mensal_d0', label: 'Faturamento mensal (D+0)', format: 'currency' },
+    { key: 'faturamento_acumulado_d0', label: 'Faturamento acumulado (D+0)', format: 'currency' },
+    { key: 'valor_embarques_prejuizo_d5', label: 'Embarques com prejuízo (D+5)', format: 'currency', status: 'operacoes_negativas' },
+    { key: 'inadimplencia_percent', label: 'Inadimplência (%)', format: 'percent', status: 'inadimplencia' },
+    { key: 'inadimplencia_valor', label: 'Inadimplência (R$)', format: 'currency', status: 'inadimplencia' },
+    { key: 'participacao_corporativo_percent', label: 'Participação corporativo (%)', format: 'percent' },
+    { key: 'participacao_vendedores_percent', label: 'Participação vendedores (%)', format: 'percent' },
+    { key: 'custos_dia', label: 'Custos do dia', format: 'currency' },
+    { key: 'lucro_liquido_sobre_faturamento', label: 'Lucro líquido / faturamento', format: 'percent' },
+  ],
+  operacional: [
+    { key: 'performance_entrega_on_time_percent', label: 'Performance On Time (%)', format: 'percent', status: 'performance_entrega' },
+  ],
+  projetos: [
+    { key: 'resultado_geral_acumulado_d5', label: 'Resultado geral acumulado (D+5)', format: 'currency', status: 'resultado_geral' },
+  ],
+}
+
+function buildIndicatorCards(panelKey, panelData, modelsSetting) {
+  const models = modelsSetting && typeof modelsSetting === 'object' ? modelsSetting : null
+  const model = (models && models[panelKey] && Array.isArray(models[panelKey]) ? models[panelKey] : null) ?? DEFAULT_INDICATOR_PANEL_MODELS[panelKey] ?? []
+  const pd = panelData && typeof panelData === 'object' ? panelData : {}
+  const statusObj = pd.status && typeof pd.status === 'object' ? pd.status : null
+
+  return model
+    .filter((it) => it && typeof it === 'object' && it.key)
+    .map((it) => {
+      const key = String(it.key)
+      const label = it.label !== undefined ? String(it.label) : key
+      const format = it.format !== undefined ? String(it.format) : 'number'
+      const value = pd[key]
+      const statusKey = it.status !== undefined ? String(it.status) : null
+      const status = statusKey && statusObj ? statusObj[statusKey] ?? null : null
+      return { key, label, value, format, status }
+    })
 }
 
 function extractDashboardResultPayload(resultData) {
@@ -269,7 +349,8 @@ async function insertIndicatorsRequest(pool, userId, filters) {
 }
 
 function normalizeIndicatorsPayloadForUser({ sessionUser, rawPayload, assignments }) {
-  const panelKey = resolveIndicatorsPanelKey(sessionUser, assignments)
+  const resolvedPanelKey = resolveIndicatorsPanelKey(sessionUser, assignments)
+  const panelKey = resolvedPanelKey ?? rawPayload?.panel_key ?? 'ceo'
   const indicadoresCompletos = rawPayload?.indicadores_completos
   const picked = pickPanelData(indicadoresCompletos, panelKey)
 
@@ -281,7 +362,7 @@ function normalizeIndicatorsPayloadForUser({ sessionUser, rawPayload, assignment
   return {
     ...rawPayload,
     success: rawPayload?.success !== false,
-    panel_key: panelKey ?? rawPayload?.panel_key ?? null,
+    panel_key: panelKey,
     panel_data,
     leitura_executiva,
     indicators,
@@ -312,6 +393,53 @@ app.get('/api/admin/users', async (req, reply) => {
     return jsonResponse(reply, 200, { items: out })
   } catch (err) {
     req.log.error({ err }, '[ADMIN] Erro ao listar usuários')
+    return jsonResponse(reply, 500, { error: err?.message || String(err) })
+  }
+})
+
+app.get('/api/admin/agent-settings/:key', async (req, reply) => {
+  const admin = requireAdmin(req, reply)
+  if (!admin) return
+
+  const key = (req.params?.key || '').toString().trim()
+  const allow = new Set(['dashboard_indicator_assignments', 'dashboard_indicator_panel_models'])
+  if (!allow.has(key)) {
+    return jsonResponse(reply, 400, { error: 'setting_key inválida' })
+  }
+
+  try {
+    const value = await getAgentSetting(pool, key)
+    return jsonResponse(reply, 200, { success: true, key, value })
+  } catch (err) {
+    req.log.error({ err }, '[ADMIN] Erro ao ler agent_setting')
+    return jsonResponse(reply, 500, { error: err?.message || String(err) })
+  }
+})
+
+app.put('/api/admin/agent-settings/:key', async (req, reply) => {
+  const admin = requireAdmin(req, reply)
+  if (!admin) return
+
+  const key = (req.params?.key || '').toString().trim()
+  const allow = new Set(['dashboard_indicator_assignments', 'dashboard_indicator_panel_models'])
+  if (!allow.has(key)) {
+    return jsonResponse(reply, 400, { error: 'setting_key inválida' })
+  }
+
+  if (!req.body || typeof req.body !== 'object') {
+    return jsonResponse(reply, 400, { error: 'Body inválido' })
+  }
+
+  const value = req.body?.value
+  const valueType = value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value
+  if (value !== null && value !== undefined && valueType !== 'object' && valueType !== 'array') {
+    return jsonResponse(reply, 400, { error: 'Campo value deve ser um objeto/array (ou null)' })
+  }
+  try {
+    await setAgentSetting(pool, key, value)
+    return jsonResponse(reply, 200, { success: true })
+  } catch (err) {
+    req.log.error({ err }, '[ADMIN] Erro ao salvar agent_setting')
     return jsonResponse(reply, 500, { error: err?.message || String(err) })
   }
 })
@@ -934,6 +1062,7 @@ app.get('/api/indicadores-executivos/status/:requestId', async (req, reply) => {
 
   try {
     const assignments = await getAgentSetting(pool, 'dashboard_indicator_assignments')
+    const panelModels = await getAgentSetting(pool, 'dashboard_indicator_panel_models')
     const out = await withTx(pool, async (client) => {
       const q = await client.query(
         `
@@ -958,11 +1087,15 @@ app.get('/api/indicadores-executivos/status/:requestId', async (req, reply) => {
         rawPayload: payload,
         assignments,
       })
+      const cards = buildIndicatorCards(normalized.panel_key, normalized.panel_data, panelModels)
       return jsonResponse(reply, 200, {
         success: true,
         status: out.status,
         request_id: out.id,
-        data: normalized,
+        data: {
+          ...normalized,
+          cards,
+        },
         error: out.error_message,
       })
     }
@@ -1007,6 +1140,7 @@ app.get('/api/dashboard/indicators', async (req, reply) => {
 
   try {
     const assignments = await getAgentSetting(pool, 'dashboard_indicator_assignments')
+    const panelModels = await getAgentSetting(pool, 'dashboard_indicator_panel_models')
     const cached = await findCompletedIndicatorsRequest(pool, sessionUser.id, filters)
 
     const cachedPayload = extractDashboardResultPayload(cached?.result_data)
@@ -1016,9 +1150,17 @@ app.get('/api/dashboard/indicators', async (req, reply) => {
         rawPayload: cachedPayload,
         assignments,
       })
+      const cards = buildIndicatorCards(normalized.panel_key, normalized.panel_data, panelModels)
       return jsonResponse(reply, 200, {
         success: true,
         indicators: normalized.indicators,
+        panel_key: normalized.panel_key ?? null,
+        panel_data: normalized.panel_data ?? null,
+        leitura_executiva: normalized.leitura_executiva ?? null,
+        total_operacoes: normalized.total_operacoes ?? null,
+        periodo: normalized.periodo ?? null,
+        database: normalized.database ?? null,
+        cards,
       })
     }
 
