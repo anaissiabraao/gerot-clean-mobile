@@ -236,40 +236,103 @@ function buildSimpleIndicators(panelData, totalOperacoes) {
 }
 
 const DEFAULT_INDICATOR_PANEL_MODELS = {
-  ceo: [
-    { key: 'resultado_geral_acumulado_d5', label: 'Resultado geral acumulado (D+5)', format: 'currency', status: 'resultado_geral' },
-    { key: 'performance_entrega_on_time_percent', label: 'Performance On Time (%)', format: 'percent', status: 'performance_entrega' },
-    { key: 'faturamento_mensal_d0', label: 'Faturamento mensal (D+0)', format: 'currency' },
-    { key: 'faturamento_acumulado_d0', label: 'Faturamento acumulado (D+0)', format: 'currency' },
-    { key: 'valor_operacoes_negativas_d5', label: 'Operações negativas (D+5)', format: 'currency', status: 'operacoes_negativas' },
-    { key: 'fluxo_caixa_atual', label: 'Fluxo de caixa atual', format: 'currency', status: 'fluxo_caixa' },
-  ],
-  diretoria: [
-    { key: 'faturamento_mensal_d0', label: 'Faturamento mensal (D+0)', format: 'currency' },
-    { key: 'faturamento_acumulado_d0', label: 'Faturamento acumulado (D+0)', format: 'currency' },
-    { key: 'valor_embarques_prejuizo_d5', label: 'Embarques com prejuízo (D+5)', format: 'currency', status: 'operacoes_negativas' },
-    { key: 'inadimplencia_percent', label: 'Inadimplência (%)', format: 'percent', status: 'inadimplencia' },
-    { key: 'inadimplencia_valor', label: 'Inadimplência (R$)', format: 'currency', status: 'inadimplencia' },
-    { key: 'participacao_corporativo_percent', label: 'Participação corporativo (%)', format: 'percent' },
-    { key: 'participacao_vendedores_percent', label: 'Participação vendedores (%)', format: 'percent' },
-    { key: 'custos_dia', label: 'Custos do dia', format: 'currency' },
-    { key: 'lucro_liquido_sobre_faturamento', label: 'Lucro líquido / faturamento', format: 'percent' },
-  ],
-  operacional: [
-    { key: 'performance_entrega_on_time_percent', label: 'Performance On Time (%)', format: 'percent', status: 'performance_entrega' },
-  ],
-  projetos: [
-    { key: 'resultado_geral_acumulado_d5', label: 'Resultado geral acumulado (D+5)', format: 'currency', status: 'resultado_geral' },
-  ],
+  ceo: {
+    cards: [
+      { key: 'resultado_geral_acumulado_d5', label: 'Resultado geral acumulado (D+5)', format: 'currency', status: 'resultado_geral' },
+      { key: 'performance_entrega_on_time_percent', label: 'Performance On Time (%)', format: 'percent', status: 'performance_entrega' },
+      { key: 'faturamento_mensal_d0', label: 'Faturamento mensal (D+0)', format: 'currency' },
+      { key: 'faturamento_acumulado_d0', label: 'Faturamento acumulado (D+0)', format: 'currency' },
+      { key: 'valor_operacoes_negativas_d5', label: 'Operações negativas (D+5)', format: 'currency', status: 'operacoes_negativas' },
+      { key: 'fluxo_caixa_atual', label: 'Fluxo de caixa atual', format: 'currency', status: 'fluxo_caixa' },
+    ],
+    widgets: [
+      {
+        type: 'gauge',
+        key: 'performance_entrega_on_time_percent',
+        title: 'Performance On Time',
+        format: 'percent',
+        min: 0,
+        max: 100,
+        status: 'performance_entrega',
+      },
+    ],
+  },
+  diretoria: {
+    cards: [
+      { key: 'faturamento_mensal_d0', label: 'Faturamento mensal (D+0)', format: 'currency' },
+      { key: 'faturamento_acumulado_d0', label: 'Faturamento acumulado (D+0)', format: 'currency' },
+      { key: 'valor_embarques_prejuizo_d5', label: 'Embarques com prejuízo (D+5)', format: 'currency', status: 'operacoes_negativas' },
+      { key: 'inadimplencia_percent', label: 'Inadimplência (%)', format: 'percent', status: 'inadimplencia' },
+      { key: 'inadimplencia_valor', label: 'Inadimplência (R$)', format: 'currency', status: 'inadimplencia' },
+      { key: 'participacao_corporativo_percent', label: 'Participação corporativo (%)', format: 'percent' },
+      { key: 'participacao_vendedores_percent', label: 'Participação vendedores (%)', format: 'percent' },
+      { key: 'custos_dia', label: 'Custos do dia', format: 'currency' },
+      { key: 'lucro_liquido_sobre_faturamento', label: 'Lucro líquido / faturamento', format: 'percent' },
+    ],
+    widgets: [
+      {
+        type: 'table',
+        key: 'resultado_por_servico_d5',
+        title: 'Resultado por serviço (Top 5)',
+        columns: [
+          { key: 'servico', label: 'Serviço' },
+          { key: 'faturamento', label: 'Faturamento', format: 'currency' },
+        ],
+        limit: 5,
+        sort: { key: 'faturamento', dir: 'desc' },
+      },
+    ],
+  },
+  operacional: {
+    cards: [
+      { key: 'performance_entrega_on_time_percent', label: 'Performance On Time (%)', format: 'percent', status: 'performance_entrega' },
+      { key: 'nivel_operacao_atendimento', label: 'Nível de operação', format: 'text', status: 'nivel_operacao' },
+    ],
+    widgets: [
+      {
+        type: 'gauge',
+        key: 'performance_entrega_on_time_percent',
+        title: 'Performance On Time',
+        format: 'percent',
+        min: 0,
+        max: 100,
+        status: 'performance_entrega',
+      },
+    ],
+  },
+  projetos: {
+    cards: [
+      { key: 'projetos_ativos', label: 'Projetos ativos', format: 'number' },
+      { key: 'projetos_concluidos', label: 'Projetos concluídos', format: 'number' },
+      { key: 'projetos_atraso', label: 'Projetos em atraso', format: 'number', status: 'projetos_atraso' },
+      { key: 'prazo_medio_dias', label: 'Prazo médio (dias)', format: 'number' },
+    ],
+    widgets: [
+      {
+        type: 'table',
+        key: 'gargalos',
+        title: 'Gargalos recorrentes',
+        columns: [{ key: 'gargalo', label: 'Gargalo' }],
+        limit: 5,
+      },
+    ],
+  },
 }
 
 function buildIndicatorCards(panelKey, panelData, modelsSetting) {
   const models = modelsSetting && typeof modelsSetting === 'object' ? modelsSetting : null
-  const model = (models && models[panelKey] && Array.isArray(models[panelKey]) ? models[panelKey] : null) ?? DEFAULT_INDICATOR_PANEL_MODELS[panelKey] ?? []
+  const configured = models && models[panelKey] !== undefined ? models[panelKey] : null
+  const model = Array.isArray(configured)
+    ? { cards: configured }
+    : configured && typeof configured === 'object'
+      ? configured
+      : DEFAULT_INDICATOR_PANEL_MODELS[panelKey] ?? { cards: [] }
+
+  const cardsModel = Array.isArray(model.cards) ? model.cards : []
   const pd = panelData && typeof panelData === 'object' ? panelData : {}
   const statusObj = pd.status && typeof pd.status === 'object' ? pd.status : null
 
-  return model
+  return cardsModel
     .filter((it) => it && typeof it === 'object' && it.key)
     .map((it) => {
       const key = String(it.key)
@@ -280,6 +343,88 @@ function buildIndicatorCards(panelKey, panelData, modelsSetting) {
       const status = statusKey && statusObj ? statusObj[statusKey] ?? null : null
       return { key, label, value, format, status }
     })
+}
+
+function buildIndicatorWidgets(panelKey, panelData, modelsSetting) {
+  const models = modelsSetting && typeof modelsSetting === 'object' ? modelsSetting : null
+  const configured = models && models[panelKey] !== undefined ? models[panelKey] : null
+  const model = Array.isArray(configured)
+    ? { cards: configured }
+    : configured && typeof configured === 'object'
+      ? configured
+      : DEFAULT_INDICATOR_PANEL_MODELS[panelKey] ?? { cards: [] }
+
+  const widgetsModel = Array.isArray(model.widgets) ? model.widgets : []
+  const pd = panelData && typeof panelData === 'object' ? panelData : {}
+  const statusObj = pd.status && typeof pd.status === 'object' ? pd.status : null
+
+  const out = []
+  for (const w of widgetsModel) {
+    if (!w || typeof w !== 'object') continue
+    const type = (w.type || '').toString().trim().toLowerCase()
+    if (type === 'gauge') {
+      const key = String(w.key || '')
+      if (!key) continue
+      const value = pd[key]
+      const statusKey = w.status !== undefined ? String(w.status) : null
+      const status = statusKey && statusObj ? statusObj[statusKey] ?? null : null
+      out.push({
+        type: 'gauge',
+        key,
+        title: w.title !== undefined ? String(w.title) : key,
+        value,
+        format: w.format !== undefined ? String(w.format) : 'number',
+        min: w.min !== undefined ? Number(w.min) : 0,
+        max: w.max !== undefined ? Number(w.max) : 100,
+        status,
+      })
+    } else if (type === 'table') {
+      const key = String(w.key || '')
+      if (!key) continue
+      const raw = pd[key]
+      const cols = Array.isArray(w.columns) ? w.columns : []
+      const limit = w.limit !== undefined ? Math.max(1, Number(w.limit) || 1) : 10
+      const sortKey = w.sort && typeof w.sort === 'object' && w.sort.key ? String(w.sort.key) : null
+      const sortDir = w.sort && typeof w.sort === 'object' && w.sort.dir ? String(w.sort.dir).toLowerCase() : 'desc'
+
+      let rows = []
+      if (Array.isArray(raw)) {
+        rows = raw.map((v) => (typeof v === 'object' && v ? v : { value: v }))
+      } else if (raw && typeof raw === 'object') {
+        // suporta map { nome: { faturamento: ... } }
+        rows = Object.entries(raw).map(([k, v]) => {
+          if (v && typeof v === 'object') return { servico: k, ...v }
+          return { servico: k, value: v }
+        })
+      }
+
+      if (sortKey) {
+        rows.sort((a, b) => {
+          const av = Number(a?.[sortKey])
+          const bv = Number(b?.[sortKey])
+          const an = Number.isFinite(av) ? av : 0
+          const bn = Number.isFinite(bv) ? bv : 0
+          return sortDir === 'asc' ? an - bn : bn - an
+        })
+      }
+
+      rows = rows.slice(0, limit)
+
+      out.push({
+        type: 'table',
+        key,
+        title: w.title !== undefined ? String(w.title) : key,
+        columns: cols.map((c) => ({
+          key: String(c.key || ''),
+          label: c.label !== undefined ? String(c.label) : String(c.key || ''),
+          format: c.format !== undefined ? String(c.format) : 'text',
+        })),
+        rows,
+      })
+    }
+  }
+
+  return out
 }
 
 function extractDashboardResultPayload(resultData) {
@@ -1088,6 +1233,7 @@ app.get('/api/indicadores-executivos/status/:requestId', async (req, reply) => {
         assignments,
       })
       const cards = buildIndicatorCards(normalized.panel_key, normalized.panel_data, panelModels)
+      const widgets = buildIndicatorWidgets(normalized.panel_key, normalized.panel_data, panelModels)
       return jsonResponse(reply, 200, {
         success: true,
         status: out.status,
@@ -1095,6 +1241,7 @@ app.get('/api/indicadores-executivos/status/:requestId', async (req, reply) => {
         data: {
           ...normalized,
           cards,
+          widgets,
         },
         error: out.error_message,
       })
@@ -1151,6 +1298,7 @@ app.get('/api/dashboard/indicators', async (req, reply) => {
         assignments,
       })
       const cards = buildIndicatorCards(normalized.panel_key, normalized.panel_data, panelModels)
+      const widgets = buildIndicatorWidgets(normalized.panel_key, normalized.panel_data, panelModels)
       return jsonResponse(reply, 200, {
         success: true,
         indicators: normalized.indicators,
@@ -1161,6 +1309,7 @@ app.get('/api/dashboard/indicators', async (req, reply) => {
         periodo: normalized.periodo ?? null,
         database: normalized.database ?? null,
         cards,
+        widgets,
       })
     }
 

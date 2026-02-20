@@ -62,6 +62,7 @@ export default function Dashboards() {
   const [indCards, setIndCards] = useState(null)
   const [indPanelKey, setIndPanelKey] = useState(null)
   const [indLeitura, setIndLeitura] = useState(null)
+  const [indWidgets, setIndWidgets] = useState(null)
 
   const [relEntregasRequestId, setRelEntregasRequestId] = useState(null)
   const [relEntregasStatus, setRelEntregasStatus] = useState(null)
@@ -83,6 +84,7 @@ export default function Dashboards() {
     setIndCards(null)
     setIndPanelKey(null)
     setIndLeitura(null)
+    setIndWidgets(null)
     setIndError(null)
     setIndRequestId(null)
     setIndStatusUrl(null)
@@ -133,6 +135,7 @@ export default function Dashboards() {
     setIndCards(null)
     setIndPanelKey(null)
     setIndLeitura(null)
+    setIndWidgets(null)
     setIndRequestId(null)
     setIndStatusUrl(null)
 
@@ -161,6 +164,7 @@ export default function Dashboards() {
       setIndCards(Array.isArray(res?.cards) ? res.cards : null)
       setIndPanelKey(res?.panel_key ? String(res.panel_key) : null)
       setIndLeitura(res?.leitura_executiva ? String(res.leitura_executiva) : null)
+      setIndWidgets(Array.isArray(res?.widgets) ? res.widgets : null)
       setIndStatus('completed')
     } catch (e) {
       setIndError(e?.message || 'Erro ao carregar indicadores')
@@ -194,6 +198,7 @@ export default function Dashboards() {
           setIndCards(Array.isArray(st?.data?.cards) ? st.data.cards : null)
           setIndPanelKey(st?.data?.panel_key ? String(st.data.panel_key) : null)
           setIndLeitura(st?.data?.leitura_executiva ? String(st.data.leitura_executiva) : null)
+          setIndWidgets(Array.isArray(st?.data?.widgets) ? st.data.widgets : null)
           return
         }
 
@@ -403,6 +408,74 @@ export default function Dashboards() {
     )
   }
 
+  function IndicatorGauge({ widget }) {
+    const min = Number(widget?.min)
+    const max = Number(widget?.max)
+    const raw = Number(widget?.value)
+    const value = Number.isFinite(raw) ? raw : null
+    const mn = Number.isFinite(min) ? min : 0
+    const mx = Number.isFinite(max) && max > mn ? max : 100
+    const pct = value === null ? 0 : ((value - mn) / (mx - mn)) * 100
+    const clamped = Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) : 0
+
+    const status = (widget?.status || '').toString().toLowerCase()
+    const variant = status === 'red' ? 'danger' : status === 'green' ? 'success' : 'default'
+    const title = widget?.title || widget?.key || 'Indicador'
+    const subtitle = widget?.format === 'percent'
+      ? `${formatIndicatorValue(value, 'percent')} (alvo ${mn}-${mx})`
+      : `${formatIndicatorValue(value, widget?.format)} (alvo ${mn}-${mx})`
+
+    return <GaugeCard title={title} percent={clamped} subtitle={subtitle} variant={variant} />
+  }
+
+  function IndicatorTable({ widget }) {
+    const title = widget?.title || widget?.key || 'Tabela'
+    const cols = Array.isArray(widget?.columns) ? widget.columns : []
+    const rows = Array.isArray(widget?.rows) ? widget.rows : []
+
+    if (!cols.length) return null
+
+    return (
+      <Card className="p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <h4 className="text-sm font-semibold text-foreground">{title}</h4>
+          <span className="text-xs text-muted-foreground">{rows.length} linha(s)</span>
+        </div>
+        <div className="overflow-auto">
+          <table className="min-w-full text-sm">
+            <thead className="bg-muted/30">
+              <tr>
+                {cols.map((c) => (
+                  <th key={c.key} className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">
+                    {c.label || c.key}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, idx) => (
+                <tr key={idx} className="border-b last:border-0">
+                  {cols.map((c) => (
+                    <td key={c.key} className="px-3 py-2 text-foreground">
+                      {formatIndicatorValue(r?.[c.key], c.format)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+              {rows.length === 0 && (
+                <tr>
+                  <td className="px-3 py-6 text-center text-muted-foreground" colSpan={cols.length}>
+                    Sem dados
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    )
+  }
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-center justify-between">
@@ -489,6 +562,20 @@ export default function Dashboards() {
                   </div>
                 </Card>
               ))}
+            </div>
+          )}
+
+          {Array.isArray(indWidgets) && indWidgets.length > 0 && (
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {indWidgets.map((w, idx) => {
+                if (w?.type === 'gauge') {
+                  return <IndicatorGauge key={`${w.key || 'gauge'}-${idx}`} widget={w} />
+                }
+                if (w?.type === 'table') {
+                  return <IndicatorTable key={`${w.key || 'table'}-${idx}`} widget={w} />
+                }
+                return null
+              })}
             </div>
           )}
         </div>
