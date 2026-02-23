@@ -107,6 +107,64 @@ async function ensureRoomBookingsTable(pool) {
 
 await ensureRoomBookingsTable(pool)
 
+const CHART_PERMISSION_KEYS = [
+  'volumeMensal',
+  'operacoesPorStatus',
+  'performanceMotoristas',
+  'tendenciaAcumulada',
+  'resultadoPorServico',
+  'composicaoAgentes',
+  'heatmapAgentes',
+]
+
+async function ensureUsersGovernanceColumns(pool) {
+  try {
+    await withTx(pool, async (client) => {
+      await client.query(`
+        ALTER TABLE users_new
+        ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user'
+      `)
+      await client.query(`
+        ALTER TABLE users_new
+        ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE
+      `)
+      await client.query(`
+        ALTER TABLE users_new
+        ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '{}'::jsonb
+      `)
+    })
+    app.log.info('[DB] Governança de usuários (role/is_admin/permissions) OK')
+  } catch (err) {
+    app.log.error({ err }, '[DB] Falha ao garantir colunas de governança em users_new')
+  }
+}
+
+async function ensureDashboardPermissionsTable(pool) {
+  try {
+    await withTx(pool, async (client) => {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS dashboard_permissions (
+          id BIGSERIAL PRIMARY KEY,
+          user_id BIGINT REFERENCES users_new(id) ON DELETE CASCADE,
+          chart_key VARCHAR(100) NOT NULL,
+          allowed BOOLEAN DEFAULT TRUE,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          UNIQUE (user_id, chart_key)
+        )
+      `)
+      await client.query('CREATE INDEX IF NOT EXISTS idx_dashboard_permissions_user ON dashboard_permissions(user_id)')
+      await client.query('CREATE INDEX IF NOT EXISTS idx_dashboard_permissions_chart ON dashboard_permissions(chart_key)')
+    })
+    app.log.info('[DB] dashboard_permissions table OK')
+  } catch (err) {
+    app.log.error({ err }, '[DB] Falha ao garantir tabela dashboard_permissions')
+  }
+}
+
+await ensureUsersGovernanceColumns(pool)
+await ensureDashboardPermissionsTable(pool)
+
 app.addHook('onRequest', async (req, reply) => {
   if (req.url.startsWith('/api/agent/')) {
     const isHealth = req.url === '/api/agent/health' || req.url.startsWith('/api/agent/health?')
@@ -117,7 +175,7 @@ app.addHook('onRequest', async (req, reply) => {
       }
       if (isLibrary) {
         const u = getSessionUser(req)
-        const isAdmin = (u?.role || '').toString().toLowerCase() === 'admin'
+        const isAdmin = isGlobalAdmin(u)
         if (isAdmin) {
           return
         }
@@ -170,10 +228,41 @@ function requireLogin(req, reply) {
 function requireAdmin(req, reply) {
   const u = requireLogin(req, reply)
   if (!u) return null
-  const isAdmin = (u.role || '').toString().toLowerCase() === 'admin'
+  const role = (u.role || '').toString().toLowerCase()
+  const adminByRole = role === 'admin'
+  const adminByFlag = u.is_admin === true
+  const p = u.permissions
+  const permObj = p && typeof p === 'object' && !Array.isArray(p) ? p : {}
+  const adminByPermission = p === 'all' || permObj.all_dashboards === true || permObj.manage_permissions === true
+  const isAdmin = adminByRole || adminByFlag || adminByPermission
   if (isAdmin) return u
   jsonResponse(reply, 403, { error: 'Forbidden' })
   return null
+}
+
+function getUserPermissionObject(sessionUser) {
+  const p = sessionUser?.permissions
+  if (p && typeof p === 'object' && !Array.isArray(p)) return p
+  if (p === 'all') {
+    return {
+      dashboards: true,
+      all_dashboards: true,
+      manage_permissions: true,
+      view_financial: true,
+      view_operational: true,
+      view_agents: true,
+    }
+  }
+  return {}
+}
+
+function isGlobalAdmin(sessionUser) {
+  if (!sessionUser || typeof sessionUser !== 'object') return false
+  const role = (sessionUser.role || '').toString().toLowerCase()
+  if (role === 'admin') return true
+  if (sessionUser.is_admin === true) return true
+  const perms = getUserPermissionObject(sessionUser)
+  return perms.all_dashboards === true || perms.manage_permissions === true
 }
 
 async function getAgentSetting(pool, key) {
@@ -207,6 +296,32 @@ async function setAgentSetting(pool, key, value) {
       [key, JSON.stringify(value ?? null)],
     )
     return true
+  })
+}
+
+async function getUserChartPermissions(pool, sessionUser) {
+  const isAdmin = isGlobalAdmin(sessionUser)
+  const out = {}
+  if (isAdmin) {
+    for (const key of CHART_PERMISSION_KEYS) out[key] = true
+    return out
+  }
+
+  return await withTx(pool, async (client) => {
+    const q = await client.query(
+      `
+      SELECT chart_key, allowed
+      FROM dashboard_permissions
+      WHERE user_id = $1
+      `,
+      [sessionUser.id],
+    )
+    for (const row of q.rows || []) {
+      const k = (row.chart_key || '').toString().trim()
+      if (!k) continue
+      out[k] = row.allowed !== false
+    }
+    return out
   })
 }
 
@@ -566,6 +681,57 @@ function normalizeIndicatorsPayloadForUser({ sessionUser, rawPayload, assignment
     panel_data,
     leitura_executiva,
     indicators,
+  }
+}
+
+function buildSemanticDashboardResponse(normalized, permissions = {}) {
+  const panelData = normalized?.panel_data && typeof normalized.panel_data === 'object' ? normalized.panel_data : {}
+  const statusMap = panelData?.status && typeof panelData.status === 'object' ? panelData.status : {}
+
+  const toNum = (v) => {
+    const n = Number(v)
+    return Number.isFinite(n) ? n : 0
+  }
+
+  const kpis = {
+    faturamentoMensal: toNum(panelData.faturamento_mensal_d0),
+    faturamentoAcumulado: toNum(panelData.faturamento_acumulado_d0),
+    performanceEntrega: toNum(panelData.performance_entrega_on_time_percent),
+    fluxoCaixa: toNum(panelData.fluxo_caixa_d5 ?? panelData.fluxo_caixa_atual),
+    inadimplenciaPercentual: toNum(panelData.inadimplencia_percent),
+  }
+
+  const operacoesPorStatus = []
+  if (panelData.valor_embarques_prejuizo_d5 !== undefined) {
+    operacoesPorStatus.push({ status: 'Prejuizo', total: toNum(panelData.valor_embarques_prejuizo_d5) })
+  }
+  if (panelData.valor_operacoes_negativas_d5 !== undefined) {
+    operacoesPorStatus.push({ status: 'OperacoesNegativas', total: toNum(panelData.valor_operacoes_negativas_d5) })
+  }
+
+  const performanceMotoristas = Array.isArray(panelData.performance_motoristas)
+    ? panelData.performance_motoristas
+    : []
+
+  const volumeMensal = Array.isArray(panelData.volume_mensal)
+    ? panelData.volume_mensal
+    : []
+
+  return {
+    meta: {
+      panel_key: normalized?.panel_key ?? null,
+      periodo: normalized?.periodo ?? null,
+      database: normalized?.database ?? null,
+      total_operacoes: normalized?.total_operacoes ?? null,
+      status: statusMap,
+    },
+    kpis,
+    charts: {
+      volumeMensal,
+      operacoesPorStatus,
+      performanceMotoristas,
+    },
+    permissions,
   }
 }
 
@@ -992,6 +1158,79 @@ app.put('/api/admin/agent-settings/:key', async (req, reply) => {
     return jsonResponse(reply, 200, { success: true })
   } catch (err) {
     req.log.error({ err }, '[ADMIN] Erro ao salvar agent_setting')
+    return jsonResponse(reply, 500, { error: err?.message || String(err) })
+  }
+})
+
+app.get('/api/admin/dashboard-permissions', async (req, reply) => {
+  const admin = requireAdmin(req, reply)
+  if (!admin) return
+
+  const userId = Number.parseInt(req.query?.user_id, 10)
+  if (!Number.isFinite(userId)) {
+    return jsonResponse(reply, 400, { error: 'user_id inválido' })
+  }
+
+  try {
+    const out = await withTx(pool, async (client) => {
+      const q = await client.query(
+        `
+        SELECT chart_key, allowed
+        FROM dashboard_permissions
+        WHERE user_id = $1
+        ORDER BY chart_key ASC
+        `,
+        [userId],
+      )
+      const permissions = {}
+      for (const row of q.rows || []) {
+        const key = (row.chart_key || '').toString().trim()
+        if (!key) continue
+        permissions[key] = row.allowed !== false
+      }
+      return permissions
+    })
+    return jsonResponse(reply, 200, { success: true, user_id: userId, permissions: out })
+  } catch (err) {
+    req.log.error({ err }, '[ADMIN] Erro ao listar dashboard_permissions')
+    return jsonResponse(reply, 500, { error: err?.message || String(err) })
+  }
+})
+
+app.put('/api/admin/dashboard-permissions/:userId', async (req, reply) => {
+  const admin = requireAdmin(req, reply)
+  if (!admin) return
+
+  const userId = Number.parseInt(req.params?.userId, 10)
+  if (!Number.isFinite(userId)) {
+    return jsonResponse(reply, 400, { error: 'user_id inválido' })
+  }
+
+  const permissions = req.body?.permissions
+  if (!permissions || typeof permissions !== 'object' || Array.isArray(permissions)) {
+    return jsonResponse(reply, 400, { error: 'permissions deve ser um objeto { chart_key: boolean }' })
+  }
+
+  try {
+    await withTx(pool, async (client) => {
+      for (const [chartKey, allowedRaw] of Object.entries(permissions)) {
+        const key = String(chartKey || '').trim()
+        if (!key) continue
+        const allowed = allowedRaw !== false
+        await client.query(
+          `
+          INSERT INTO dashboard_permissions (user_id, chart_key, allowed, updated_at)
+          VALUES ($1, $2, $3, NOW())
+          ON CONFLICT (user_id, chart_key)
+          DO UPDATE SET allowed = EXCLUDED.allowed, updated_at = NOW()
+          `,
+          [userId, key, allowed],
+        )
+      }
+    })
+    return jsonResponse(reply, 200, { success: true, user_id: userId })
+  } catch (err) {
+    req.log.error({ err }, '[ADMIN] Erro ao salvar dashboard_permissions')
     return jsonResponse(reply, 500, { error: err?.message || String(err) })
   }
 })
@@ -1443,7 +1682,7 @@ app.post('/login', async (req, reply) => {
         FROM information_schema.columns
         WHERE table_schema = 'public'
           AND table_name = 'users_new'
-          AND column_name IN ('password_hash', 'password', 'email', 'nome_usuario')
+          AND column_name IN ('password_hash', 'password', 'email', 'nome_usuario', 'is_admin', 'permissions')
         `,
       )
 
@@ -1451,6 +1690,8 @@ app.post('/login', async (req, reply) => {
       const passwordCol = cols.rows.find((r) => r.column_name === 'password')
       const hasEmail = cols.rows.some((r) => r.column_name === 'email')
       const hasNomeUsuario = cols.rows.some((r) => r.column_name === 'nome_usuario')
+      const hasIsAdmin = cols.rows.some((r) => r.column_name === 'is_admin')
+      const hasPermissions = cols.rows.some((r) => r.column_name === 'permissions')
 
       const whereParts = [`LOWER(username) = LOWER($1)`]
       if (hasEmail) whereParts.push(`LOWER(email) = LOWER($1)`)
@@ -1458,9 +1699,11 @@ app.post('/login', async (req, reply) => {
       const whereSql = whereParts.join(' OR ')
 
       if (hasPasswordHash) {
+        const isAdminExpr = hasIsAdmin ? 'is_admin' : 'false AS is_admin'
+        const permissionsExpr = hasPermissions ? 'permissions' : `'{}'::jsonb AS permissions`
         const r = await client.query(
           `
-          SELECT id, username, password_hash, role, nome_completo, departamento, is_active
+          SELECT id, username, password_hash, role, nome_completo, departamento, is_active, ${isAdminExpr}, ${permissionsExpr}
           FROM users_new
           WHERE ${whereSql}
           LIMIT 1
@@ -1475,6 +1718,8 @@ app.post('/login', async (req, reply) => {
       }
 
       const passwordExpr = passwordCol.data_type === 'bytea' ? `convert_from(password, 'UTF8')` : `password::text`
+      const isAdminExpr = hasIsAdmin ? 'is_admin' : 'false AS is_admin'
+      const permissionsExpr = hasPermissions ? 'permissions' : `'{}'::jsonb AS permissions`
 
       const r = await client.query(
         `
@@ -1484,7 +1729,9 @@ app.post('/login', async (req, reply) => {
                role,
                nome_completo,
                departamento,
-               is_active
+               is_active,
+               ${isAdminExpr},
+               ${permissionsExpr}
         FROM users_new
         WHERE ${whereSql}
         LIMIT 1
@@ -1507,6 +1754,8 @@ app.post('/login', async (req, reply) => {
       id: user.id,
       username: user.username,
       role: user.role || 'user',
+      is_admin: user.is_admin === true,
+      permissions: user.permissions && typeof user.permissions === 'object' ? user.permissions : {},
       nome_completo: user.nome_completo || null,
       departamento: user.departamento || null,
     }
@@ -1554,7 +1803,12 @@ app.get('/api/me', async (req, reply) => {
   if (!u) {
     return jsonResponse(reply, 401, { error: 'Not authenticated' })
   }
-  return jsonResponse(reply, 200, { user: u })
+  return jsonResponse(reply, 200, {
+    user: {
+      ...u,
+      global_admin: isGlobalAdmin(u),
+    },
+  })
 })
 
 app.get('/api/indicadores-executivos', async (req, reply) => {
@@ -1574,6 +1828,7 @@ app.get('/api/indicadores-executivos', async (req, reply) => {
 
   try {
     const assignments = await getAgentSetting(pool, 'dashboard_indicator_assignments')
+    const permissions = await getUserChartPermissions(pool, sessionUser)
 
     const cached = await findCompletedIndicatorsRequest(pool, sessionUser.id, filters)
     const cachedPayload = extractDashboardResultPayload(cached?.result_data)
@@ -1583,7 +1838,12 @@ app.get('/api/indicadores-executivos', async (req, reply) => {
         rawPayload: cachedPayload,
         assignments,
       })
-      return jsonResponse(reply, 200, normalized)
+      const semantic = buildSemanticDashboardResponse(normalized, permissions)
+      return jsonResponse(reply, 200, {
+        ...normalized,
+        permissions,
+        semantic,
+      })
     }
 
     const requestId = await insertIndicatorsRequest(pool, sessionUser.id, filters)
@@ -1596,6 +1856,7 @@ app.get('/api/indicadores-executivos', async (req, reply) => {
       status: 'pending',
       request_id: requestId,
       status_url: `/api/indicadores-executivos/status/${requestId}`,
+      permissions,
     })
   } catch (err) {
     req.log.error({ err }, '[INDICADORES] Erro ao criar/consultar request')
@@ -1615,6 +1876,7 @@ app.get('/api/indicadores-executivos/status/:requestId', async (req, reply) => {
   try {
     const assignments = await getAgentSetting(pool, 'dashboard_indicator_assignments')
     const panelModels = await getAgentSetting(pool, 'dashboard_indicator_panel_models')
+    const permissions = await getUserChartPermissions(pool, sessionUser)
     const out = await withTx(pool, async (client) => {
       const q = await client.query(
         `
@@ -1641,6 +1903,7 @@ app.get('/api/indicadores-executivos/status/:requestId', async (req, reply) => {
       })
       const cards = buildIndicatorCards(normalized.panel_key, normalized.panel_data, panelModels)
       const widgets = buildIndicatorWidgets(normalized.panel_key, normalized.panel_data, panelModels)
+      const semantic = buildSemanticDashboardResponse(normalized, permissions)
       return jsonResponse(reply, 200, {
         success: true,
         status: out.status,
@@ -1649,6 +1912,8 @@ app.get('/api/indicadores-executivos/status/:requestId', async (req, reply) => {
           ...normalized,
           cards,
           widgets,
+          permissions,
+          semantic,
         },
         error: out.error_message,
       })
@@ -1667,6 +1932,7 @@ app.get('/api/indicadores-executivos/status/:requestId', async (req, reply) => {
       success: true,
       status: out.status,
       request_id: out.id,
+      permissions,
     })
   } catch (err) {
     const status = err?.statusCode || 500
@@ -1695,6 +1961,7 @@ app.get('/api/dashboard/indicators', async (req, reply) => {
   try {
     const assignments = await getAgentSetting(pool, 'dashboard_indicator_assignments')
     const panelModels = await getAgentSetting(pool, 'dashboard_indicator_panel_models')
+    const permissions = await getUserChartPermissions(pool, sessionUser)
     const cached = await findCompletedIndicatorsRequest(pool, sessionUser.id, filters)
 
     const cachedPayload = extractDashboardResultPayload(cached?.result_data)
@@ -1706,6 +1973,7 @@ app.get('/api/dashboard/indicators', async (req, reply) => {
       })
       const cards = buildIndicatorCards(normalized.panel_key, normalized.panel_data, panelModels)
       const widgets = buildIndicatorWidgets(normalized.panel_key, normalized.panel_data, panelModels)
+      const semantic = buildSemanticDashboardResponse(normalized, permissions)
       return jsonResponse(reply, 200, {
         success: true,
         indicators: normalized.indicators,
@@ -1717,6 +1985,8 @@ app.get('/api/dashboard/indicators', async (req, reply) => {
         database: normalized.database ?? null,
         cards,
         widgets,
+        permissions,
+        semantic,
       })
     }
 
@@ -1730,6 +2000,7 @@ app.get('/api/dashboard/indicators', async (req, reply) => {
       status: 'pending',
       request_id: requestId,
       status_url: `/api/indicadores-executivos/status/${requestId}`,
+      permissions,
     })
   } catch (err) {
     req.log.error({ err }, '[DASHBOARD] Erro ao montar indicadores')
@@ -1930,7 +2201,7 @@ app.get('/team-dashboard', async (req, reply) => {
         `,
       )
 
-      const isAdmin = (sessionUser.role || '').toString().toLowerCase() === 'admin'
+      const isAdmin = isGlobalAdmin(sessionUser)
       const userId = sessionUser.id
       const dept = (sessionUser.departamento || '').toString().trim()
 
@@ -2128,7 +2399,7 @@ app.get('/api/team-dashboard', async (req, reply) => {
         `,
       )
 
-      const isAdmin = (sessionUser.role || '').toString().toLowerCase() === 'admin'
+      const isAdmin = isGlobalAdmin(sessionUser)
       const userId = sessionUser.id
       const dept = (sessionUser.departamento || '').toString().trim()
 
