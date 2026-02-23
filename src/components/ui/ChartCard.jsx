@@ -52,6 +52,8 @@ export function ChartCard({ chart, className = '', noTitle = false, onPointClick
 
   const { type = 'bar', title, labels, datasets } = chart
   const chartType = String(type).toLowerCase()
+  const customColors = Array.isArray(chart?.colors) && chart.colors.length ? chart.colors : null
+  const legendProps = chart?.legend && typeof chart.legend === 'object' ? chart.legend : null
   const normalized = normalizeDatasets(labels, datasets)
   const primaryDataset = normalized[0]
   const data = labels.map((name, i) => {
@@ -72,7 +74,16 @@ export function ChartCard({ chart, className = '', noTitle = false, onPointClick
     onPointClick(payload)
   }
 
-  const tooltipFormatter = (value, name) => [Number(value).toLocaleString('pt-BR'), name]
+  const tooltipFormatter = (value, name, item) => {
+    const v = Number(value) || 0
+    if (chartType === 'pie' || chartType === 'donut') {
+      const total = data.reduce((acc, row) => acc + (Number(row?.[primaryDataset.key]) || 0), 0)
+      const pct = total > 0 ? ((v / total) * 100).toFixed(1) : '0.0'
+      const label = item?.name || name
+      return [`${v.toLocaleString('pt-BR')} (${pct}%)`, label]
+    }
+    return [v.toLocaleString('pt-BR'), name]
+  }
 
   return (
     <Card className={`overflow-hidden ${className}`}>
@@ -109,11 +120,11 @@ export function ChartCard({ chart, className = '', noTitle = false, onPointClick
                 }}
               >
                 {data.map((_, i) => (
-                  <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                  <Cell key={i} fill={(customColors || CHART_COLORS)[i % (customColors || CHART_COLORS).length]} />
                 ))}
               </Pie>
               <Tooltip formatter={tooltipFormatter} />
-              <Legend />
+              <Legend {...(legendProps || {})} />
             </PieChart>
           </ResponsiveContainer>
         ) : chartType === 'line' ? (
@@ -128,7 +139,7 @@ export function ChartCard({ chart, className = '', noTitle = false, onPointClick
                   key={ds.key}
                   type="monotone"
                   dataKey={ds.key}
-                  stroke={CHART_COLORS[idx % CHART_COLORS.length]}
+                  stroke={(customColors || CHART_COLORS)[idx % (customColors || CHART_COLORS).length]}
                   strokeWidth={2}
                   dot={{ r: 3 }}
                   activeDot={{ r: 5 }}
@@ -162,8 +173,8 @@ export function ChartCard({ chart, className = '', noTitle = false, onPointClick
                   key={ds.key}
                   type="monotone"
                   dataKey={ds.key}
-                  stroke={CHART_COLORS[idx % CHART_COLORS.length]}
-                  fill={CHART_COLORS[idx % CHART_COLORS.length]}
+                  stroke={(customColors || CHART_COLORS)[idx % (customColors || CHART_COLORS).length]}
+                  fill={(customColors || CHART_COLORS)[idx % (customColors || CHART_COLORS).length]}
                   fillOpacity={0.2}
                   strokeWidth={2}
                   name={ds.label}
@@ -198,7 +209,7 @@ export function ChartCard({ chart, className = '', noTitle = false, onPointClick
                 <Bar
                   key={ds.key}
                   dataKey={ds.key}
-                  fill={CHART_COLORS[idx % CHART_COLORS.length]}
+                  fill={(customColors || CHART_COLORS)[idx % (customColors || CHART_COLORS).length]}
                   radius={[4, 4, 0, 0]}
                   name={ds.label}
                   stackId={chartType === 'stackedbar' || chartType === 'stacked-bar' ? 'total' : ds.stack || undefined}

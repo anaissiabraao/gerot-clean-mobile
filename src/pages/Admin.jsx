@@ -85,6 +85,7 @@ export default function Admin() {
     } finally {
       setLoading(false)
     }
+  }
 
   const filteredUsers = useMemo(() => {
     const term = q.trim().toLowerCase()
@@ -133,7 +134,6 @@ export default function Admin() {
     } catch (e) {
       alert(e?.message || 'Erro ao excluir usuário')
     }
-  }
   }
 
   const assetById = useMemo(() => {
