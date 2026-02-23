@@ -51,6 +51,16 @@ function asArray(value) {
   return Array.isArray(value) ? value : []
 }
 
+function formatNumberBR(value) {
+  const n = Number(value)
+  return Number.isFinite(n) ? n.toLocaleString('pt-BR') : '—'
+}
+
+function formatPercentBR(value) {
+  const n = Number(value)
+  return Number.isFinite(n) ? `${n.toFixed(1)}%` : '—'
+}
+
 function normalizeDateLabel(raw, idx) {
   const s = (raw || '').toString()
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
@@ -907,10 +917,10 @@ export default function Dashboards() {
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <KpiCard label="Entregas Totais" value={semanticDashboard.kpis.totalEntregas.toLocaleString('pt-BR')} />
-                <KpiCard label="No Prazo" value={semanticDashboard.kpis.entregasNoPrazo.toLocaleString('pt-BR')} />
-                <KpiCard label="Fora do Prazo" value={semanticDashboard.kpis.entregasForaPrazo.toLocaleString('pt-BR')} />
-                <KpiCard label="Performance" value={`${semanticDashboard.kpis.performance.toFixed(1)}%`} />
+                <KpiCard label="Entregas Totais" value={formatNumberBR(semanticDashboard?.kpis?.totalEntregas)} />
+                <KpiCard label="No Prazo" value={formatNumberBR(semanticDashboard?.kpis?.entregasNoPrazo)} />
+                <KpiCard label="Fora do Prazo" value={formatNumberBR(semanticDashboard?.kpis?.entregasForaPrazo)} />
+                <KpiCard label="Performance" value={formatPercentBR(semanticDashboard?.kpis?.performance)} />
               </div>
 
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
