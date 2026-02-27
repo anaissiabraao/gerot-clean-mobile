@@ -75,6 +75,19 @@ export default function Dashboards() {
   const [relEntregasError, setRelEntregasError] = useState(null)
   const [relEntregasLoading, setRelEntregasLoading] = useState(false)
 
+  // Ocorrências
+  const ocorrenciasCacheRef = useRef(new Map())
+  const [occFilters, setOccFilters] = useState({
+    data_inicio: '',
+    data_fim: '',
+    database: '',
+    filial: '',
+    categoria: '',
+  })
+  const [occLoading, setOccLoading] = useState(false)
+  const [occError, setOccError] = useState(null)
+  const [occData, setOccData] = useState(null)
+
   useEffect(() => {
     loadTeamDashboard()
   }, [])
@@ -96,6 +109,16 @@ export default function Dashboards() {
     setIndRequestId(null)
     setIndStatusUrl(null)
     setIndStatus(null)
+  }, [])
+
+  const handleOccFilterChange = useCallback((id, value) => {
+    setOccFilters((prev) => ({ ...prev, [id]: value }))
+  }, [])
+
+  const handleOccReset = useCallback(() => {
+    setOccFilters({ data_inicio: '', data_fim: '', database: '', filial: '', categoria: '' })
+    setOccData(null)
+    setOccError(null)
   }, [])
 
   const formatIndicatorValue = useCallback((value, format) => {
@@ -132,6 +155,44 @@ export default function Dashboards() {
       },
     ],
     [indFilters]
+  )
+
+  const occFilterConfig = useMemo(
+    () => [
+      { id: 'data_inicio', label: 'Data Início', type: 'date', value: occFilters.data_inicio },
+      { id: 'data_fim', label: 'Data Fim', type: 'date', value: occFilters.data_fim },
+      {
+        id: 'database',
+        label: 'Base de Dados',
+        type: 'select',
+        value: occFilters.database,
+        options: [
+          { value: '', label: 'Padrão' },
+          { value: 'azportoex', label: 'MATRIZ (azportoex)' },
+          { value: 'portoexsp', label: 'FILIAL (portoexsp)' },
+        ],
+      },
+      { id: 'filial', label: 'Filial', type: 'text', value: occFilters.filial, placeholder: 'Ex.: SP' },
+      {
+        id: 'categoria',
+        label: 'Categoria',
+        type: 'select',
+        value: occFilters.categoria,
+        options: [
+          { value: '', label: 'Todas' },
+          { value: 'cliente', label: 'Cliente' },
+          { value: 'comercial', label: 'Comercial' },
+          { value: 'atendimento', label: 'Atendimento' },
+          { value: 'operacao', label: 'Operação' },
+          { value: 'armazem', label: 'Armazém' },
+          { value: 'financeiro', label: 'Financeiro' },
+          { value: 'planejamento', label: 'Planejamento' },
+          { value: 'motorista', label: 'Motorista' },
+          { value: 'externo', label: 'Externo' },
+        ],
+      },
+    ],
+    [occFilters]
   )
 
   const handleIndApply = useCallback(async () => {
@@ -207,7 +268,65 @@ export default function Dashboards() {
     }
   }, [indFilters])
 
+  const handleOccApply = useCallback(async () => {
+    setOccLoading(true)
+    setOccError(null)
+    setOccData(null)
+
+    try {
+      const params = {}
+      if (occFilters.data_inicio) params.data_inicio = occFilters.data_inicio
+      if (occFilters.data_fim) params.data_fim = occFilters.data_fim
+      if (occFilters.database) params.database = occFilters.database
+      if (occFilters.filial) params.filial = occFilters.filial
+      if (occFilters.categoria) params.categoria = occFilters.categoria
+
+      const cacheKey = JSON.stringify(params)
+      const cached = ocorrenciasCacheRef.current.get(cacheKey)
+      if (cached) {
+        setOccData(cached)
+        setOccLoading(false)
+        return
+      }
+
+      const qs = new URLSearchParams(params).toString()
+      const url = qs ? `${api.ocorrenciasDashboard}?${qs}` : api.ocorrenciasDashboard
+      const res = await httpGet(url)
+
+      if (!res?.indicators) throw new Error('Resposta inválida de ocorrências')
+
+      const payload = {
+        indicators: res.indicators,
+        cards: Array.isArray(res.cards) ? res.cards : [],
+        widgets: Array.isArray(res.widgets) ? res.widgets : [],
+        panel_key: res.panel_key || null,
+        leitura_executiva: res.leitura_executiva || null,
+      }
+      ocorrenciasCacheRef.current.set(cacheKey, payload)
+      setOccData(payload)
+    } catch (e) {
+      setOccError(e?.message || 'Erro ao carregar dashboard de ocorrências')
+    } finally {
+      setOccLoading(false)
+    }
+  }, [occFilters])
+
   const isRelatorioEntregas376 = selectedDash?.asset_config?.internal_key === 'relatorio_entregas_376'
+
+  const chartFromObject = useCallback((title, obj, opts = {}) => {
+    if (!obj || typeof obj !== 'object') return null
+    const entries = Object.entries(obj)
+    if (entries.length === 0) return null
+    const labels = entries.map(([k]) => k)
+    const data = entries.map(([, v]) => Number(v) || 0)
+    return {
+      id: `chart-${title}`,
+      type: opts.type || 'bar',
+      title,
+      labels,
+      datasets: [{ label: opts.label || 'Qtd', data }],
+    }
+  }, [])
 
   useEffect(() => {
     if (!indRequestId || !indStatusUrl) return
@@ -527,6 +646,89 @@ export default function Dashboards() {
                   </td>
                 </tr>
               )}
+
+      {/* Ocorrências PortoEx */}
+      <Card className="border-primary/20 bg-primary/5">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs text-muted-foreground">Novo painel</p>
+            <h3 className="text-lg font-semibold text-foreground">Ocorrências PortoEx</h3>
+          </div>
+          <Badge variant="primary">Beta</Badge>
+        </div>
+      </Card>
+
+      <FilterBar filters={occFilterConfig} onChange={handleOccFilterChange} onReset={handleOccReset} onApply={handleOccApply} />
+
+      {occLoading ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <SkeletonKpi key={`occ-skel-${i}`} />
+          ))}
+        </div>
+      ) : occError ? (
+        <Card className="border-destructive/20 bg-destructive/5">
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-sm text-destructive">{occError}</p>
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground">Status</p>
+              <p className="text-xs font-medium text-foreground">Erro</p>
+            </div>
+          </div>
+        </Card>
+      ) : occData ? (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {occData.cards?.length
+              ? occData.cards.map((c, idx) => (
+                  <KpiCard key={`occ-card-${idx}`} label={c.label || c.key} value={formatIndicatorValue(occData.indicators?.[c.key], c.format)} />
+                ))
+              : [
+                  <KpiCard key="occ-total" label="Total de ocorrências" value={formatIndicatorValue(occData.indicators?.total_ocorrencias, 'number')} />, 
+                  <KpiCard key="occ-custo" label="Custo total (R$)" value={formatIndicatorValue(occData.indicators?.custo_total_mensal, 'currency')} />, 
+                  <KpiCard key="occ-reprog" label="Taxa reprogramação" value={formatIndicatorValue(occData.indicators?.reprogramacao_percent, 'percent')} />, 
+                  <KpiCard key="occ-interna" label="Resp. interna" value={formatIndicatorValue(occData.indicators?.responsabilidade_interna_percent, 'percent')} />,
+                ]}
+          </div>
+
+          {occData.leitura_executiva && (
+            <Card>
+              <p className="text-xs text-muted-foreground mb-1">Leitura executiva</p>
+              <p className="text-sm text-foreground">{occData.leitura_executiva}</p>
+            </Card>
+          )}
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            {chartFromObject('Ocorrências por categoria', occData.indicators?.por_categoria) && (
+              <ChartCard chart={chartFromObject('Ocorrências por categoria', occData.indicators?.por_categoria)} />
+            )}
+            {chartFromObject('Top 5 clientes', Object.fromEntries(occData.indicators?.top_clientes || [])) && (
+              <ChartCard chart={chartFromObject('Top 5 clientes', Object.fromEntries(occData.indicators?.top_clientes || []))} />
+            )}
+            {chartFromObject('Top 5 causas', Object.fromEntries(occData.indicators?.top_causas || [])) && (
+              <ChartCard chart={chartFromObject('Top 5 causas', Object.fromEntries(occData.indicators?.top_causas || []))} />
+            )}
+            {chartFromObject('Custo por tipo de falha', occData.indicators?.custo_por_tipo, { label: 'R$' }) && (
+              <ChartCard chart={chartFromObject('Custo por tipo de falha', occData.indicators?.custo_por_tipo, { label: 'R$' })} />
+            )}
+            {chartFromObject('Impacto por veículo', occData.indicators?.impacto_por_veiculo, { label: 'R$' }) && (
+              <ChartCard chart={chartFromObject('Impacto por veículo', occData.indicators?.impacto_por_veiculo, { label: 'R$' })} />
+            )}
+            {chartFromObject('Ocorrências por filial', occData.indicators?.por_filial) && (
+              <ChartCard chart={chartFromObject('Ocorrências por filial', occData.indicators?.por_filial)} />
+            )}
+          </div>
+        </div>
+      ) : (
+        <Card className="border-dashed">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">Aplique os filtros para ver o painel de Ocorrências.</p>
+            <Button variant="outline" size="sm" onClick={handleOccApply}>
+              Ver painel
+            </Button>
+          </div>
+        </Card>
+      )}
             </tbody>
           </table>
         </div>

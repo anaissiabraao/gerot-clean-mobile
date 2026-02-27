@@ -165,6 +165,70 @@ async function ensureDashboardPermissionsTable(pool) {
 await ensureUsersGovernanceColumns(pool)
 await ensureDashboardPermissionsTable(pool)
 
+// ===== Ocorrências (PortoEx) =====
+const OCORRENCIA_CATEGORIAS = {
+  cliente: ['Mudança de endereço', 'Pendência financeira', 'Horário incorreto', 'CNPJ errado', 'Carga não pronta'],
+  comercial: [],
+  atendimento: [],
+  operacao: ['Programação incorreta', 'Saída atrasada', 'Veículo errado'],
+  armazem: ['NF não liberada', 'Mercadoria não pronta', 'Pedido suspenso'],
+  financeiro: [],
+  planejamento: [],
+  motorista: [],
+  externo: [],
+}
+
+const OCORRENCIA_STATUS = ['Aberto', 'Tratado', 'Recorrente', 'Encerrado']
+const OCORRENCIA_IMPACTO_OP = ['Baixo', 'Médio', 'Alto', 'Crítico']
+const OCORRENCIA_REPROGRAMADO = ['Sim', 'Não']
+
+async function ensureOcorrenciasTable(pool) {
+  try {
+    await withTx(pool, async (client) => {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS ocorrencias_portoex (
+          id BIGSERIAL PRIMARY KEY,
+          data DATE NOT NULL,
+          filial VARCHAR(50) NOT NULL,
+          tipo VARCHAR(80) NOT NULL,
+          placa VARCHAR(20),
+          motorista VARCHAR(120),
+          cliente VARCHAR(160),
+          nf_md_oc VARCHAR(120),
+          cidade_origem VARCHAR(120),
+          cidade_destino VARCHAR(120),
+          categoria VARCHAR(40) NOT NULL,
+          subcategoria VARCHAR(120) NOT NULL,
+          responsavel VARCHAR(120) NOT NULL,
+          descricao VARCHAR(200),
+          horario_previsto TIMESTAMP,
+          horario_ocorrido TIMESTAMP,
+          tempo_atraso_min INTEGER,
+          impacto_financeiro NUMERIC(14,2),
+          impacto_operacional VARCHAR(20),
+          reprogramado VARCHAR(5),
+          data_reprogramacao DATE,
+          causa_raiz VARCHAR(240),
+          plano_acao VARCHAR(240),
+          status VARCHAR(20) NOT NULL,
+          impacto_score INTEGER,
+          frequencia INTEGER,
+          created_by BIGINT,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `)
+      await client.query('CREATE INDEX IF NOT EXISTS idx_ocorrencias_data ON ocorrencias_portoex(data)')
+      await client.query('CREATE INDEX IF NOT EXISTS idx_ocorrencias_categoria ON ocorrencias_portoex(categoria, subcategoria)')
+    })
+    app.log.info('[DB] ocorrencias_portoex table OK')
+  } catch (err) {
+    app.log.error({ err }, '[DB] Falha ao garantir tabela ocorrencias_portoex')
+  }
+}
+
+await ensureOcorrenciasTable(pool)
+
 app.addHook('onRequest', async (req, reply) => {
   if (req.url.startsWith('/api/agent/')) {
     const isHealth = req.url === '/api/agent/health' || req.url.startsWith('/api/agent/health?')
@@ -182,6 +246,334 @@ app.addHook('onRequest', async (req, reply) => {
       }
       return jsonResponse(reply, 401, { error: 'API Key inválida' })
     }
+  }
+})
+
+// ===== Ocorrências API =====
+function normalizeOcorrenciaInput(body, sessionUser) {
+  const required = ['data', 'filial', 'tipo', 'categoria', 'subcategoria', 'responsavel', 'status']
+  const errors = []
+  const out = {}
+
+  const str = (v) => (v === undefined || v === null ? '' : String(v).trim())
+
+  for (const key of required) {
+    if (!str(body?.[key])) errors.push(`${key} é obrigatório`)
+  }
+
+  const descricao = str(body?.descricao)
+  if (descricao && descricao.length > 200) errors.push('descricao deve ter até 200 caracteres')
+
+  const categoria = str(body?.categoria).toLowerCase()
+  const subcategoria = str(body?.subcategoria)
+  const status = str(body?.status)
+  const impactoOperacional = str(body?.impacto_operacional)
+  const reprogramado = str(body?.reprogramado)
+
+  if (categoria && !Object.keys(OCORRENCIA_CATEGORIAS).includes(categoria)) {
+    errors.push('categoria inválida')
+  }
+  if (categoria && OCORRENCIA_CATEGORIAS[categoria]?.length) {
+    const allowedSubs = OCORRENCIA_CATEGORIAS[categoria].map((s) => s.toLowerCase())
+    if (!allowedSubs.includes(subcategoria.toLowerCase())) {
+      errors.push('subcategoria inválida para categoria')
+    }
+  }
+  if (status && !OCORRENCIA_STATUS.includes(status)) errors.push('status inválido')
+  if (impactoOperacional && !OCORRENCIA_IMPACTO_OP.includes(impactoOperacional)) errors.push('impacto_operacional inválido')
+  if (reprogramado && !OCORRENCIA_REPROGRAMADO.includes(reprogramado)) errors.push('reprogramado inválido')
+
+  if (errors.length) {
+    const e = new Error(errors.join('; '))
+    e.statusCode = 400
+    throw e
+  }
+
+  const parseDate = (v) => {
+    const s = str(v)
+    if (!s) return null
+    const d = new Date(s)
+    return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10)
+  }
+
+  const parseTs = (v) => {
+    const s = str(v)
+    if (!s) return null
+    const d = new Date(s)
+    return Number.isNaN(d.getTime()) ? null : d.toISOString()
+  }
+
+  const horarioPrevisto = parseTs(body?.horario_previsto)
+  const horarioOcorrido = parseTs(body?.horario_ocorrido)
+  let tempoAtrasoMin = null
+  if (horarioPrevisto && horarioOcorrido) {
+    const diff = (new Date(horarioOcorrido).getTime() - new Date(horarioPrevisto).getTime()) / 60000
+    tempoAtrasoMin = Math.round(diff)
+  }
+
+  const impactoOperacionalScoreMap = { Sem: 1, Baixo: 1, 'Atraso leve': 2, Reprogramação: 3, 'Custo extra': 4, 'Perda cliente/imagem': 5, Baixo: 1, Médio: 2, Alto: 3, Crítico: 4 }
+  const freq = Number.parseInt(body?.frequencia ?? 0, 10)
+  const impactoScore = (impactoOperacionalScoreMap[impactoOperacional] || 0) * (Number.isFinite(freq) ? freq : 0)
+
+  out.data = parseDate(body?.data)
+  out.filial = str(body?.filial)
+  out.tipo = str(body?.tipo)
+  out.placa = str(body?.placa) || null
+  out.motorista = str(body?.motorista) || null
+  out.cliente = str(body?.cliente) || null
+  out.nf_md_oc = str(body?.nf_md_oc) || null
+  out.cidade_origem = str(body?.cidade_origem) || null
+  out.cidade_destino = str(body?.cidade_destino) || null
+  out.categoria = categoria
+  out.subcategoria = subcategoria
+  out.responsavel = str(body?.responsavel)
+  out.descricao = descricao || null
+  out.horario_previsto = horarioPrevisto
+  out.horario_ocorrido = horarioOcorrido
+  out.tempo_atraso_min = Number.isFinite(tempoAtrasoMin) ? tempoAtrasoMin : null
+  out.impacto_financeiro = body?.impacto_financeiro !== undefined && body?.impacto_financeiro !== null ? Number(body?.impacto_financeiro) : null
+  out.impacto_operacional = impactoOperacional || null
+  out.reprogramado = reprogramado || null
+  out.data_reprogramacao = parseDate(body?.data_reprogramacao)
+  out.causa_raiz = str(body?.causa_raiz) || null
+  out.plano_acao = str(body?.plano_acao) || null
+  out.status = status
+  out.impacto_score = Number.isFinite(impactoScore) ? impactoScore : null
+  out.frequencia = Number.isFinite(freq) ? freq : null
+  out.created_by = sessionUser?.id ?? null
+  return out
+}
+
+async function insertOcorrencia(pool, payload) {
+  const cols = Object.keys(payload)
+  const placeholders = cols.map((_, idx) => `$${idx + 1}`)
+  const values = cols.map((k) => payload[k])
+  const res = await withTx(pool, async (client) => {
+    const q = await client.query(
+      `INSERT INTO ocorrencias_portoex (${cols.join(',')}) VALUES (${placeholders.join(',')}) RETURNING *`,
+      values,
+    )
+    return q.rows?.[0] ?? null
+  })
+  return res
+}
+
+async function listOcorrencias(pool, filters) {
+  const clauses = []
+  const values = []
+  const push = (sql, v) => {
+    values.push(v)
+    clauses.push(sql.replace('$x', `$${values.length}`))
+  }
+
+  if (filters.data_inicio) push('data >= $x', filters.data_inicio)
+  if (filters.data_fim) push('data <= $x', filters.data_fim)
+  if (filters.filial) push('filial = $x', filters.filial)
+  if (filters.categoria) push('categoria = $x', filters.categoria)
+  if (filters.subcategoria) push('subcategoria = $x', filters.subcategoria)
+  if (filters.status) push('status = $x', filters.status)
+
+  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''
+  const q = await withTx(pool, async (client) => {
+    const res = await client.query(
+      `SELECT * FROM ocorrencias_portoex ${where} ORDER BY data DESC, created_at DESC LIMIT 500`,
+      values,
+    )
+    return res.rows || []
+  })
+  return q
+}
+
+async function buildOcorrenciasDashboard(pool, filters) {
+  const clauses = []
+  const values = []
+  const push = (sql, v) => {
+    values.push(v)
+    clauses.push(sql.replace('$x', `$${values.length}`))
+  }
+  if (filters.data_inicio) push('data >= $x', filters.data_inicio)
+  if (filters.data_fim) push('data <= $x', filters.data_fim)
+  if (filters.filial) push('filial = $x', filters.filial)
+  if (filters.categoria) push('categoria = $x', filters.categoria)
+  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''
+
+  const rows = await withTx(pool, async (client) => {
+    const res = await client.query(`SELECT * FROM ocorrencias_portoex ${where}`, values)
+    return res.rows || []
+  })
+
+  const totalPorDia = {}
+  const porCategoria = {}
+  let internas = 0
+  let externas = 0
+  let custoTotal = 0
+  const porCliente = {}
+  const porCausa = {}
+  const custoPorTipo = {}
+  const porVeiculo = {}
+  const porFilial = {}
+  let reprogramados = 0
+
+  for (const r of rows) {
+    const dataKey = r.data?.toISOString?.().slice(0, 10) || r.data
+    if (dataKey) totalPorDia[dataKey] = (totalPorDia[dataKey] || 0) + 1
+    const cat = r.categoria || 'N/D'
+    porCategoria[cat] = (porCategoria[cat] || 0) + 1
+    const resp = (r.responsavel || '').toLowerCase()
+    if (resp.includes('interno') || resp.includes('operacao') || resp.includes('motorista')) internas += 1
+    else externas += 1
+    const impactoFin = Number(r.impacto_financeiro || 0) || 0
+    custoTotal += impactoFin
+    const cli = r.cliente || 'N/D'
+    porCliente[cli] = (porCliente[cli] || 0) + 1
+    const causa = r.causa_raiz || r.subcategoria || 'N/D'
+    porCausa[causa] = (porCausa[causa] || 0) + 1
+    const tipo = r.tipo || 'N/D'
+    custoPorTipo[tipo] = (custoPorTipo[tipo] || 0) + impactoFin
+    const veic = r.placa || 'N/D'
+    porVeiculo[veic] = (porVeiculo[veic] || 0) + impactoFin
+    const fil = r.filial || 'N/D'
+    porFilial[fil] = (porFilial[fil] || 0) + 1
+    if ((r.reprogramado || '').toLowerCase() === 'sim') reprogramados += 1
+  }
+
+  const total = rows.length
+  const toPairsSorted = (obj, byValueDesc = true) =>
+    Object.entries(obj)
+      .map(([k, v]) => [k, Number(v) || 0])
+      .sort((a, b) => (byValueDesc ? b[1] - a[1] : a[1] - b[1]))
+
+  const topClientes = toPairsSorted(porCliente).slice(0, 5)
+  const topCausas = toPairsSorted(porCausa).slice(0, 5)
+  const reprogramacaoRate = total ? Number(((reprogramados / total) * 100).toFixed(1)) : 0
+
+  const impactoFreqScores = rows
+    .map((r) => Number(r.impacto_score || 0))
+    .filter((v) => Number.isFinite(v))
+    .sort((a, b) => b - a)
+
+  return {
+    indicators: {
+      total_ocorrencias: total,
+      custo_total_mensal: Number(custoTotal.toFixed(2)),
+      reprogramacao_percent: reprogramacaoRate,
+      responsabilidade_interna_percent: total ? Number(((internas / total) * 100).toFixed(1)) : 0,
+      responsabilidade_externa_percent: total ? Number(((externas / total) * 100).toFixed(1)) : 0,
+      matriz_top_scores: impactoFreqScores.slice(0, 5),
+      total_por_dia: totalPorDia,
+      por_categoria: porCategoria,
+      top_clientes: topClientes,
+      top_causas: topCausas,
+      custo_por_tipo: custoPorTipo,
+      impacto_por_veiculo: porVeiculo,
+      por_filial: porFilial,
+    },
+    cards: [
+      { key: 'total_ocorrencias', label: 'Total de ocorrências', format: 'number' },
+      { key: 'custo_total_mensal', label: 'Custo total (R$)', format: 'currency' },
+      { key: 'reprogramacao_percent', label: 'Taxa de reprogramação', format: 'percent' },
+      { key: 'responsabilidade_interna_percent', label: 'Responsabilidade interna', format: 'percent' },
+    ],
+    widgets: [
+      { type: 'bar', key: 'por_categoria', title: 'Ocorrências por categoria' },
+      { type: 'bar', key: 'top_clientes', title: 'Top 5 clientes', columns: [{ key: 0, label: 'Cliente' }, { key: 1, label: 'Qtd' }] },
+      { type: 'bar', key: 'top_causas', title: 'Top 5 causas', columns: [{ key: 0, label: 'Causa' }, { key: 1, label: 'Qtd' }] },
+    ],
+    panel_key: 'operacional',
+    panel_data: { status: {}, ...filters },
+    leitura_executiva: 'Ocorrências PortoEx',
+  }
+}
+
+app.get('/api/ocorrencias', async (req, reply) => {
+  const sessionUser = requireLogin(req, reply)
+  if (!sessionUser) return
+
+  const filters = {
+    data_inicio: (req.query?.data_inicio || '').toString().trim() || null,
+    data_fim: (req.query?.data_fim || '').toString().trim() || null,
+    filial: (req.query?.filial || '').toString().trim() || null,
+    categoria: (req.query?.categoria || '').toString().trim() || null,
+    subcategoria: (req.query?.subcategoria || '').toString().trim() || null,
+    status: (req.query?.status || '').toString().trim() || null,
+  }
+
+  try {
+    const data = await listOcorrencias(pool, filters)
+    return jsonResponse(reply, 200, { success: true, data })
+  } catch (err) {
+    req.log.error({ err }, '[OCORRENCIAS] Erro ao listar')
+    return jsonResponse(reply, err?.statusCode || 500, { error: err?.message || String(err) })
+  }
+})
+
+app.post('/api/ocorrencias', async (req, reply) => {
+  const sessionUser = requireLogin(req, reply)
+  if (!sessionUser) return
+  try {
+    const payload = normalizeOcorrenciaInput(req.body || {}, sessionUser)
+    const inserted = await insertOcorrencia(pool, payload)
+    return jsonResponse(reply, 201, { success: true, data: inserted })
+  } catch (err) {
+    const status = err?.statusCode || 500
+    if (status >= 500) req.log.error({ err }, '[OCORRENCIAS] Falha ao criar')
+    return jsonResponse(reply, status, { error: err?.message || String(err) })
+  }
+})
+
+app.put('/api/ocorrencias/:id/status', async (req, reply) => {
+  const sessionUser = requireLogin(req, reply)
+  if (!sessionUser) return
+  const id = Number.parseInt(req.params?.id, 10)
+  const status = (req.body?.status || '').toString().trim()
+  if (!Number.isFinite(id) || !status) {
+    return jsonResponse(reply, 400, { error: 'id ou status inválido' })
+  }
+  if (!OCORRENCIA_STATUS.includes(status)) {
+    return jsonResponse(reply, 400, { error: 'status inválido' })
+  }
+  try {
+    const updated = await withTx(pool, async (client) => {
+      const q = await client.query(
+        'UPDATE ocorrencias_portoex SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+        [status, id],
+      )
+      return q.rows?.[0] ?? null
+    })
+    if (!updated) return jsonResponse(reply, 404, { error: 'Ocorrência não encontrada' })
+    return jsonResponse(reply, 200, { success: true, data: updated })
+  } catch (err) {
+    req.log.error({ err }, '[OCORRENCIAS] Falha ao atualizar status')
+    return jsonResponse(reply, 500, { error: err?.message || String(err) })
+  }
+})
+
+app.get('/api/ocorrencias/dashboard', async (req, reply) => {
+  const sessionUser = requireLogin(req, reply)
+  if (!sessionUser) return
+
+  const filters = {
+    data_inicio: (req.query?.data_inicio || '').toString().trim() || null,
+    data_fim: (req.query?.data_fim || '').toString().trim() || null,
+    filial: (req.query?.filial || '').toString().trim() || null,
+    categoria: (req.query?.categoria || '').toString().trim() || null,
+  }
+
+  try {
+    const dash = await buildOcorrenciasDashboard(pool, filters)
+    return jsonResponse(reply, 200, {
+      success: true,
+      indicators: dash.indicators,
+      cards: dash.cards,
+      widgets: dash.widgets,
+      panel_key: dash.panel_key,
+      panel_data: dash.panel_data,
+      leitura_executiva: dash.leitura_executiva,
+      permissions: {},
+    })
+  } catch (err) {
+    req.log.error({ err }, '[OCORRENCIAS] Erro no dashboard')
+    return jsonResponse(reply, 500, { error: err?.message || String(err) })
   }
 })
 

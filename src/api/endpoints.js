@@ -51,6 +51,9 @@ const api = {
   // Relatórios / indicadores
   indicadoresExecutivos: '/api/indicadores-executivos',
   dashboardIndicators: '/api/dashboard/indicators',
+  ocorrencias: '/api/ocorrencias',
+  ocorrenciasDashboard: '/api/ocorrencias/dashboard',
+  ocorrenciaStatus: (id) => `/api/ocorrencias/${id}/status`,
   relatorioEntregas: '/api/relatorio-entregas',
   relatorioEntregasStatus: (requestId) => `/api/relatorio-entregas/status/${requestId}`,
   relatorioResultadosRequest: '/api/agent/relatorio-resultados/request',
