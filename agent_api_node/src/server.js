@@ -60,6 +60,30 @@ app.addContentTypeParser(
 
 const pool = createPool()
 
+const frontendUrl = (process.env.FRONTEND_URL || process.env.FRONTEND_APP_URL || '').trim().replace(/\/+$/, '')
+
+app.get('/login', async (req, reply) => {
+  const next = (req.query?.next || '').toString()
+
+  if (frontendUrl) {
+    const target = `${frontendUrl}/login${next ? `?next=${encodeURIComponent(next)}` : ''}`
+    return reply.redirect(302, target)
+  }
+
+  reply.header('content-type', 'text/html; charset=utf-8')
+  return reply.send(
+    `<!doctype html>
+    <html lang="pt-BR">
+      <head><meta charset="utf-8"><title>Login</title></head>
+      <body>
+        <h1>Login</h1>
+        <p>Envie credenciais via POST /login (form-urlencoded) ou configure FRONTEND_URL para redirecionar ao SPA.</p>
+        ${next ? `<p>Próximo: ${next}</p>` : ''}
+      </body>
+    </html>`
+  )
+})
+
 function getSessionUser(req) {
   return (req.session && typeof req.session.get === 'function' ? req.session.get('user') : null) || null
 }
