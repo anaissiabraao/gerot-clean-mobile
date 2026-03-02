@@ -232,7 +232,7 @@ app.post('/admin/seed-admin', async (req, reply) => {
       await client.query(
         `
         INSERT INTO users_new (username, email, password, role, is_admin, permissions, is_active, first_login)
-        VALUES ($1, $2, convert_to($3, 'utf8'), 'admin', true, '{}'::jsonb, true, false)
+        VALUES ($1, $2, $3, 'admin', true, '{}'::jsonb, true, false)
         ON CONFLICT (username)
         DO UPDATE SET
           password = excluded.password,
