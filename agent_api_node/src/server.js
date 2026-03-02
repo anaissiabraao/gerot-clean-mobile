@@ -201,7 +201,22 @@ app.post('/admin/seed-admin', async (req, reply) => {
 
   // Fallback para casos em que o parser de JSON falhe na borda (Railway/CDN)
   const parsedFallback = parsePossiblyGzippedJson(req) || {}
-  const body = req.body && Object.keys(req.body).length ? req.body : parsedFallback
+  let rawJson = {}
+  try {
+    const raw = req.rawBody
+    if (raw && raw.length) {
+      rawJson = JSON.parse(Buffer.isBuffer(raw) ? raw.toString('utf-8') : String(raw)) || {}
+    }
+  } catch {
+    rawJson = {}
+  }
+
+  const body = {
+    ...(req.query || {}),
+    ...rawJson,
+    ...(req.body || {}),
+    ...parsedFallback,
+  }
 
   const username = (body.username || 'admin').toString().trim().toLowerCase() || 'admin'
   const email = (body.email || 'admin@gerot').toString().trim() || 'admin@gerot'
