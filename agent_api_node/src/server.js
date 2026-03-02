@@ -49,12 +49,10 @@ app.addContentTypeParser(
   'application/json',
   { parseAs: 'buffer', bodyLimit: Number.parseInt(process.env.BODY_LIMIT_BYTES || `${20 * 1024 * 1024}`, 10) },
   (req, body, done) => {
+    req.rawBody = body
     const parsed = parseJsonFromBuffer(body, req.headers['content-encoding'])
-    if (parsed === null) {
-      done(new Error('Invalid JSON'))
-      return
-    }
-    done(null, parsed)
+    // Em vez de erro, retornamos objeto vazio quando inválido para evitar 500 antes do handler
+    done(null, parsed === null ? {} : parsed)
   },
 )
 
