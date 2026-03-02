@@ -777,13 +777,6 @@ async function buildRelatorioResultados(filters) {
     comparativos_mensais: monthlyComparisons,
   }
 }
-    const status = err?.statusCode || 500
-    if (status >= 500) {
-      req.log.error({ err }, '[RELATORIO-ENTREGAS] Erro ao consultar status')
-    }
-    return jsonResponse(reply, status, { error: err?.message || String(err) })
-  }
-})
 
 const disableProxy = String(process.env.DISABLE_PROXY || 'false').toLowerCase() === 'true'
 if (upstreamFlaskUrl && !disableProxy) {
