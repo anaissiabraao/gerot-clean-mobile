@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/Tabs'
-import { OccurrenceProvider } from '../hooks/useOccurrences'
+import { OccurrenceProvider } from '../hooks/useOccurrences.jsx'
 import BaseDeDados from '../components/BaseDeDados'
 import Categorizacao from '../components/Categorizacao'
 import DashboardTab from '../components/DashboardTab'

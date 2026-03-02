@@ -82,7 +82,6 @@ node_modules/.vite/
 .backup
 *.backup
 
-
 .env
 *.env
 .env.local
