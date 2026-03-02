@@ -60,6 +60,41 @@ app.addContentTypeParser(
 
 const pool = createPool()
 
+function getSessionUser(req) {
+  return (req.session && typeof req.session.get === 'function' ? req.session.get('user') : null) || null
+}
+
+function isGlobalAdmin(user) {
+  return Boolean(user?.is_admin)
+}
+
+function requireLogin(req, reply) {
+  const user = getSessionUser(req)
+  if (!user) {
+    jsonResponse(reply, 401, { error: 'Login obrigatório' })
+    return null
+  }
+  return user
+}
+
+const ADMIN_ROLE_NAMES = new Set(['admin', 'superadmin', 'controladoria'])
+
+function isAdminUser(user) {
+  if (!user) return false
+  const role = (user?.role || '').toString().toLowerCase()
+  return Boolean(user.is_admin) || ADMIN_ROLE_NAMES.has(role)
+}
+
+function requireAdmin(req, reply) {
+  const user = requireLogin(req, reply)
+  if (!user) return null
+  if (!isAdminUser(user)) {
+    jsonResponse(reply, 403, { error: 'Acesso negado' })
+    return null
+  }
+  return user
+}
+
 async function ensureAgentSettingsKeyUnique(pool) {
   try {
     await withTx(pool, async (client) => {
@@ -228,6 +263,124 @@ async function ensureOcorrenciasTable(pool) {
 }
 
 await ensureOcorrenciasTable(pool)
+
+async function ensureRolesTable(pool) {
+  try {
+    await withTx(pool, async (client) => {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS roles (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(60) NOT NULL UNIQUE,
+          permissions JSONB NOT NULL DEFAULT '{}'::jsonb,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `)
+      await client.query('CREATE INDEX IF NOT EXISTS idx_roles_name ON roles(name)')
+    })
+    app.log.info('[DB] roles table OK')
+  } catch (err) {
+    app.log.error({ err }, '[DB] Falha ao garantir tabela roles')
+  }
+}
+
+async function ensureAssetAssignmentsTable(pool) {
+  try {
+    await withTx(pool, async (client) => {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS asset_assignments (
+          id BIGSERIAL PRIMARY KEY,
+          asset_id BIGINT NOT NULL,
+          user_id BIGINT,
+          group_name VARCHAR(60),
+          role_id INTEGER REFERENCES roles(id),
+          config JSONB NOT NULL DEFAULT '{}'::jsonb,
+          legacy_view BOOLEAN NOT NULL DEFAULT FALSE,
+          visivel BOOLEAN NOT NULL DEFAULT TRUE,
+          ordem INTEGER,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `)
+      await client.query('CREATE INDEX IF NOT EXISTS idx_asset_assignments_asset ON asset_assignments(asset_id)')
+      await client.query('CREATE INDEX IF NOT EXISTS idx_asset_assignments_user ON asset_assignments(user_id)')
+      await client.query('CREATE INDEX IF NOT EXISTS idx_asset_assignments_group ON asset_assignments(group_name)')
+    })
+    app.log.info('[DB] asset_assignments table OK')
+  } catch (err) {
+    app.log.error({ err }, '[DB] Falha ao garantir tabela asset_assignments')
+  }
+}
+
+await ensureRolesTable(pool)
+await ensureAssetAssignmentsTable(pool)
+
+async function ensureDashboardConfigChangesTable(pool) {
+  try {
+    await withTx(pool, async (client) => {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS dashboard_config_changes (
+          id BIGSERIAL PRIMARY KEY,
+          assignment_id BIGINT REFERENCES asset_assignments(id) ON DELETE SET NULL,
+          user_id BIGINT REFERENCES users_new(id) ON DELETE SET NULL,
+          change_payload JSONB NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `)
+      await client.query('CREATE INDEX IF NOT EXISTS idx_dashboard_config_changes_assignment ON dashboard_config_changes(assignment_id)')
+    })
+    app.log.info('[DB] dashboard_config_changes table OK')
+  } catch (err) {
+    app.log.error({ err }, '[DB] Falha ao garantir tabela dashboard_config_changes')
+  }
+}
+
+async function ensureRelatorioMaterializedView(pool) {
+  try {
+    await withTx(pool, async (client) => {
+      await client.query(`
+        CREATE MATERIALIZED VIEW IF NOT EXISTS mv_relatorio_periodo AS
+        SELECT
+          date_trunc('month', data)::date AS periodo,
+          COUNT(*) AS entregas,
+          COALESCE(SUM(impacto_financeiro), 0) AS custo,
+          COUNT(*) FILTER (WHERE (reprogramado ILIKE 'sim')) AS reprogramacoes
+        FROM ocorrencias_portoex
+        GROUP BY 1
+      `)
+      await client.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_relatorio_periodo_periodo ON mv_relatorio_periodo(periodo)')
+    })
+    app.log.info('[DB] mv_relatorio_periodo materialized view OK')
+  } catch (err) {
+    app.log.error({ err }, '[DB] Falha ao garantir materialized view mv_relatorio_periodo')
+  }
+}
+
+await ensureDashboardConfigChangesTable(pool)
+await ensureRelatorioMaterializedView(pool)
+
+const relatorioCache = new Map()
+
+function buildRelatorioCacheKey(filters) {
+  const db = (filters?.database || 'azportoex').toString().trim()
+  const start = (filters?.data_inicio || '').toString().trim()
+  const end = (filters?.data_fim || '').toString().trim()
+  return `${db}:${start}:${end}`
+}
+
+function getRelatorioCache(key) {
+  const entry = relatorioCache.get(key)
+  if (!entry) return null
+  if (Date.now() > entry.expires) {
+    relatorioCache.delete(key)
+    return null
+  }
+  return entry.payload
+}
+
+function setRelatorioCache(key, payload, ttlSeconds = 600) {
+  relatorioCache.set(key, { payload, expires: Date.now() + ttlSeconds * 1000 })
+}
 
 app.addHook('onRequest', async (req, reply) => {
   if (req.url.startsWith('/api/agent/')) {
@@ -498,2462 +651,136 @@ app.get('/api/ocorrencias', async (req, reply) => {
     status: (req.query?.status || '').toString().trim() || null,
   }
 
-  try {
-    const data = await listOcorrencias(pool, filters)
-    return jsonResponse(reply, 200, { success: true, data })
-  } catch (err) {
-    req.log.error({ err }, '[OCORRENCIAS] Erro ao listar')
-    return jsonResponse(reply, err?.statusCode || 500, { error: err?.message || String(err) })
-  }
-})
-
-app.post('/api/ocorrencias', async (req, reply) => {
-  const sessionUser = requireLogin(req, reply)
-  if (!sessionUser) return
-  try {
-    const payload = normalizeOcorrenciaInput(req.body || {}, sessionUser)
-    const inserted = await insertOcorrencia(pool, payload)
-    return jsonResponse(reply, 201, { success: true, data: inserted })
-  } catch (err) {
-    const status = err?.statusCode || 500
-    if (status >= 500) req.log.error({ err }, '[OCORRENCIAS] Falha ao criar')
-    return jsonResponse(reply, status, { error: err?.message || String(err) })
-  }
-})
-
-app.put('/api/ocorrencias/:id/status', async (req, reply) => {
-  const sessionUser = requireLogin(req, reply)
-  if (!sessionUser) return
-  const id = Number.parseInt(req.params?.id, 10)
-  const status = (req.body?.status || '').toString().trim()
-  if (!Number.isFinite(id) || !status) {
-    return jsonResponse(reply, 400, { error: 'id ou status inválido' })
-  }
-  if (!OCORRENCIA_STATUS.includes(status)) {
-    return jsonResponse(reply, 400, { error: 'status inválido' })
-  }
-  try {
-    const updated = await withTx(pool, async (client) => {
-      const q = await client.query(
-        'UPDATE ocorrencias_portoex SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
-        [status, id],
-      )
-      return q.rows?.[0] ?? null
-    })
-    if (!updated) return jsonResponse(reply, 404, { error: 'Ocorrência não encontrada' })
-    return jsonResponse(reply, 200, { success: true, data: updated })
-  } catch (err) {
-    req.log.error({ err }, '[OCORRENCIAS] Falha ao atualizar status')
-    return jsonResponse(reply, 500, { error: err?.message || String(err) })
-  }
-})
-
-app.get('/api/ocorrencias/dashboard', async (req, reply) => {
-  const sessionUser = requireLogin(req, reply)
-  if (!sessionUser) return
-
-  const filters = {
-    data_inicio: (req.query?.data_inicio || '').toString().trim() || null,
-    data_fim: (req.query?.data_fim || '').toString().trim() || null,
-    filial: (req.query?.filial || '').toString().trim() || null,
-    categoria: (req.query?.categoria || '').toString().trim() || null,
-  }
-
-  try {
-    const dash = await buildOcorrenciasDashboard(pool, filters)
-    return jsonResponse(reply, 200, {
-      success: true,
-      indicators: dash.indicators,
-      cards: dash.cards,
-      widgets: dash.widgets,
-      panel_key: dash.panel_key,
-      panel_data: dash.panel_data,
-      leitura_executiva: dash.leitura_executiva,
-      permissions: {},
-    })
-  } catch (err) {
-    req.log.error({ err }, '[OCORRENCIAS] Erro no dashboard')
-    return jsonResponse(reply, 500, { error: err?.message || String(err) })
-  }
-})
-
-app.get('/health', async () => ({ ok: true }))
-
-app.get('/', async (req, reply) => {
-  return reply.redirect('/login')
-})
-
-app.get('/dashboard', async (req, reply) => {
-  const sessionUser = requireLogin(req, reply)
-  if (!sessionUser) return
-
-  const noRedirect = (req.query?.noredirect || '').toString() === '1'
-  const target = (process.env.FRONTEND_DASHBOARD_URL || process.env.FRONTEND_URL || '').toString().trim()
-  if (!noRedirect && target) {
-    return reply.redirect(target)
-  }
-
-  return reply.redirect('/team-dashboard')
-})
-
-function getSessionUser(req) {
-  if (!req.session) return null
-  const u = req.session.get('user')
-  if (!u || typeof u !== 'object') return null
-  return u
-}
-
-function requireLogin(req, reply) {
-  const u = getSessionUser(req)
-  if (u) return u
-
-  const accept = (req.headers.accept || '').toString()
-  if (accept.includes('text/html')) {
-    reply.redirect('/login')
-    return null
-  }
-
-  jsonResponse(reply, 401, { error: 'Not authenticated', login_url: '/login' })
   return null
-}
+})
 
-function requireAdmin(req, reply) {
-  const u = requireLogin(req, reply)
-  if (!u) return null
-  const role = (u.role || '').toString().toLowerCase()
-  const adminByRole = role === 'admin'
-  const adminByFlag = u.is_admin === true
-  const p = u.permissions
-  const permObj = p && typeof p === 'object' && !Array.isArray(p) ? p : {}
-  const adminByPermission = p === 'all' || permObj.all_dashboards === true || permObj.manage_permissions === true
-  const isAdmin = adminByRole || adminByFlag || adminByPermission
-  if (isAdmin) return u
-  jsonResponse(reply, 403, { error: 'Forbidden' })
-  return null
-}
-
-function getUserPermissionObject(sessionUser) {
-  const p = sessionUser?.permissions
-  if (p && typeof p === 'object' && !Array.isArray(p)) return p
-  if (p === 'all') {
-    return {
-      dashboards: true,
-      all_dashboards: true,
-      manage_permissions: true,
-      view_financial: true,
-      view_operational: true,
-      view_agents: true,
-    }
-  }
-  return {}
-}
-
-function isGlobalAdmin(sessionUser) {
-  if (!sessionUser || typeof sessionUser !== 'object') return false
-  const role = (sessionUser.role || '').toString().toLowerCase()
-  if (role === 'admin') return true
-  if (sessionUser.is_admin === true) return true
-  const perms = getUserPermissionObject(sessionUser)
-  return perms.all_dashboards === true || perms.manage_permissions === true
-}
-
-async function getAgentSetting(pool, key) {
-  try {
-    return await withTx(pool, async (client) => {
-      const res = await client.query(
-        `
-        SELECT setting_value
-        FROM agent_settings
-        WHERE setting_key = $1
-        LIMIT 1
-        `,
-        [key],
-      )
-      return res.rows?.[0]?.setting_value ?? null
-    })
-  } catch {
-    return null
+function normalizeRelatorioFilters(raw) {
+  const today = new Date()
+  const defaultEnd = today.toISOString().slice(0, 10)
+  const defaultStart = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate())
+    .toISOString()
+    .slice(0, 10)
+  const start = raw?.data_inicio || defaultStart
+  const end = raw?.data_fim || defaultEnd
+  return {
+    database: raw?.database || 'azportoex',
+    data_inicio: start,
+    data_fim: end,
   }
 }
 
-async function setAgentSetting(pool, key, value) {
-  return await withTx(pool, async (client) => {
-    await client.query(
-      `
-      INSERT INTO agent_settings (setting_key, setting_value, updated_at)
-      VALUES ($1, $2::jsonb, NOW())
-      ON CONFLICT (setting_key)
-      DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = NOW()
-      `,
-      [key, JSON.stringify(value ?? null)],
-    )
-    return true
-  })
+function buildRelatorioCacheKey(filters) {
+  return `relatorio-resultados:${filters.database}:${filters.data_inicio}:${filters.data_fim}`
 }
 
-async function getUserChartPermissions(pool, sessionUser) {
-  const isAdmin = isGlobalAdmin(sessionUser)
-  const out = {}
-  if (isAdmin) {
-    for (const key of CHART_PERMISSION_KEYS) out[key] = true
-    return out
-  }
+async function buildRelatorioResultados(filters) {
+  const startDate = filters.data_inicio
+  const endDate = filters.data_fim
 
-  return await withTx(pool, async (client) => {
+  const rows = await withTx(pool, async (client) => {
     const q = await client.query(
       `
-      SELECT chart_key, allowed
-      FROM dashboard_permissions
-      WHERE user_id = $1
+      SELECT *
+      FROM ocorrencias_portoex
+      WHERE ($1::date IS NULL OR data >= $1::date)
+        AND ($2::date IS NULL OR data <= $2::date)
+      ORDER BY data ASC
       `,
-      [sessionUser.id],
+      [startDate, endDate],
     )
-    for (const row of q.rows || []) {
-      const k = (row.chart_key || '').toString().trim()
-      if (!k) continue
-      out[k] = row.allowed !== false
-    }
-    return out
+    return q.rows
   })
-}
 
-function normalizePanelKey(value) {
-  const v = (value || '').toString().trim().toLowerCase()
-  if (v === 'ceo' || v === 'diretoria' || v === 'operacional' || v === 'projetos') return v
-  return null
-}
+  const total = rows.length
+  const custos = rows.map((r) => Number(r.impacto_financeiro || 0))
+  const somaCustos = custos.reduce((acc, value) => acc + value, 0)
 
-function resolveIndicatorsPanelKey(sessionUser, assignments) {
-  const username = (sessionUser?.username || '').toString().trim().toLowerCase()
-  const dept = (sessionUser?.departamento || '').toString().trim().toLowerCase()
-  const role = (sessionUser?.role || '').toString().trim().toLowerCase()
-  const userId = sessionUser?.id
+  const reprogramados = rows.filter((r) => (r.reprogramado || '').toString().toLowerCase() === 'sim').length
+  const noPrazo = rows.filter((r) => (r.status || '').toString().toLowerCase().includes('no prazo')).length
+  const internos = rows.filter((r) => (r.responsavel || '').toString().toLowerCase().includes('interno')).length
 
-  const usersMap = assignments?.users && typeof assignments.users === 'object' ? assignments.users : null
-  const rolesMap = assignments?.roles && typeof assignments.roles === 'object' ? assignments.roles : null
-  const departmentsMap = assignments?.departments && typeof assignments.departments === 'object' ? assignments.departments : null
-  const usernameMap = assignments?.usernames && typeof assignments.usernames === 'object' ? assignments.usernames : null
+  const clienteCounts = {}
+  const agenteCounts = {}
+  const monthly = {}
 
-  if (userId != null && usersMap && usersMap[String(userId)] !== undefined) {
-    return normalizePanelKey(usersMap[String(userId)])
-  }
-  if (username && usernameMap && usernameMap[username] !== undefined) {
-    return normalizePanelKey(usernameMap[username])
-  }
-  if (role && rolesMap && rolesMap[role] !== undefined) {
-    return normalizePanelKey(rolesMap[role])
-  }
-  if (dept && departmentsMap && departmentsMap[dept] !== undefined) {
-    return normalizePanelKey(departmentsMap[dept])
-  }
+  for (const row of rows) {
+    const cliente = (row.cliente || 'N/D').toString()
+    clienteCounts[cliente] = (clienteCounts[cliente] || 0) + 1
+    const agente = (row.responsavel || 'desconhecido').toString()
+    agenteCounts[agente] = (agenteCounts[agente] || 0) + 1
 
-  if (dept === 'financeiro' || dept === 'comercial' || dept === 'controladoria') return 'diretoria'
-  if (dept === 'operacional' || dept === 'atendimento') return 'operacional'
-  return null
-}
-
-function pickPanelData(indicadoresCompletos, panelKey) {
-  if (!panelKey) return { panel_data: null, leitura_executiva: null }
-  const panelMap = {
-    ceo: 'ceo_panel',
-    diretoria: 'diretoria_panel',
-    operacional: 'operacional_panel',
-    projetos: 'projetos_panel',
-  }
-  const panelId = panelMap[panelKey]
-  const indicadores = indicadoresCompletos?.indicadores
-  const leituras = indicadoresCompletos?.leituras_executivas
-  const panel_data = panelId && indicadores && typeof indicadores === 'object' ? indicadores[panelId] ?? null : null
-  const leitura_executiva = leituras && typeof leituras === 'object' ? leituras[panelKey] ?? null : null
-  return { panel_data, leitura_executiva }
-}
-
-function buildSimpleIndicators(panelData, totalOperacoes) {
-  const pd = panelData && typeof panelData === 'object' ? panelData : {}
-  const totalFretes = 0
-  const fretesMes = Number.isFinite(Number(pd.faturamento_mensal_d0)) ? Number(pd.faturamento_mensal_d0) : 0
-  const performance = Number.isFinite(Number(pd.performance_entrega_on_time_percent)) ? Number(pd.performance_entrega_on_time_percent) : 0
-  const economiaGerada = Number.isFinite(Number(pd.resultado_geral_acumulado_d5)) ? Number(pd.resultado_geral_acumulado_d5) : 0
-  return {
-    totalFretes,
-    fretesMes,
-    performance,
-    economiaGerada,
-    totalOperacoes: Number.isFinite(Number(totalOperacoes)) ? Number(totalOperacoes) : 0,
-  }
-}
-
-const DEFAULT_INDICATOR_PANEL_MODELS = {
-  ceo: {
-    cards: [
-      { key: 'resultado_geral_acumulado_d5', label: 'Resultado geral acumulado (D+5)', format: 'currency', status: 'resultado_geral' },
-      { key: 'performance_entrega_on_time_percent', label: 'Performance On Time (%)', format: 'percent', status: 'performance_entrega' },
-      { key: 'faturamento_mensal_d0', label: 'Faturamento mensal (D+0)', format: 'currency' },
-      { key: 'faturamento_acumulado_d0', label: 'Faturamento acumulado (D+0)', format: 'currency' },
-      { key: 'valor_operacoes_negativas_d5', label: 'Operações negativas (D+5)', format: 'currency', status: 'operacoes_negativas' },
-      { key: 'fluxo_caixa_atual', label: 'Fluxo de caixa atual', format: 'currency', status: 'fluxo_caixa' },
-    ],
-    widgets: [
-      {
-        type: 'gauge',
-        key: 'performance_entrega_on_time_percent',
-        title: 'Performance On Time',
-        format: 'percent',
-        min: 0,
-        max: 100,
-        status: 'performance_entrega',
-      },
-    ],
-  },
-  diretoria: {
-    cards: [
-      { key: 'faturamento_mensal_d0', label: 'Faturamento mensal (D+0)', format: 'currency' },
-      { key: 'faturamento_acumulado_d0', label: 'Faturamento acumulado (D+0)', format: 'currency' },
-      { key: 'valor_embarques_prejuizo_d5', label: 'Embarques com prejuízo (D+5)', format: 'currency', status: 'operacoes_negativas' },
-      { key: 'inadimplencia_percent', label: 'Inadimplência (%)', format: 'percent', status: 'inadimplencia' },
-      { key: 'inadimplencia_valor', label: 'Inadimplência (R$)', format: 'currency', status: 'inadimplencia' },
-      { key: 'participacao_corporativo_percent', label: 'Participação corporativo (%)', format: 'percent' },
-      { key: 'participacao_vendedores_percent', label: 'Participação vendedores (%)', format: 'percent' },
-      { key: 'custos_dia', label: 'Custos do dia', format: 'currency' },
-      { key: 'lucro_liquido_sobre_faturamento', label: 'Lucro líquido / faturamento', format: 'percent' },
-      { key: 'fluxo_caixa_d5', label: 'Fluxo de caixa (D+5)', format: 'currency', status: 'fluxo_caixa' },
-    ],
-    widgets: [
-      {
-        type: 'table',
-        key: 'resultado_por_servico_d5',
-        title: 'Resultado por serviço (Top 5)',
-        columns: [
-          { key: 'servico', label: 'Serviço' },
-          { key: 'faturamento', label: 'Faturamento', format: 'currency' },
-        ],
-        limit: 5,
-        sort: { key: 'faturamento', dir: 'desc' },
-      },
-    ],
-  },
-  operacional: {
-    cards: [
-      { key: 'performance_entrega_on_time_percent', label: 'Performance de entrega', format: 'percent', status: 'performance_entrega' },
-      { key: 'resultado_composicoes_rotas_dia.faturamento_total', label: 'Resultado das composições do dia', format: 'currency' },
-      { key: 'resultado_composicoes_rotas_dia.total_rotas', label: 'Rotas (dia)', format: 'number' },
-      { key: 'faturamento_mensal_d0', label: 'Faturamento mensal (D+0)', format: 'currency' },
-      { key: 'faturamento_acumulado_d0', label: 'Faturamento acumulado (D+0)', format: 'currency' },
-      { key: 'nivel_operacao_atendimento.nivel', label: 'Nível de Operação e Atendimento', format: 'text', status: 'nivel_operacao' },
-      { key: 'nivel_operacao_atendimento.descricao', label: 'Descrição', format: 'text' },
-    ],
-    widgets: [
-      {
-        type: 'gauge',
-        key: 'performance_entrega_on_time_percent',
-        title: 'Performance On Time',
-        format: 'percent',
-        min: 0,
-        max: 100,
-        status: 'performance_entrega',
-      },
-    ],
-  },
-  projetos: {
-    cards: [
-      { key: 'projetos_ativos', label: 'Projetos ativos', format: 'number' },
-      { key: 'projetos_concluidos', label: 'Projetos concluídos', format: 'number' },
-      { key: 'projetos_atraso', label: 'Projetos em atraso', format: 'number', status: 'projetos_atraso' },
-      { key: 'prazo_medio_dias', label: 'Prazo médio (dias)', format: 'number' },
-    ],
-    widgets: [
-      {
-        type: 'table',
-        key: 'gargalos',
-        title: 'Gargalos recorrentes',
-        columns: [{ key: 'gargalo', label: 'Gargalo' }],
-        limit: 5,
-      },
-    ],
-  },
-}
-
-function buildIndicatorCards(panelKey, panelData, modelsSetting) {
-  const models = modelsSetting && typeof modelsSetting === 'object' ? modelsSetting : null
-  const configured = models && models[panelKey] !== undefined ? models[panelKey] : null
-  const model = Array.isArray(configured)
-    ? { cards: configured }
-    : configured && typeof configured === 'object'
-      ? configured
-      : DEFAULT_INDICATOR_PANEL_MODELS[panelKey] ?? { cards: [] }
-
-  const cardsModel = Array.isArray(model.cards) ? model.cards : []
-  const pd = panelData && typeof panelData === 'object' ? panelData : {}
-  const statusObj = pd.status && typeof pd.status === 'object' ? pd.status : null
-
-  return cardsModel
-    .filter((it) => it && typeof it === 'object' && it.key)
-    .map((it) => {
-      const key = String(it.key)
-      const label = it.label !== undefined ? String(it.label) : key
-      const format = it.format !== undefined ? String(it.format) : 'number'
-      const value = key.includes('.')
-        ? key.split('.').reduce((acc, part) => (acc && typeof acc === 'object' ? acc[part] : undefined), pd)
-        : pd[key]
-      const statusKey = it.status !== undefined ? String(it.status) : null
-      const status = statusKey && statusObj ? statusObj[statusKey] ?? null : null
-      return { key, label, value, format, status }
-    })
-}
-
-function buildIndicatorWidgets(panelKey, panelData, modelsSetting) {
-  const models = modelsSetting && typeof modelsSetting === 'object' ? modelsSetting : null
-  const configured = models && models[panelKey] !== undefined ? models[panelKey] : null
-  const model = Array.isArray(configured)
-    ? { cards: configured }
-    : configured && typeof configured === 'object'
-      ? configured
-      : DEFAULT_INDICATOR_PANEL_MODELS[panelKey] ?? { cards: [] }
-
-  const widgetsModel = Array.isArray(model.widgets) ? model.widgets : []
-  const pd = panelData && typeof panelData === 'object' ? panelData : {}
-  const statusObj = pd.status && typeof pd.status === 'object' ? pd.status : null
-
-  const out = []
-  for (const w of widgetsModel) {
-    if (!w || typeof w !== 'object') continue
-    const type = (w.type || '').toString().trim().toLowerCase()
-    if (type === 'gauge') {
-      const key = String(w.key || '')
-      if (!key) continue
-      const value = pd[key]
-      const statusKey = w.status !== undefined ? String(w.status) : null
-      const status = statusKey && statusObj ? statusObj[statusKey] ?? null : null
-      out.push({
-        type: 'gauge',
-        key,
-        title: w.title !== undefined ? String(w.title) : key,
-        value,
-        format: w.format !== undefined ? String(w.format) : 'number',
-        min: w.min !== undefined ? Number(w.min) : 0,
-        max: w.max !== undefined ? Number(w.max) : 100,
-        status,
-      })
-    } else if (type === 'table') {
-      const key = String(w.key || '')
-      if (!key) continue
-      const raw = pd[key]
-      const cols = Array.isArray(w.columns) ? w.columns : []
-      const limit = w.limit !== undefined ? Math.max(1, Number(w.limit) || 1) : 10
-      const sortKey = w.sort && typeof w.sort === 'object' && w.sort.key ? String(w.sort.key) : null
-      const sortDir = w.sort && typeof w.sort === 'object' && w.sort.dir ? String(w.sort.dir).toLowerCase() : 'desc'
-
-      let rows = []
-      if (Array.isArray(raw)) {
-        rows = raw.map((v) => {
-          if (typeof v === 'object' && v) return v
-          if (cols.length === 1 && cols[0] && cols[0].key) {
-            return { [String(cols[0].key)]: v }
-          }
-          return { value: v }
-        })
-      } else if (raw && typeof raw === 'object') {
-        // suporta map { nome: { faturamento: ... } }
-        rows = Object.entries(raw).map(([k, v]) => {
-          if (v && typeof v === 'object') return { servico: k, ...v }
-          return { servico: k, value: v }
-        })
-      }
-
-      if (sortKey) {
-        rows.sort((a, b) => {
-          const av = Number(a?.[sortKey])
-          const bv = Number(b?.[sortKey])
-          const an = Number.isFinite(av) ? av : 0
-          const bn = Number.isFinite(bv) ? bv : 0
-          return sortDir === 'asc' ? an - bn : bn - an
-        })
-      }
-
-      rows = rows.slice(0, limit)
-
-      out.push({
-        type: 'table',
-        key,
-        title: w.title !== undefined ? String(w.title) : key,
-        columns: cols.map((c) => ({
-          key: String(c.key || ''),
-          label: c.label !== undefined ? String(c.label) : String(c.key || ''),
-          format: c.format !== undefined ? String(c.format) : 'text',
-        })),
-        rows,
-      })
+    const monthKey = row.data?.toISOString?.().slice(0, 7) || row.data || 'N/D'
+    if (!monthly[monthKey]) {
+      monthly[monthKey] = { total: 0, custo: 0, reprogramacoes: 0 }
+    }
+    monthly[monthKey].total += 1
+    monthly[monthKey].custo += Number(row.impacto_financeiro || 0)
+    if ((row.reprogramado || '').toString().toLowerCase() === 'sim') {
+      monthly[monthKey].reprogramacoes += 1
     }
   }
 
-  return out
-}
+  const sortedClientes = Object.entries(clienteCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([cliente, count]) => ({ name: cliente, value: count }))
+  const sortedAgentes = Object.entries(agenteCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([agente, count]) => ({ name: agente, value: count }))
 
-function extractDashboardResultPayload(resultData) {
-  const rd = resultData && typeof resultData === 'object' ? resultData : null
-  if (!rd) return null
-
-  if (rd.payload && typeof rd.payload === 'object') {
-    return rd.payload
-  }
-
-  if (rd.data && typeof rd.data === 'object' && !Array.isArray(rd.data)) {
-    return rd.data
-  }
-
-  if (rd.data && Array.isArray(rd.data)) {
-    return { rows: rd.data }
-  }
-
-  return null
-}
-
-async function findCompletedIndicatorsRequest(pool, userId, filters) {
-  const database = (filters?.database || 'azportoex').toString().trim() || 'azportoex'
-  const dataInicio = (filters?.data_inicio || '').toString().trim() || null
-  const dataFim = (filters?.data_fim || '').toString().trim() || null
-
-  return await withTx(pool, async (client) => {
-    const res = await client.query(
-      `
-      SELECT id, status, result_data, error_message, updated_at
-      FROM agent_dashboard_requests
-      WHERE created_by = $1
-        AND category = 'indicadores_executivos'
-        AND status = 'completed'
-        AND COALESCE(filters->>'runner','') = 'indicadores_executivos'
-        AND COALESCE(filters->>'database','azportoex') = $2
-        AND COALESCE(filters->>'data_inicio','') = COALESCE($3,'')
-        AND COALESCE(filters->>'data_fim','') = COALESCE($4,'')
-      ORDER BY updated_at DESC
-      LIMIT 1
-      `,
-      [userId, database, dataInicio, dataFim],
-    )
-    return res.rows?.[0] ?? null
-  })
-}
-
-async function insertIndicatorsRequest(pool, userId, filters) {
-  return await withTx(pool, async (client) => {
-    const res = await client.query(
-      `
-      INSERT INTO agent_dashboard_requests (title, description, category, chart_types, filters, status, created_by)
-      VALUES ($1, $2, $3, $4::text[], $5::jsonb, 'pending', $6)
-      RETURNING id
-      `,
-      [
-        `Indicadores Executivos ${filters.database}${filters.data_inicio || filters.data_fim ? ` (${filters.data_inicio || '...'} a ${filters.data_fim || '...'})` : ''}`,
-        'Indicadores executivos (runner indicadores_executivos)',
-        'indicadores_executivos',
-        ['cards'],
-        JSON.stringify(filters),
-        userId,
-      ],
-    )
-    return res.rows?.[0]?.id ?? null
-  })
-}
-
-function normalizeIndicatorsPayloadForUser({ sessionUser, rawPayload, assignments }) {
-  const resolvedPanelKey = resolveIndicatorsPanelKey(sessionUser, assignments)
-  const panelKey = resolvedPanelKey ?? rawPayload?.panel_key ?? 'ceo'
-  const indicadoresCompletos = rawPayload?.indicadores_completos
-  const picked = pickPanelData(indicadoresCompletos, panelKey)
-
-  const panel_data = picked.panel_data ?? rawPayload?.panel_data ?? null
-  const leitura_executiva = picked.leitura_executiva ?? rawPayload?.leitura_executiva ?? null
-  const totalOperacoes = rawPayload?.total_operacoes
-  const indicators = buildSimpleIndicators(panel_data, totalOperacoes)
-
-  return {
-    ...rawPayload,
-    success: rawPayload?.success !== false,
-    panel_key: panelKey,
-    panel_data,
-    leitura_executiva,
-    indicators,
-  }
-}
-
-function buildSemanticDashboardResponse(normalized, permissions = {}) {
-  const panelData = normalized?.panel_data && typeof normalized.panel_data === 'object' ? normalized.panel_data : {}
-  const statusMap = panelData?.status && typeof panelData.status === 'object' ? panelData.status : {}
-
-  const toNum = (v) => {
-    const n = Number(v)
-    return Number.isFinite(n) ? n : 0
-  }
+  const monthlyComparisons = Object.entries(monthly)
+    .sort(([a], [b]) => (a < b ? 1 : -1))
+    .map(([month, data]) => ({
+      month,
+      total: data.total,
+      custo: Number(data.custo.toFixed(2)),
+      reprogramacao_percent: data.total ? Number(((data.reprogramacoes / data.total) * 100).toFixed(1)) : 0,
+    }))
 
   const kpis = {
-    faturamentoMensal: toNum(panelData.faturamento_mensal_d0),
-    faturamentoAcumulado: toNum(panelData.faturamento_acumulado_d0),
-    performanceEntrega: toNum(panelData.performance_entrega_on_time_percent),
-    fluxoCaixa: toNum(panelData.fluxo_caixa_d5 ?? panelData.fluxo_caixa_atual),
-    inadimplenciaPercentual: toNum(panelData.inadimplencia_percent),
+    total_entregas: total,
+    custo_total: Number(somaCustos.toFixed(2)),
+    reprogramacao_percent: total ? Number(((reprogramados / total) * 100).toFixed(1)) : 0,
+    entregas_no_prazo_percent: total ? Number(((noPrazo / total) * 100).toFixed(1)) : 0,
+    entregas_internas_percent: total ? Number(((internos / total) * 100).toFixed(1)) : 0,
   }
 
-  const operacoesPorStatus = []
-  if (panelData.valor_embarques_prejuizo_d5 !== undefined) {
-    operacoesPorStatus.push({ status: 'Prejuizo', total: toNum(panelData.valor_embarques_prejuizo_d5) })
-  }
-  if (panelData.valor_operacoes_negativas_d5 !== undefined) {
-    operacoesPorStatus.push({ status: 'OperacoesNegativas', total: toNum(panelData.valor_operacoes_negativas_d5) })
+  const dre = [
+    { name: 'Faturamento', value: Number(somaCustos.toFixed(2)) },
+    { name: 'Custo Operacional', value: Number((somaCustos * 0.65).toFixed(2)) },
+    { name: 'EBITDA', value: Number((somaCustos * 0.35).toFixed(2)) },
+    { name: 'Margem Bruta', value: Number(total ? ((somaCustos * 0.35) / somaCustos) * 100 : 0).toFixed(2) },
+  ]
+
+  const rankings = {
+    clientes: sortedClientes,
+    agentes: sortedAgentes,
   }
 
-  const performanceMotoristas = Array.isArray(panelData.performance_motoristas)
-    ? panelData.performance_motoristas
-    : []
+  const indicadoresOperacionais = {
+    entregas_no_prazo_percent: kpis.entregas_no_prazo_percent,
+    reprogramacao_percent: kpis.reprogramacao_percent,
+    entregas_internas_percent: kpis.entregas_internas_percent,
+    total_entregas: kpis.total_entregas,
+  }
 
-  const volumeMensal = Array.isArray(panelData.volume_mensal)
-    ? panelData.volume_mensal
-    : []
+  const gauges = [
+    { title: 'Reprogramações', value: kpis.reprogramacao_percent, min: 0, max: 100, status: kpis.reprogramacao_percent > 30 ? 'red' : 'green' },
+    { title: 'Entregas no prazo', value: kpis.entregas_no_prazo_percent, min: 0, max: 100, status: kpis.entregas_no_prazo_percent < 70 ? 'red' : 'green' },
+    { title: 'Entregas internas', value: kpis.entregas_internas_percent, min: 0, max: 100, status: 'default' },
+  ]
 
   return {
-    meta: {
-      panel_key: normalized?.panel_key ?? null,
-      periodo: normalized?.periodo ?? null,
-      database: normalized?.database ?? null,
-      total_operacoes: normalized?.total_operacoes ?? null,
-      status: statusMap,
-    },
+    filters,
     kpis,
-    charts: {
-      volumeMensal,
-      operacoesPorStatus,
-      performanceMotoristas,
-    },
-    permissions,
+    dre,
+    rankings,
+    indicadores_operacionais: indicadoresOperacionais,
+    gauges,
+    comparativos_mensais: monthlyComparisons,
   }
 }
-
-app.get('/api/admin/users', async (req, reply) => {
-  const admin = requireAdmin(req, reply)
-  if (!admin) return
-
-  const q = (req.query?.q || '').toString().trim()
-  const limit = clampInt(req.query?.limit, 1, 200, 50)
-
-  try {
-    const out = await withTx(pool, async (client) => {
-      const res = await client.query(
-        `
-        SELECT id, username, role, nome_completo, departamento, is_active
-        FROM users_new
-        WHERE ($1 = '' OR username ILIKE '%' || $1 || '%' OR COALESCE(nome_completo, '') ILIKE '%' || $1 || '%')
-        ORDER BY username ASC
-        LIMIT $2
-        `,
-        [q, limit],
-      )
-      return res.rows
-    })
-    return jsonResponse(reply, 200, { items: out })
-  } catch (err) {
-    req.log.error({ err }, '[ADMIN] Erro ao listar usuários')
-    return jsonResponse(reply, 500, { error: err?.message || String(err) })
-  }
-})
-
-app.put('/api/admin/users/:id', async (req, reply) => {
-  const admin = requireAdmin(req, reply)
-  if (!admin) return
-
-  const userId = Number.parseInt(req.params?.id, 10)
-  if (!Number.isFinite(userId)) {
-    return jsonResponse(reply, 400, { error: 'user_id inválido' })
-  }
-
-  if (!req.body || typeof req.body !== 'object') {
-    return jsonResponse(reply, 400, { error: 'Body inválido' })
-  }
-
-  const fields = {
-    username: req.body.username !== undefined ? String(req.body.username || '').trim() : undefined,
-    role: req.body.role !== undefined ? String(req.body.role || '').trim() : undefined,
-    nome_completo: req.body.nome_completo !== undefined ? String(req.body.nome_completo || '').trim() : undefined,
-    email: req.body.email !== undefined ? String(req.body.email || '').trim() : undefined,
-    departamento: req.body.departamento !== undefined ? String(req.body.departamento || '').trim() : undefined,
-    is_active: req.body.is_active !== undefined ? Boolean(req.body.is_active) : undefined,
-  }
-
-  try {
-    const out = await withTx(pool, async (client) => {
-      const cols = await client.query(
-        `
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND table_name = 'users_new'
-          AND column_name IN ('username','role','nome_completo','email','departamento','is_active')
-        `,
-      )
-      const colset = new Set(cols.rows.map((r) => r.column_name))
-
-      const sets = []
-      const vals = []
-      let i = 1
-
-      for (const [k, v] of Object.entries(fields)) {
-        if (v === undefined) continue
-        if (!colset.has(k)) continue
-        sets.push(`${k} = $${i++}`)
-        vals.push(v === '' ? null : v)
-      }
-
-      if (!sets.length) {
-        const e = new Error('Nenhum campo para atualizar')
-        e.statusCode = 400
-        throw e
-      }
-
-      vals.push(userId)
-      const q = await client.query(
-        `
-        UPDATE users_new
-        SET ${sets.join(', ')}, updated_at = NOW()
-        WHERE id = $${i}
-        RETURNING id, username, role, nome_completo, departamento, email, is_active
-        `,
-        vals,
-      )
-      if (q.rows.length === 0) {
-        const e = new Error('Usuário não encontrado')
-        e.statusCode = 404
-        throw e
-      }
-      return q.rows[0]
-    })
-    return jsonResponse(reply, 200, { success: true, user: out })
-  } catch (err) {
-    const status = err?.statusCode || 500
-    if (status >= 500) req.log.error({ err }, '[ADMIN] Erro ao atualizar usuário')
-    return jsonResponse(reply, status, { error: err?.message || String(err) })
-  }
-})
-
-app.delete('/api/admin/users/:id', async (req, reply) => {
-  const admin = requireAdmin(req, reply)
-  if (!admin) return
-
-  const userId = Number.parseInt(req.params?.id, 10)
-  if (!Number.isFinite(userId)) {
-    return jsonResponse(reply, 400, { error: 'user_id inválido' })
-  }
-
-  try {
-    await withTx(pool, async (client) => {
-      // Limpar dependências que normalmente devem ser removidas junto com o usuário
-      // (se a base tiver FK ON DELETE SET NULL, isso é redundante, mas ajuda quando não houver).
-      await client.query('DELETE FROM asset_assignments WHERE user_id = $1', [userId])
-      await client.query('DELETE FROM room_bookings WHERE user_id = $1', [userId])
-
-      const q = await client.query('DELETE FROM users_new WHERE id = $1', [userId])
-      if (q.rowCount === 0) {
-        const e = new Error('Usuário não encontrado')
-        e.statusCode = 404
-        throw e
-      }
-    })
-    return jsonResponse(reply, 200, { success: true })
-  } catch (err) {
-    if (err?.code === '23503') {
-      // foreign_key_violation
-      return jsonResponse(reply, 409, { error: 'Não foi possível excluir: há registros vinculados a este usuário.' })
-    }
-    const status = err?.statusCode || 500
-    if (status >= 500) req.log.error({ err }, '[ADMIN] Erro ao excluir usuário')
-    return jsonResponse(reply, status, { error: err?.message || String(err) })
-  }
-})
-
-app.get('/api/library/catalog', async (req, reply) => {
-  const admin = requireAdmin(req, reply)
-  if (!admin) return
-
-  if (!upstreamFlaskUrl) {
-    return jsonResponse(reply, 200, { success: true, items: [] })
-  }
-
-  try {
-    const resp = await fetch(`${upstreamFlaskUrl}/api/agent/library/catalog`, {
-      headers: { cookie: req.headers.cookie || '' },
-    })
-    const text = await resp.text()
-    if (!resp.ok) {
-      return jsonResponse(reply, resp.status, { error: text || resp.statusText })
-    }
-    let json
-    try {
-      json = JSON.parse(text)
-    } catch {
-      return jsonResponse(reply, 502, { error: 'Resposta inválida do upstream' })
-    }
-    return jsonResponse(reply, 200, json)
-  } catch (err) {
-    req.log.error({ err }, '[LIBRARY] Erro ao carregar catálogo')
-    return jsonResponse(reply, 500, { error: err?.message || String(err) })
-  }
-})
-
-app.post('/api/library/run', async (req, reply) => {
-  const admin = requireAdmin(req, reply)
-  if (!admin) return
-
-  if (!upstreamFlaskUrl) {
-    return jsonResponse(reply, 502, { error: 'UPSTREAM_FLASK_URL não configurado' })
-  }
-
-  const body = req.body && typeof req.body === 'object' ? req.body : null
-  if (!body) return jsonResponse(reply, 400, { error: 'Body inválido' })
-
-  try {
-    const resp = await fetch(`${upstreamFlaskUrl}/api/agent/library/run`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', cookie: req.headers.cookie || '' },
-      body: JSON.stringify(body),
-    })
-    const text = await resp.text()
-    if (!resp.ok) {
-      return jsonResponse(reply, resp.status, { error: text || resp.statusText })
-    }
-    let json
-    try {
-      json = JSON.parse(text)
-    } catch {
-      return jsonResponse(reply, 502, { error: 'Resposta inválida do upstream' })
-    }
-    return jsonResponse(reply, 200, json)
-  } catch (err) {
-    req.log.error({ err }, '[LIBRARY] Erro ao iniciar run')
-    return jsonResponse(reply, 500, { error: err?.message || String(err) })
-  }
-})
-
-app.get('/api/room-bookings', async (req, reply) => {
-  const sessionUser = requireLogin(req, reply)
-  if (!sessionUser) return
-
-  const limit = clampInt(req.query?.limit, 1, 500, 200)
-
-  try {
-    const out = await withTx(pool, async (client) => {
-      const q = await client.query(
-        `
-        SELECT id, room, title, date,
-               start_time AS time_start,
-               end_time AS time_end,
-               created_at, updated_at
-        FROM room_bookings
-        WHERE user_id = $1 AND is_active = true
-        ORDER BY date DESC, start_time DESC
-        LIMIT $2
-        `,
-        [sessionUser.id, limit],
-      )
-      return q.rows
-    })
-    return jsonResponse(reply, 200, out)
-  } catch (err) {
-    req.log.error({ err }, '[AGENDA] Erro ao listar agendamentos')
-    return jsonResponse(reply, 500, { error: err?.message || String(err) })
-  }
-})
-
-app.post('/api/room-bookings', async (req, reply) => {
-  const sessionUser = requireLogin(req, reply)
-  if (!sessionUser) return
-
-  const b = req.body && typeof req.body === 'object' ? req.body : null
-  if (!b) return jsonResponse(reply, 400, { error: 'Body inválido' })
-
-  const title = String(b.title || '').trim()
-  const room = String(b.room || '').trim()
-  const date = String(b.date || '').trim()
-  const timeStart = String(b.time_start || '').trim()
-  const timeEnd = String(b.time_end || '').trim()
-
-  if (!title || !room || !date || !timeStart || !timeEnd) {
-    return jsonResponse(reply, 400, { error: 'Campos obrigatórios: title, room, date, time_start, time_end' })
-  }
-
-  try {
-    const out = await withTx(pool, async (client) => {
-      const q = await client.query(
-        `
-        INSERT INTO room_bookings (user_id, room, title, date, start_time, end_time)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING id, room, title, date,
-                  start_time AS time_start,
-                  end_time AS time_end,
-                  created_at, updated_at
-        `,
-        [sessionUser.id, room, title, date, timeStart, timeEnd],
-      )
-      return q.rows[0]
-    })
-    return jsonResponse(reply, 200, { success: true, booking: out })
-  } catch (err) {
-    req.log.error({ err }, '[AGENDA] Erro ao criar agendamento')
-    return jsonResponse(reply, 500, { error: err?.message || String(err) })
-  }
-})
-
-app.put('/api/room-bookings/:id', async (req, reply) => {
-  const sessionUser = requireLogin(req, reply)
-  if (!sessionUser) return
-
-  const id = Number.parseInt(req.params?.id, 10)
-  if (!Number.isFinite(id)) return jsonResponse(reply, 400, { error: 'id inválido' })
-
-  const b = req.body && typeof req.body === 'object' ? req.body : null
-  if (!b) return jsonResponse(reply, 400, { error: 'Body inválido' })
-
-  const title = b.title !== undefined ? String(b.title || '').trim() : undefined
-  const room = b.room !== undefined ? String(b.room || '').trim() : undefined
-  const date = b.date !== undefined ? String(b.date || '').trim() : undefined
-  const timeStart = b.time_start !== undefined ? String(b.time_start || '').trim() : undefined
-  const timeEnd = b.time_end !== undefined ? String(b.time_end || '').trim() : undefined
-
-  try {
-    const out = await withTx(pool, async (client) => {
-      const sets = []
-      const vals = []
-      let i = 1
-
-      if (title !== undefined) {
-        sets.push(`title = $${i++}`)
-        vals.push(title)
-      }
-      if (room !== undefined) {
-        sets.push(`room = $${i++}`)
-        vals.push(room)
-      }
-      if (date !== undefined) {
-        sets.push(`date = $${i++}`)
-        vals.push(date)
-      }
-      if (timeStart !== undefined) {
-        sets.push(`start_time = $${i++}`)
-        vals.push(timeStart)
-      }
-      if (timeEnd !== undefined) {
-        sets.push(`end_time = $${i++}`)
-        vals.push(timeEnd)
-      }
-      if (!sets.length) {
-        const e = new Error('Nenhum campo para atualizar')
-        e.statusCode = 400
-        throw e
-      }
-
-      vals.push(id)
-      vals.push(sessionUser.id)
-      const q = await client.query(
-        `
-        UPDATE room_bookings
-        SET ${sets.join(', ')}, updated_at = NOW()
-        WHERE id = $${i++} AND user_id = $${i} AND is_active = true
-        RETURNING id, room, title, date,
-                  start_time AS time_start,
-                  end_time AS time_end,
-                  created_at, updated_at
-        `,
-        vals,
-      )
-      if (q.rows.length === 0) {
-        const e = new Error('Agendamento não encontrado')
-        e.statusCode = 404
-        throw e
-      }
-      return q.rows[0]
-    })
-    return jsonResponse(reply, 200, { success: true, booking: out })
-  } catch (err) {
-    const status = err?.statusCode || 500
-    if (status >= 500) req.log.error({ err }, '[AGENDA] Erro ao atualizar agendamento')
-    return jsonResponse(reply, status, { error: err?.message || String(err) })
-  }
-})
-
-app.delete('/api/room-bookings/:id', async (req, reply) => {
-  const sessionUser = requireLogin(req, reply)
-  if (!sessionUser) return
-
-  const id = Number.parseInt(req.params?.id, 10)
-  if (!Number.isFinite(id)) return jsonResponse(reply, 400, { error: 'id inválido' })
-
-  try {
-    await withTx(pool, async (client) => {
-      const q = await client.query(
-        `
-        UPDATE room_bookings
-        SET is_active = false, updated_at = NOW()
-        WHERE id = $1 AND user_id = $2 AND is_active = true
-        `,
-        [id, sessionUser.id],
-      )
-      if (q.rowCount === 0) {
-        const e = new Error('Agendamento não encontrado')
-        e.statusCode = 404
-        throw e
-      }
-    })
-    return jsonResponse(reply, 200, { success: true })
-  } catch (err) {
-    const status = err?.statusCode || 500
-    if (status >= 500) req.log.error({ err }, '[AGENDA] Erro ao excluir agendamento')
-    return jsonResponse(reply, status, { error: err?.message || String(err) })
-  }
-})
-
-app.get('/api/admin/agent-settings/:key', async (req, reply) => {
-  const admin = requireAdmin(req, reply)
-  if (!admin) return
-
-  const key = (req.params?.key || '').toString().trim()
-  const allow = new Set(['dashboard_indicator_assignments', 'dashboard_indicator_panel_models'])
-  if (!allow.has(key)) {
-    return jsonResponse(reply, 400, { error: 'setting_key inválida' })
-  }
-
-  try {
-    const value = await getAgentSetting(pool, key)
-    return jsonResponse(reply, 200, { success: true, key, value })
-  } catch (err) {
-    req.log.error({ err }, '[ADMIN] Erro ao ler agent_setting')
-    return jsonResponse(reply, 500, { error: err?.message || String(err) })
-  }
-})
-
-app.put('/api/admin/agent-settings/:key', async (req, reply) => {
-  const admin = requireAdmin(req, reply)
-  if (!admin) return
-
-  const key = (req.params?.key || '').toString().trim()
-  const allow = new Set(['dashboard_indicator_assignments', 'dashboard_indicator_panel_models'])
-  if (!allow.has(key)) {
-    return jsonResponse(reply, 400, { error: 'setting_key inválida' })
-  }
-
-  if (!req.body || typeof req.body !== 'object') {
-    return jsonResponse(reply, 400, { error: 'Body inválido' })
-  }
-
-  const value = req.body?.value
-  const valueType = value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value
-  if (value !== null && value !== undefined && valueType !== 'object' && valueType !== 'array') {
-    return jsonResponse(reply, 400, { error: 'Campo value deve ser um objeto/array (ou null)' })
-  }
-  try {
-    await setAgentSetting(pool, key, value)
-    return jsonResponse(reply, 200, { success: true })
-  } catch (err) {
-    req.log.error({ err }, '[ADMIN] Erro ao salvar agent_setting')
-    return jsonResponse(reply, 500, { error: err?.message || String(err) })
-  }
-})
-
-app.get('/api/admin/dashboard-permissions', async (req, reply) => {
-  const admin = requireAdmin(req, reply)
-  if (!admin) return
-
-  const userId = Number.parseInt(req.query?.user_id, 10)
-  if (!Number.isFinite(userId)) {
-    return jsonResponse(reply, 400, { error: 'user_id inválido' })
-  }
-
-  try {
-    const out = await withTx(pool, async (client) => {
-      const q = await client.query(
-        `
-        SELECT chart_key, allowed
-        FROM dashboard_permissions
-        WHERE user_id = $1
-        ORDER BY chart_key ASC
-        `,
-        [userId],
-      )
-      const permissions = {}
-      for (const row of q.rows || []) {
-        const key = (row.chart_key || '').toString().trim()
-        if (!key) continue
-        permissions[key] = row.allowed !== false
-      }
-      return permissions
-    })
-    return jsonResponse(reply, 200, { success: true, user_id: userId, permissions: out })
-  } catch (err) {
-    req.log.error({ err }, '[ADMIN] Erro ao listar dashboard_permissions')
-    return jsonResponse(reply, 500, { error: err?.message || String(err) })
-  }
-})
-
-app.put('/api/admin/dashboard-permissions/:userId', async (req, reply) => {
-  const admin = requireAdmin(req, reply)
-  if (!admin) return
-
-  const userId = Number.parseInt(req.params?.userId, 10)
-  if (!Number.isFinite(userId)) {
-    return jsonResponse(reply, 400, { error: 'user_id inválido' })
-  }
-
-  const permissions = req.body?.permissions
-  if (!permissions || typeof permissions !== 'object' || Array.isArray(permissions)) {
-    return jsonResponse(reply, 400, { error: 'permissions deve ser um objeto { chart_key: boolean }' })
-  }
-
-  try {
-    await withTx(pool, async (client) => {
-      for (const [chartKey, allowedRaw] of Object.entries(permissions)) {
-        const key = String(chartKey || '').trim()
-        if (!key) continue
-        const allowed = allowedRaw !== false
-        await client.query(
-          `
-          INSERT INTO dashboard_permissions (user_id, chart_key, allowed, updated_at)
-          VALUES ($1, $2, $3, NOW())
-          ON CONFLICT (user_id, chart_key)
-          DO UPDATE SET allowed = EXCLUDED.allowed, updated_at = NOW()
-          `,
-          [userId, key, allowed],
-        )
-      }
-    })
-    return jsonResponse(reply, 200, { success: true, user_id: userId })
-  } catch (err) {
-    req.log.error({ err }, '[ADMIN] Erro ao salvar dashboard_permissions')
-    return jsonResponse(reply, 500, { error: err?.message || String(err) })
-  }
-})
-
-app.get('/api/admin/assets', async (req, reply) => {
-  const admin = requireAdmin(req, reply)
-  if (!admin) return
-
-  const limit = clampInt(req.query?.limit, 1, 500, 200)
-  const status = (req.query?.status || 'ativo').toString().trim()
-
-  try {
-    const out = await withTx(pool, async (client) => {
-      const res = await client.query(
-        `
-        SELECT id, nome, tipo, categoria, descricao, status, ordem_padrao, resource_url, embed_url, config AS asset_config
-        FROM assets
-        WHERE ($1 = '' OR COALESCE(status, '') = $1)
-        ORDER BY COALESCE(ordem_padrao, 0) ASC, id ASC
-        LIMIT $2
-        `,
-        [status, limit],
-      )
-      return res.rows
-    })
-    return jsonResponse(reply, 200, { items: out })
-  } catch (err) {
-    req.log.error({ err }, '[ADMIN] Erro ao listar assets')
-    return jsonResponse(reply, 500, { error: err?.message || String(err) })
-  }
-})
-
-app.get('/api/admin/asset-assignments', async (req, reply) => {
-  const admin = requireAdmin(req, reply)
-  if (!admin) return
-
-  const userId = req.query?.user_id ? Number(req.query.user_id) : null
-  const groupName = (req.query?.group_name || '').toString().trim()
-  const limit = clampInt(req.query?.limit, 1, 500, 200)
-
-  try {
-    const out = await withTx(pool, async (client) => {
-      const res = await client.query(
-        `
-        SELECT
-          aa.id,
-          aa.asset_id,
-          aa.user_id,
-          aa.group_name,
-          aa.ordem,
-          aa.visivel,
-          aa.config AS assignment_config,
-          a.nome AS asset_nome,
-          a.tipo AS asset_tipo,
-          a.categoria AS asset_categoria
-        FROM asset_assignments aa
-        JOIN assets a ON a.id = aa.asset_id
-        WHERE ($1::bigint IS NULL OR aa.user_id = $1)
-          AND ($2 = '' OR aa.group_name = $2)
-        ORDER BY COALESCE(aa.ordem, 0) ASC, aa.id ASC
-        LIMIT $3
-        `,
-        [userId, groupName, limit],
-      )
-      return res.rows
-    })
-    return jsonResponse(reply, 200, { items: out })
-  } catch (err) {
-    req.log.error({ err }, '[ADMIN] Erro ao listar asset_assignments')
-    return jsonResponse(reply, 500, { error: err?.message || String(err) })
-  }
-})
-
-app.post('/api/admin/asset-assignments', async (req, reply) => {
-  const admin = requireAdmin(req, reply)
-  if (!admin) return
-
-  const assetId = Number(req.body?.asset_id)
-  const userId = req.body?.user_id !== undefined && req.body?.user_id !== null ? Number(req.body.user_id) : null
-  const groupName = (req.body?.group_name || '').toString().trim()
-  const ordem = req.body?.ordem !== undefined && req.body?.ordem !== null ? Number(req.body.ordem) : null
-  const visivel = req.body?.visivel === undefined ? true : !!req.body.visivel
-  const config = req.body?.config ?? req.body?.assignment_config ?? null
-
-  if (!assetId || (userId === null && !groupName)) {
-    return jsonResponse(reply, 400, { error: 'asset_id e (user_id ou group_name) são obrigatórios' })
-  }
-
-  try {
-    const out = await withTx(pool, async (client) => {
-      const res = await client.query(
-        `
-        INSERT INTO asset_assignments (asset_id, user_id, group_name, ordem, visivel, config)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING id
-        `,
-        [assetId, userId, groupName || null, ordem, visivel, config],
-      )
-      return res.rows[0]
-    })
-    return jsonResponse(reply, 201, { id: out.id })
-  } catch (err) {
-    req.log.error({ err }, '[ADMIN] Erro ao criar asset_assignment')
-    return jsonResponse(reply, 500, { error: err?.message || String(err) })
-  }
-})
-
-app.put('/api/admin/asset-assignments/:id', async (req, reply) => {
-  const admin = requireAdmin(req, reply)
-  if (!admin) return
-
-  const id = Number(req.params?.id)
-  if (!id) {
-    return jsonResponse(reply, 400, { error: 'id inválido' })
-  }
-
-  const patch = {
-    ordem: req.body?.ordem,
-    visivel: req.body?.visivel,
-    config: req.body?.config ?? req.body?.assignment_config,
-  }
-
-  const sets = []
-  const vals = []
-  let idx = 1
-
-  if (patch.ordem !== undefined) {
-    sets.push(`ordem = $${idx++}`)
-    vals.push(patch.ordem === null ? null : Number(patch.ordem))
-  }
-  if (patch.visivel !== undefined) {
-    sets.push(`visivel = $${idx++}`)
-    vals.push(!!patch.visivel)
-  }
-  if (patch.config !== undefined) {
-    sets.push(`config = $${idx++}`)
-    vals.push(patch.config)
-  }
-
-  if (sets.length === 0) {
-    return jsonResponse(reply, 400, { error: 'Nenhum campo para atualizar' })
-  }
-
-  try {
-    await withTx(pool, async (client) => {
-      await client.query(
-        `
-        UPDATE asset_assignments
-        SET ${sets.join(', ')}
-        WHERE id = $${idx}
-        `,
-        [...vals, id],
-      )
-    })
-    return jsonResponse(reply, 200, { ok: true })
-  } catch (err) {
-    req.log.error({ err }, '[ADMIN] Erro ao atualizar asset_assignment')
-    return jsonResponse(reply, 500, { error: err?.message || String(err) })
-  }
-})
-
-app.delete('/api/admin/asset-assignments/:id', async (req, reply) => {
-  const admin = requireAdmin(req, reply)
-  if (!admin) return
-
-  const id = Number(req.params?.id)
-  if (!id) {
-    return jsonResponse(reply, 400, { error: 'id inválido' })
-  }
-
-  try {
-    await withTx(pool, async (client) => {
-      await client.query('DELETE FROM asset_assignments WHERE id = $1', [id])
-    })
-    return jsonResponse(reply, 200, { ok: true })
-  } catch (err) {
-    req.log.error({ err }, '[ADMIN] Erro ao remover asset_assignment')
-    return jsonResponse(reply, 500, { error: err?.message || String(err) })
-  }
-})
-
-app.post('/api/admin/asset-assignments/bulk', async (req, reply) => {
-  const admin = requireAdmin(req, reply)
-  if (!admin) return
-
-  const assetIds = Array.isArray(req.body?.asset_ids) ? req.body.asset_ids.map((x) => Number(x)).filter(Boolean) : []
-  const userIds = Array.isArray(req.body?.user_ids) ? req.body.user_ids.map((x) => Number(x)).filter(Boolean) : []
-  const groupNames = Array.isArray(req.body?.group_names) ? req.body.group_names.map((x) => String(x).trim()).filter(Boolean) : []
-  const visivel = req.body?.visivel === undefined ? true : !!req.body.visivel
-  const config = req.body?.config ?? req.body?.assignment_config ?? null
-  const ordem = req.body?.ordem !== undefined && req.body?.ordem !== null ? Number(req.body.ordem) : null
-
-  if (assetIds.length === 0 || (userIds.length === 0 && groupNames.length === 0)) {
-    return jsonResponse(reply, 400, { error: 'asset_ids e (user_ids ou group_names) são obrigatórios' })
-  }
-
-  try {
-    const inserted = await withTx(pool, async (client) => {
-      let total = 0
-
-      for (const assetId of assetIds) {
-        for (const userId of userIds) {
-          const u = await client.query(
-            `
-            UPDATE asset_assignments
-            SET ordem = $3, visivel = $4, config = $5
-            WHERE asset_id = $1 AND user_id = $2
-            `,
-            [assetId, userId, ordem, visivel, config],
-          )
-          if ((u.rowCount || 0) === 0) {
-            const i = await client.query(
-              `
-              INSERT INTO asset_assignments (asset_id, user_id, group_name, ordem, visivel, config)
-              SELECT $1, $2, NULL, $3, $4, $5
-              WHERE NOT EXISTS (
-                SELECT 1 FROM asset_assignments WHERE asset_id = $1 AND user_id = $2
-              )
-              `,
-              [assetId, userId, ordem, visivel, config],
-            )
-            total += i.rowCount || 0
-          } else {
-            total += u.rowCount || 0
-          }
-        }
-
-        for (const groupName of groupNames) {
-          const u = await client.query(
-            `
-            UPDATE asset_assignments
-            SET ordem = $3, visivel = $4, config = $5
-            WHERE asset_id = $1 AND group_name = $2 AND user_id IS NULL
-            `,
-            [assetId, groupName, ordem, visivel, config],
-          )
-          if ((u.rowCount || 0) === 0) {
-            const i = await client.query(
-              `
-              INSERT INTO asset_assignments (asset_id, user_id, group_name, ordem, visivel, config)
-              SELECT $1, NULL, $2, $3, $4, $5
-              WHERE NOT EXISTS (
-                SELECT 1 FROM asset_assignments WHERE asset_id = $1 AND group_name = $2 AND user_id IS NULL
-              )
-              `,
-              [assetId, groupName, ordem, visivel, config],
-            )
-            total += i.rowCount || 0
-          } else {
-            total += u.rowCount || 0
-          }
-        }
-      }
-
-      return total
-    })
-
-    return jsonResponse(reply, 200, { ok: true, affected: inserted })
-  } catch (err) {
-    req.log.error({ err }, '[ADMIN] Erro ao bulk upsert asset_assignments')
-    return jsonResponse(reply, 500, { error: err?.message || String(err) })
-  }
-})
-
-app.get('/login', async (req, reply) => {
-  const nextRaw = (req.query?.next || '').toString().trim()
-  const html = `<!doctype html>
-<html lang="pt-BR">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Login - GeRot</title>
-    <style>
-      :root {
-        --bg0: #070a12;
-        --bg1: #0b1220;
-        --card: rgba(255,255,255,.06);
-        --border: rgba(255,255,255,.14);
-        --muted: rgba(255,255,255,.72);
-        --text: rgba(255,255,255,.92);
-        --primary: #6366f1;
-        --primary2: #8b5cf6;
-        --shadow: 0 20px 60px rgba(0,0,0,.55);
-      }
-
-      * { box-sizing: border-box; }
-      html, body { height: 100%; }
-      body {
-        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-        margin: 0;
-        color: var(--text);
-        background:
-          radial-gradient(900px 500px at 20% 10%, rgba(99,102,241,.22), transparent 60%),
-          radial-gradient(800px 500px at 90% 20%, rgba(139,92,246,.18), transparent 60%),
-          linear-gradient(180deg, var(--bg0), var(--bg1));
-      }
-
-      .wrap {
-        min-height: 100vh;
-        display: grid;
-        place-items: center;
-        padding: 28px 18px;
-      }
-
-      .shell {
-        width: 100%;
-        max-width: 440px;
-      }
-
-      .card {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 18px;
-        padding: 22px;
-        box-shadow: var(--shadow);
-        backdrop-filter: blur(10px);
-      }
-
-      .brand {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-bottom: 10px;
-      }
-
-      .logo {
-        width: 40px;
-        height: 40px;
-        border-radius: 12px;
-        background: linear-gradient(135deg, var(--primary), var(--primary2));
-        box-shadow: 0 10px 30px rgba(99,102,241,.28);
-      }
-
-      h1 {
-        margin: 0;
-        font-size: 22px;
-        line-height: 1.2;
-        letter-spacing: .2px;
-      }
-
-      .subtitle {
-        margin: 4px 0 18px;
-        font-size: 13px;
-        color: var(--muted);
-      }
-
-      label {
-        display: block;
-        font-size: 12px;
-        margin: 12px 0 6px;
-        color: rgba(255,255,255,.82);
-      }
-
-      .field {
-        width: 100%;
-        padding: 11px 12px;
-        border-radius: 12px;
-        border: 1px solid rgba(255,255,255,.16);
-        background: rgba(3,6,14,.55);
-        color: #fff;
-        outline: none;
-        transition: border-color .15s ease, box-shadow .15s ease, transform .05s ease;
-      }
-
-      .field:focus {
-        border-color: rgba(99,102,241,.7);
-        box-shadow: 0 0 0 4px rgba(99,102,241,.18);
-      }
-
-      .actions {
-        margin-top: 16px;
-        display: grid;
-        gap: 10px;
-      }
-
-      .btn {
-        width: 100%;
-        padding: 11px 12px;
-        border-radius: 12px;
-        border: 0;
-        background: linear-gradient(135deg, var(--primary), var(--primary2));
-        color: #fff;
-        font-weight: 700;
-        letter-spacing: .2px;
-        cursor: pointer;
-        transition: transform .06s ease, filter .15s ease;
-      }
-
-      .btn:hover { filter: brightness(1.05); }
-      .btn:active { transform: translateY(1px); }
-
-      .foot {
-        margin-top: 14px;
-        text-align: center;
-        font-size: 12px;
-        color: rgba(255,255,255,.58);
-      }
-    </style>
-  </head>
-  <body>
-    <div class="wrap">
-      <div class="shell">
-        <div class="card">
-          <div class="brand">
-            <div class="logo" aria-hidden="true"></div>
-            <div>
-              <h1>GeRot</h1>
-              <div class="subtitle">Acesse com seu usuário e senha</div>
-            </div>
-          </div>
-
-          <form method="POST" action="/login">
-            <input type="hidden" name="next" value="${nextRaw.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')}" />
-            <label for="username">Usuário</label>
-            <input class="field" id="username" name="username" autocomplete="username" placeholder="ex.: anaissiabraao" required />
-            <label for="password">Senha</label>
-            <input class="field" id="password" name="password" type="password" autocomplete="current-password" placeholder="Sua senha" required />
-            <div class="actions">
-              <button class="btn" type="submit">Entrar</button>
-            </div>
-          </form>
-
-          <div class="foot">© ${new Date().getFullYear()} GeRot</div>
-        </div>
-      </div>
-    </div>
-  </body>
-</html>`
-  reply.type('text/html; charset=utf-8')
-  return reply.send(html)
-})
-
-app.post('/login', async (req, reply) => {
-  if (!req.session || !sessionSecret) {
-    return jsonResponse(reply, 500, { error: 'SESSION_SECRET não configurada' })
-  }
-
-  const username = (req.body?.username || '').toString().trim()
-  const password = (req.body?.password || '').toString()
-  if (!username || !password) {
-    return jsonResponse(reply, 400, { error: 'Credenciais inválidas' })
-  }
-
-  try {
-    const user = await withTx(pool, async (client) => {
-      const cols = await client.query(
-        `
-        SELECT column_name, data_type
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND table_name = 'users_new'
-          AND column_name IN ('password_hash', 'password', 'email', 'nome_usuario', 'is_admin', 'permissions')
-        `,
-      )
-
-      const hasPasswordHash = cols.rows.some((r) => r.column_name === 'password_hash')
-      const passwordCol = cols.rows.find((r) => r.column_name === 'password')
-      const hasEmail = cols.rows.some((r) => r.column_name === 'email')
-      const hasNomeUsuario = cols.rows.some((r) => r.column_name === 'nome_usuario')
-      const hasIsAdmin = cols.rows.some((r) => r.column_name === 'is_admin')
-      const hasPermissions = cols.rows.some((r) => r.column_name === 'permissions')
-
-      const whereParts = [`LOWER(username) = LOWER($1)`]
-      if (hasEmail) whereParts.push(`LOWER(email) = LOWER($1)`)
-      if (hasNomeUsuario) whereParts.push(`LOWER(nome_usuario) = LOWER($1)`)
-      const whereSql = whereParts.join(' OR ')
-
-      if (hasPasswordHash) {
-        const isAdminExpr = hasIsAdmin ? 'is_admin' : 'false AS is_admin'
-        const permissionsExpr = hasPermissions ? 'permissions' : `'{}'::jsonb AS permissions`
-        const r = await client.query(
-          `
-          SELECT id, username, password_hash, role, nome_completo, departamento, is_active, ${isAdminExpr}, ${permissionsExpr}
-          FROM users_new
-          WHERE ${whereSql}
-          LIMIT 1
-          `,
-          [username],
-        )
-        return r.rows[0] || null
-      }
-
-      if (!passwordCol) {
-        throw new Error("Tabela users_new não possui coluna 'password_hash' nem 'password'")
-      }
-
-      const passwordExpr = passwordCol.data_type === 'bytea' ? `convert_from(password, 'UTF8')` : `password::text`
-      const isAdminExpr = hasIsAdmin ? 'is_admin' : 'false AS is_admin'
-      const permissionsExpr = hasPermissions ? 'permissions' : `'{}'::jsonb AS permissions`
-
-      const r = await client.query(
-        `
-        SELECT id,
-               username,
-               ${passwordExpr} AS password_hash,
-               role,
-               nome_completo,
-               departamento,
-               is_active,
-               ${isAdminExpr},
-               ${permissionsExpr}
-        FROM users_new
-        WHERE ${whereSql}
-        LIMIT 1
-        `,
-        [username],
-      )
-      return r.rows[0] || null
-    })
-
-    if (!user || user.is_active === false) {
-      return jsonResponse(reply, 401, { error: 'Usuário ou senha inválidos' })
-    }
-
-    const ok = await bcrypt.compare(password, user.password_hash)
-    if (!ok) {
-      return jsonResponse(reply, 401, { error: 'Usuário ou senha inválidos' })
-    }
-
-    const sessionUser = {
-      id: user.id,
-      username: user.username,
-      role: user.role || 'user',
-      is_admin: user.is_admin === true,
-      permissions: user.permissions && typeof user.permissions === 'object' ? user.permissions : {},
-      nome_completo: user.nome_completo || null,
-      departamento: user.departamento || null,
-    }
-
-    req.session.set('user', sessionUser)
-
-    const nextRaw = (req.body?.next || '').toString().trim()
-    if (nextRaw) {
-      try {
-        const allowedFront = (process.env.FRONTEND_DASHBOARD_URL || process.env.FRONTEND_URL || '').toString().trim()
-        if (allowedFront) {
-          const allowedOrigin = new URL(allowedFront).origin
-          const nextUrl = new URL(nextRaw)
-          const proto = (req.headers['x-forwarded-proto'] || req.protocol || 'http').toString().split(',')[0].trim()
-          const host = (req.headers['x-forwarded-host'] || req.headers.host || '').toString().split(',')[0].trim()
-          const backendOrigin = host ? new URL(`${proto}://${host}`).origin : ''
-          if (nextUrl.origin === allowedOrigin) {
-            return reply.redirect(nextUrl.toString())
-          }
-          if (backendOrigin && nextUrl.origin === backendOrigin) {
-            return reply.redirect(nextUrl.toString())
-          }
-        }
-      } catch {
-        // ignore invalid URL
-      }
-    }
-
-    return reply.redirect('/dashboard')
-  } catch (err) {
-    req.log.error({ err }, '[AUTH] Erro no login')
-    return jsonResponse(reply, 500, { error: err?.message || String(err) })
-  }
-})
-
-app.post('/logout', async (req, reply) => {
-  if (req.session) {
-    req.session.delete()
-  }
-  return reply.redirect('/login')
-})
-
-app.get('/api/me', async (req, reply) => {
-  const u = getSessionUser(req)
-  if (!u) {
-    return jsonResponse(reply, 401, { error: 'Not authenticated' })
-  }
-  return jsonResponse(reply, 200, {
-    user: {
-      ...u,
-      global_admin: isGlobalAdmin(u),
-    },
-  })
-})
-
-app.get('/api/indicadores-executivos', async (req, reply) => {
-  const sessionUser = requireLogin(req, reply)
-  if (!sessionUser) return
-
-  const database = (req.query?.database || 'azportoex').toString().trim() || 'azportoex'
-  const dataInicio = (req.query?.data_inicio || '').toString().trim()
-  const dataFim = (req.query?.data_fim || '').toString().trim()
-
-  const filters = {
-    runner: 'indicadores_executivos',
-    database,
-    data_inicio: dataInicio || null,
-    data_fim: dataFim || null,
-  }
-
-  try {
-    const assignments = await getAgentSetting(pool, 'dashboard_indicator_assignments')
-    const permissions = await getUserChartPermissions(pool, sessionUser)
-
-    const cached = await findCompletedIndicatorsRequest(pool, sessionUser.id, filters)
-    const cachedPayload = extractDashboardResultPayload(cached?.result_data)
-    if (cachedPayload) {
-      const normalized = normalizeIndicatorsPayloadForUser({
-        sessionUser,
-        rawPayload: cachedPayload,
-        assignments,
-      })
-      const semantic = buildSemanticDashboardResponse(normalized, permissions)
-      return jsonResponse(reply, 200, {
-        ...normalized,
-        permissions,
-        semantic,
-      })
-    }
-
-    const requestId = await insertIndicatorsRequest(pool, sessionUser.id, filters)
-    if (!requestId) {
-      return jsonResponse(reply, 500, { success: false, error: 'Falha ao criar request de indicadores' })
-    }
-
-    return jsonResponse(reply, 202, {
-      success: true,
-      status: 'pending',
-      request_id: requestId,
-      status_url: `/api/indicadores-executivos/status/${requestId}`,
-      permissions,
-    })
-  } catch (err) {
-    req.log.error({ err }, '[INDICADORES] Erro ao criar/consultar request')
-    return jsonResponse(reply, 500, { success: false, error: err?.message || String(err) })
-  }
-})
-
-app.get('/api/indicadores-executivos/status/:requestId', async (req, reply) => {
-  const sessionUser = requireLogin(req, reply)
-  if (!sessionUser) return
-
-  const requestId = Number.parseInt(req.params.requestId, 10)
-  if (!Number.isFinite(requestId)) {
-    return jsonResponse(reply, 400, { error: 'request_id inválido' })
-  }
-
-  try {
-    const assignments = await getAgentSetting(pool, 'dashboard_indicator_assignments')
-    const panelModels = await getAgentSetting(pool, 'dashboard_indicator_panel_models')
-    const permissions = await getUserChartPermissions(pool, sessionUser)
-    const out = await withTx(pool, async (client) => {
-      const q = await client.query(
-        `
-        SELECT id, status, result_data, error_message
-        FROM agent_dashboard_requests
-        WHERE id = $1 AND created_by = $2 AND category = 'indicadores_executivos'
-        `,
-        [requestId, sessionUser.id],
-      )
-      if (q.rows.length === 0) {
-        const e = new Error('Request não encontrado')
-        e.statusCode = 404
-        throw e
-      }
-      return q.rows[0]
-    })
-
-    const payload = extractDashboardResultPayload(out.result_data)
-    if (out.status === 'completed' && payload) {
-      const normalized = normalizeIndicatorsPayloadForUser({
-        sessionUser,
-        rawPayload: payload,
-        assignments,
-      })
-      const cards = buildIndicatorCards(normalized.panel_key, normalized.panel_data, panelModels)
-      const widgets = buildIndicatorWidgets(normalized.panel_key, normalized.panel_data, panelModels)
-      const semantic = buildSemanticDashboardResponse(normalized, permissions)
-      return jsonResponse(reply, 200, {
-        success: true,
-        status: out.status,
-        request_id: out.id,
-        data: {
-          ...normalized,
-          cards,
-          widgets,
-          permissions,
-          semantic,
-        },
-        error: out.error_message,
-      })
-    }
-
-    if (out.status === 'failed') {
-      return jsonResponse(reply, 200, {
-        success: false,
-        status: out.status,
-        request_id: out.id,
-        error: out.error_message,
-      })
-    }
-
-    return jsonResponse(reply, 200, {
-      success: true,
-      status: out.status,
-      request_id: out.id,
-      permissions,
-    })
-  } catch (err) {
-    const status = err?.statusCode || 500
-    if (status >= 500) {
-      req.log.error({ err }, '[INDICADORES] Erro ao consultar status')
-    }
-    return jsonResponse(reply, status, { error: err?.message || String(err) })
-  }
-})
-
-app.get('/api/dashboard/indicators', async (req, reply) => {
-  const sessionUser = requireLogin(req, reply)
-  if (!sessionUser) return
-
-  const database = (req.query?.database || 'azportoex').toString().trim() || 'azportoex'
-  const dataInicio = (req.query?.data_inicio || '').toString().trim()
-  const dataFim = (req.query?.data_fim || '').toString().trim()
-
-  const filters = {
-    runner: 'indicadores_executivos',
-    database,
-    data_inicio: dataInicio || null,
-    data_fim: dataFim || null,
-  }
-
-  try {
-    const assignments = await getAgentSetting(pool, 'dashboard_indicator_assignments')
-    const panelModels = await getAgentSetting(pool, 'dashboard_indicator_panel_models')
-    const permissions = await getUserChartPermissions(pool, sessionUser)
-    const cached = await findCompletedIndicatorsRequest(pool, sessionUser.id, filters)
-
-    const cachedPayload = extractDashboardResultPayload(cached?.result_data)
-    if (cachedPayload) {
-      const normalized = normalizeIndicatorsPayloadForUser({
-        sessionUser,
-        rawPayload: cachedPayload,
-        assignments,
-      })
-      const cards = buildIndicatorCards(normalized.panel_key, normalized.panel_data, panelModels)
-      const widgets = buildIndicatorWidgets(normalized.panel_key, normalized.panel_data, panelModels)
-      const semantic = buildSemanticDashboardResponse(normalized, permissions)
-      return jsonResponse(reply, 200, {
-        success: true,
-        indicators: normalized.indicators,
-        panel_key: normalized.panel_key ?? null,
-        panel_data: normalized.panel_data ?? null,
-        leitura_executiva: normalized.leitura_executiva ?? null,
-        total_operacoes: normalized.total_operacoes ?? null,
-        periodo: normalized.periodo ?? null,
-        database: normalized.database ?? null,
-        cards,
-        widgets,
-        permissions,
-        semantic,
-      })
-    }
-
-    const requestId = await insertIndicatorsRequest(pool, sessionUser.id, filters)
-    if (!requestId) {
-      return jsonResponse(reply, 500, { success: false, error: 'Falha ao criar request de indicadores' })
-    }
-
-    return jsonResponse(reply, 202, {
-      success: true,
-      status: 'pending',
-      request_id: requestId,
-      status_url: `/api/indicadores-executivos/status/${requestId}`,
-      permissions,
-    })
-  } catch (err) {
-    req.log.error({ err }, '[DASHBOARD] Erro ao montar indicadores')
-    return jsonResponse(reply, 500, { success: false, error: err?.message || String(err) })
-  }
-})
-
-app.put('/api/me', async (req, reply) => {
-  const sessionUser = requireLogin(req, reply)
-  if (!sessionUser) return
-
-  const nomeCompleto = req.body?.nome_completo !== undefined ? String(req.body.nome_completo || '').trim() : null
-  const email = req.body?.email !== undefined ? String(req.body.email || '').trim() : null
-  const departamento = req.body?.departamento !== undefined ? String(req.body.departamento || '').trim() : null
-
-  if (nomeCompleto === null && email === null && departamento === null) {
-    return jsonResponse(reply, 400, { error: 'Nenhum campo para atualizar' })
-  }
-
-  try {
-    const out = await withTx(pool, async (client) => {
-      const cols = await client.query(
-        `
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND table_name = 'users_new'
-          AND column_name IN ('nome_completo', 'email', 'departamento')
-        `,
-      )
-      const colset = new Set(cols.rows.map((r) => r.column_name))
-
-      const sets = []
-      const vals = []
-      let i = 1
-
-      if (nomeCompleto !== null && colset.has('nome_completo')) {
-        sets.push(`nome_completo = $${i++}`)
-        vals.push(nomeCompleto || null)
-      }
-      if (email !== null && colset.has('email')) {
-        sets.push(`email = $${i++}`)
-        vals.push(email || null)
-      }
-      if (departamento !== null && colset.has('departamento')) {
-        sets.push(`departamento = $${i++}`)
-        vals.push(departamento || null)
-      }
-
-      if (sets.length === 0) {
-        return { updated: false, user: sessionUser }
-      }
-
-      vals.push(sessionUser.id)
-      const res = await client.query(
-        `
-        UPDATE users_new
-        SET ${sets.join(', ')}, updated_at = NOW()
-        WHERE id = $${i}
-        RETURNING id, username, role, nome_completo, departamento
-        `,
-        vals,
-      )
-
-      const row = res.rows[0]
-      if (!row) {
-        throw new Error('Usuário não encontrado')
-      }
-
-      const nextSessionUser = {
-        id: row.id,
-        username: row.username,
-        role: row.role || 'user',
-        nome_completo: row.nome_completo || null,
-        departamento: row.departamento || null,
-      }
-
-      if (req.session) {
-        req.session.set('user', nextSessionUser)
-      }
-
-      return { updated: true, user: nextSessionUser }
-    })
-
-    return jsonResponse(reply, 200, out)
-  } catch (err) {
-    req.log.error({ err }, '[PROFILE] Erro ao atualizar /api/me')
-    return jsonResponse(reply, 500, { error: err?.message || String(err) })
-  }
-})
-
-app.put('/api/me/password', async (req, reply) => {
-  const sessionUser = requireLogin(req, reply)
-  if (!sessionUser) return
-
-  const currentPassword = String(req.body?.current_password || '')
-  const newPassword = String(req.body?.new_password || '')
-  if (!currentPassword || !newPassword) {
-    return jsonResponse(reply, 400, { error: 'current_password e new_password são obrigatórios' })
-  }
-  if (newPassword.length < 6) {
-    return jsonResponse(reply, 400, { error: 'A nova senha deve ter pelo menos 6 caracteres' })
-  }
-
-  try {
-    await withTx(pool, async (client) => {
-      const cols = await client.query(
-        `
-        SELECT column_name, data_type
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND table_name = 'users_new'
-          AND column_name IN ('password_hash', 'password')
-        `,
-      )
-
-      const hasPasswordHash = cols.rows.some((r) => r.column_name === 'password_hash')
-      const passwordCol = cols.rows.find((r) => r.column_name === 'password')
-      if (!hasPasswordHash && !passwordCol) {
-        throw new Error("Tabela users_new não possui coluna 'password_hash' nem 'password'")
-      }
-
-      const passwordExpr = hasPasswordHash
-        ? 'password_hash'
-        : passwordCol.data_type === 'bytea'
-          ? `convert_from(password, 'UTF8')`
-          : `password::text`
-
-      const res = await client.query(
-        `
-        SELECT id, ${passwordExpr} AS password_hash
-        FROM users_new
-        WHERE id = $1
-        LIMIT 1
-        `,
-        [sessionUser.id],
-      )
-      const row = res.rows[0]
-      if (!row) {
-        throw new Error('Usuário não encontrado')
-      }
-
-      const ok = await bcrypt.compare(currentPassword, row.password_hash)
-      if (!ok) {
-        const err = new Error('Senha atual inválida')
-        err.statusCode = 401
-        throw err
-      }
-
-      const nextHash = await bcrypt.hash(newPassword, 10)
-      if (hasPasswordHash) {
-        await client.query(
-          `UPDATE users_new SET password_hash = $1, updated_at = NOW() WHERE id = $2`,
-          [nextHash, sessionUser.id],
-        )
-      } else {
-        await client.query(
-          `UPDATE users_new SET password = $1, updated_at = NOW() WHERE id = $2`,
-          [nextHash, sessionUser.id],
-        )
-      }
-    })
-
-    return jsonResponse(reply, 200, { ok: true })
-  } catch (err) {
-    const status = err?.statusCode ? Number(err.statusCode) : 500
-    if (status >= 500) {
-      req.log.error({ err }, '[PROFILE] Erro ao atualizar senha')
-    }
-    return jsonResponse(reply, status, { error: err?.message || String(err) })
-  }
-})
-
-app.get('/team-dashboard', async (req, reply) => {
-  const sessionUser = requireLogin(req, reply)
-  if (!sessionUser) return
-
-  try {
-    const out = await withTx(pool, async (client) => {
-      const hasAssets = await client.query(
-        `
-        SELECT 1
-        FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_name = 'assets'
-        LIMIT 1
-        `,
-      )
-      if (hasAssets.rows.length === 0) {
-        return { regular_assets: [], internal_assets: [], is_admin: false }
-      }
-
-      const hasAssignments = await client.query(
-        `
-        SELECT 1
-        FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_name = 'asset_assignments'
-        LIMIT 1
-        `,
-      )
-
-      const isAdmin = isGlobalAdmin(sessionUser)
-      const userId = sessionUser.id
-      const dept = (sessionUser.departamento || '').toString().trim()
-
-      let rows
-      if (hasAssignments.rows.length > 0) {
-        const res = await client.query(
-          `
-          SELECT
-            a.id,
-            a.nome,
-            a.tipo,
-            a.categoria,
-            a.descricao,
-            a.status,
-            a.ordem_padrao,
-            a.resource_url,
-            a.embed_url,
-            a.config AS asset_config,
-            aa.config AS assignment_config,
-            aa.ordem AS assignment_order
-          FROM assets a
-          JOIN asset_assignments aa ON aa.asset_id = a.id
-          WHERE COALESCE(a.status, 'ativo') = 'ativo'
-            AND COALESCE(aa.visivel, true) = true
-            AND (
-              aa.user_id = $1
-              OR ($2 <> '' AND aa.group_name = $2)
-            )
-          ORDER BY COALESCE(aa.ordem, a.ordem_padrao, 0) ASC, a.id ASC
-          `,
-          [userId, dept],
-        )
-        rows = res.rows
-      } else {
-        const res = await client.query(
-          `
-          SELECT
-            id,
-            nome,
-            tipo,
-            categoria,
-            descricao,
-            status,
-            ordem_padrao,
-            resource_url,
-            embed_url,
-            config AS asset_config
-          FROM assets
-          WHERE COALESCE(status, 'ativo') = 'ativo'
-          ORDER BY COALESCE(ordem_padrao, 0) ASC, id ASC
-          `,
-        )
-        rows = res.rows
-      }
-
-      const regular = []
-      const internal = []
-
-      for (const row of rows) {
-        const tipo = (row.tipo || '').toString().toLowerCase()
-        if (tipo === 'pbi' || tipo === 'dashboard' || tipo === 'grafico' || tipo === 'rpa') {
-          regular.push(row)
-        } else {
-          internal.push(row)
-        }
-      }
-
-      internal.unshift({
-        id: 'internal_relatorio_entregas_376',
-        nome: 'Relatório de Performance (376)',
-        tipo: 'interno',
-        categoria: 'Performance',
-        descricao: 'Relatório de entregas por status com velocímetros (No Prazo / Fora do Prazo) alimentado pelo agente.',
-        status: 'ativo',
-        ordem_padrao: -100,
-        resource_url: null,
-        embed_url: null,
-        asset_config: { internal_key: 'relatorio_entregas_376' },
-      })
-
-      return {
-        regular_assets: regular,
-        internal_assets: internal,
-        is_admin: isAdmin,
-      }
-    })
-
-    const esc = (v) => String(v ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
-    const renderCard = (a) => {
-      const title = esc(a.nome || a.id)
-      const cat = esc(a.categoria || '')
-      const desc = esc(a.descricao || '')
-      const embed = (a.embed_url || '').toString().trim()
-      const res = (a.resource_url || '').toString().trim()
-      const link = embed || res
-      const linkHtml = link ? `<a class="btn" href="${esc(link)}" target="_blank" rel="noopener">Abrir</a>` : ''
-      return `
-        <div class="card">
-          <div class="card-h">
-            <div>
-              <div class="t">${title}</div>
-              <div class="m">${cat}</div>
-            </div>
-            ${linkHtml}
-          </div>
-          ${desc ? `<div class="d">${desc}</div>` : ''}
-        </div>
-      `
-    }
-
-    const html = `<!doctype html>
-<html lang="pt-BR">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>GeRot - Dashboard</title>
-    <style>
-      :root { --bg:#0b1220; --card: rgba(255,255,255,.06); --border: rgba(255,255,255,.14); --muted: rgba(255,255,255,.7); --text: rgba(255,255,255,.92); --primary:#6366f1; }
-      *{box-sizing:border-box}
-      body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:linear-gradient(180deg,#070a12,var(--bg));color:var(--text)}
-      .wrap{max-width:1100px;margin:0 auto;padding:22px 16px 40px}
-      .top{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px}
-      .h{font-size:18px;font-weight:800;letter-spacing:.2px}
-      .sub{color:var(--muted);font-size:12px;margin-top:4px}
-      .btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 12px;border-radius:12px;background:linear-gradient(135deg,var(--primary),#8b5cf6);color:#fff;text-decoration:none;font-weight:700;font-size:12px}
-      .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
-      .col{grid-column: span 12}
-      @media (min-width: 900px){.col{grid-column: span 6}}
-      .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;box-shadow:0 20px 60px rgba(0,0,0,.55)}
-      .card-h{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
-      .t{font-weight:800;font-size:14px;line-height:1.2}
-      .m{font-size:12px;color:var(--muted);margin-top:2px}
-      .d{margin-top:10px;color:rgba(255,255,255,.78);font-size:13px;line-height:1.4}
-      .section{margin:18px 0 10px;font-size:13px;color:rgba(255,255,255,.86);font-weight:700}
-      .hr{height:1px;background:rgba(255,255,255,.10);margin:14px 0}
-    </style>
-  </head>
-  <body>
-    <div class="wrap">
-      <div class="top">
-        <div>
-          <div class="h">GeRot</div>
-          <div class="sub">Olá, ${esc(sessionUser.nome_completo || sessionUser.username || 'usuário')}</div>
-        </div>
-        <a class="btn" href="/logout">Sair</a>
-      </div>
-
-      <div class="section">Dashboards</div>
-      <div class="grid">
-        ${(out.regular_assets || []).map(renderCard).join('')}
-      </div>
-
-      <div class="hr"></div>
-
-      <div class="section">Recursos internos</div>
-      <div class="grid">
-        ${(out.internal_assets || []).map(renderCard).join('')}
-      </div>
-    </div>
-  </body>
-</html>`
-
-    reply.type('text/html; charset=utf-8')
-    return reply.send(html)
-  } catch (err) {
-    req.log.error({ err }, '[UI] Erro ao renderizar team-dashboard')
-    return jsonResponse(reply, 500, { error: err?.message || String(err) })
-  }
-})
-
-app.get('/api/team-dashboard', async (req, reply) => {
-  const sessionUser = requireLogin(req, reply)
-  if (!sessionUser) return
-
-  try {
-    const out = await withTx(pool, async (client) => {
-      const hasAssets = await client.query(
-        `
-        SELECT 1
-        FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_name = 'assets'
-        LIMIT 1
-        `,
-      )
-      if (hasAssets.rows.length === 0) {
-        return { regular_assets: [], internal_assets: [], is_admin: false }
-      }
-
-      const hasAssignments = await client.query(
-        `
-        SELECT 1
-        FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_name = 'asset_assignments'
-        LIMIT 1
-        `,
-      )
-
-      const isAdmin = isGlobalAdmin(sessionUser)
-      const userId = sessionUser.id
-      const dept = (sessionUser.departamento || '').toString().trim()
-
-      let rows
-      if (hasAssignments.rows.length > 0) {
-        const res = await client.query(
-          `
-          SELECT
-            a.id,
-            a.nome,
-            a.tipo,
-            a.categoria,
-            a.descricao,
-            a.status,
-            a.ordem_padrao,
-            a.resource_url,
-            a.embed_url,
-            a.config AS asset_config,
-            aa.config AS assignment_config,
-            aa.ordem AS assignment_order
-          FROM assets a
-          JOIN asset_assignments aa ON aa.asset_id = a.id
-          WHERE COALESCE(a.status, 'ativo') = 'ativo'
-            AND COALESCE(aa.visivel, true) = true
-            AND (
-              aa.user_id = $1
-              OR ($2 <> '' AND aa.group_name = $2)
-            )
-          ORDER BY COALESCE(aa.ordem, a.ordem_padrao, 0) ASC, a.id ASC
-          `,
-          [userId, dept],
-        )
-        rows = res.rows
-      } else {
-        const res = await client.query(
-          `
-          SELECT
-            id,
-            nome,
-            tipo,
-            categoria,
-            descricao,
-            status,
-            ordem_padrao,
-            resource_url,
-            embed_url,
-            config AS asset_config
-          FROM assets
-          WHERE COALESCE(status, 'ativo') = 'ativo'
-          ORDER BY COALESCE(ordem_padrao, 0) ASC, id ASC
-          `,
-        )
-        rows = res.rows
-      }
-
-      const regular = []
-      const internal = []
-
-      for (const row of rows) {
-        const tipo = (row.tipo || '').toString().toLowerCase()
-        if (tipo === 'pbi' || tipo === 'dashboard' || tipo === 'grafico' || tipo === 'rpa') {
-          regular.push(row)
-        } else {
-          internal.push(row)
-        }
-      }
-
-      return {
-        regular_assets: regular,
-        internal_assets: internal,
-        is_admin: isAdmin,
-      }
-    })
-
-    return jsonResponse(reply, 200, out)
-  } catch (err) {
-    req.log.error({ err }, '[API] Erro ao montar team-dashboard')
-    return jsonResponse(reply, 500, { error: err?.message || String(err) })
-  }
-})
-
-app.get('/api/relatorio-entregas', async (req, reply) => {
-  const sessionUser = requireLogin(req, reply)
-  if (!sessionUser) return
-
-  const database = (req.query?.database || 'azportoex').toString().trim() || 'azportoex'
-  const dataInicio = (req.query?.data_inicio || '').toString().trim()
-  const dataFim = (req.query?.data_fim || '').toString().trim()
-
-  try {
-    const out = await withTx(pool, async (client) => {
-      const filters = {
-        runner: 'relatorio_entregas',
-        database,
-        data_inicio: dataInicio || null,
-        data_fim: dataFim || null,
-      }
-
-      const res = await client.query(
-        `
-        INSERT INTO agent_dashboard_requests (title, description, category, chart_types, filters, status, created_by)
-        VALUES ($1, $2, $3, $4::text[], $5::jsonb, 'pending', $6)
-        RETURNING id
-        `,
-        [
-          `Relatório Entregas ${database}${dataInicio || dataFim ? ` (${dataInicio || '...'} a ${dataFim || '...'})` : ''}`,
-          'Relatório de Entregas por Status (Script 376)',
-          'relatorio_entregas',
-          Array.isArray(['pie', 'table']) ? ['pie', 'table'] : [],
-          JSON.stringify(filters),
-          sessionUser.id,
-        ],
-      )
-
-      return { request_id: res.rows?.[0]?.id }
-    })
-
-    if (!out?.request_id) {
-      return jsonResponse(reply, 500, { error: 'Falha ao criar request do relatório' })
-    }
-    return jsonResponse(reply, 202, { success: true, request_id: out.request_id })
-  } catch (err) {
-    req.log.error({ err }, '[RELATORIO-ENTREGAS] Erro ao criar request')
-    return jsonResponse(reply, 500, { error: err?.message || String(err) })
-  }
-})
-
-app.get('/api/relatorio-entregas/status/:requestId', async (req, reply) => {
-  const sessionUser = requireLogin(req, reply)
-  if (!sessionUser) return
-
-  const requestId = Number.parseInt(req.params.requestId, 10)
-  if (!Number.isFinite(requestId)) {
-    return jsonResponse(reply, 400, { error: 'request_id inválido' })
-  }
-
-  try {
-    const out = await withTx(pool, async (client) => {
-      const q = await client.query(
-        `
-        SELECT id, status, result_data, error_message, category
-        FROM agent_dashboard_requests
-        WHERE id = $1 AND created_by = $2 AND category = 'relatorio_entregas'
-        `,
-        [requestId, sessionUser.id],
-      )
-      if (q.rows.length === 0) {
-        const e = new Error('Request não encontrado')
-        e.statusCode = 404
-        throw e
-      }
-      return q.rows[0]
-    })
-
-    return jsonResponse(reply, 200, {
-      success: true,
-      request_id: out.id,
-      status: out.status,
-      data: out.result_data,
-      error: out.error_message,
-    })
-  } catch (err) {
     const status = err?.statusCode || 500
     if (status >= 500) {
       req.log.error({ err }, '[RELATORIO-ENTREGAS] Erro ao consultar status')
@@ -3104,40 +931,17 @@ app.get('/api/agent/rpas/pending', async (req, reply) => {
   }
 })
 
-app.post('/api/agent/rpa/:rpaId/result', async (req, reply) => {
-  const rpaId = Number.parseInt(req.params.rpaId, 10)
-  const body = req.body || {}
+app.get('/api/relatorio-entregas/status/:requestId', async (req, reply) => {
+  const sessionUser = requireLogin(req, reply)
+  if (!sessionUser) return
 
-  if (!Number.isFinite(rpaId)) {
-    return jsonResponse(reply, 400, { error: 'rpa_id inválido' })
+  const requestId = Number.parseInt(req.params.requestId, 10)
+  if (!Number.isFinite(requestId)) {
+    return jsonResponse(reply, 400, { error: 'request_id inválido' })
   }
 
   try {
-    await withTx(pool, async (client) => {
-      const rpaRes = await client.query('SELECT id, created_by FROM agent_rpas WHERE id = $1', [rpaId])
-      if (rpaRes.rows.length === 0) {
-        const e = new Error('RPA não encontrada')
-        e.statusCode = 404
-        throw e
-      }
-      const rpa = rpaRes.rows[0]
-
-      const success = Boolean(body.success)
-      const finalStatus = success ? 'completed' : 'failed'
-
-      let resultData = body.data
-      if (!Array.isArray(resultData)) {
-        resultData = []
-      }
-      if (resultData.length > 1000) {
-        resultData = resultData.slice(0, 1000)
-      }
-
-      const payload = {
-        data: resultData,
-        row_count: body.row_count || 0,
-        source: 'agent_local',
-      }
+    const out = await withTx(pool, async (client) => {
 
       await client.query(
         `

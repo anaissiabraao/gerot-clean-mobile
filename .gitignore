@@ -84,3 +84,13 @@ node_modules/.vite/
 
 .env
 *.env
+.env.local
+.env.local.example
+.env.example
+.env.example.local
+
+portoex-insights-49/
+portoex-insights-49/
+portoex-insights-49/
+portoex-insights-49/
+.md

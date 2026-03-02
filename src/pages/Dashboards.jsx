@@ -41,8 +41,15 @@ function getTypeVariant(type) {
   return 'default'
 }
 
+const RELATORIO_FILTER_DEFAULTS = {
+  data_inicio: '',
+  data_fim: '',
+  database: '',
+}
+
 export default function Dashboards() {
   const indicatorsCacheRef = useRef(new Map())
+  const relatorioResultadosCacheRef = useRef(new Map())
   const relatorioCacheRef = useRef(new Map())
 
   const [regularAssets, setRegularAssets] = useState([])
@@ -87,6 +94,14 @@ export default function Dashboards() {
   const [occLoading, setOccLoading] = useState(false)
   const [occError, setOccError] = useState(null)
   const [occData, setOccData] = useState(null)
+  const [relatorioFilters, setRelatorioFilters] = useState({
+    data_inicio: '',
+    data_fim: '',
+    database: '',
+  })
+  const [relatorioLoading, setRelatorioLoading] = useState(false)
+  const [relatorioError, setRelatorioError] = useState(null)
+  const [relatorioData, setRelatorioData] = useState(null)
 
   useEffect(() => {
     loadTeamDashboard()
@@ -120,6 +135,51 @@ export default function Dashboards() {
     setOccData(null)
     setOccError(null)
   }, [])
+
+  const handleRelatorioFilterChange = useCallback((id, value) => {
+    setRelatorioFilters((prev) => ({ ...prev, [id]: value }))
+  }, [])
+
+  const handleRelatorioReset = useCallback(() => {
+    setRelatorioFilters({ ...RELATORIO_FILTER_DEFAULTS })
+    setRelatorioData(null)
+    setRelatorioError(null)
+  }, [])
+
+  const handleRelatorioApply = useCallback(async () => {
+    setRelatorioLoading(true)
+    setRelatorioError(null)
+    setRelatorioData(null)
+
+    try {
+      const params = {}
+      if (relatorioFilters.data_inicio) params.data_inicio = relatorioFilters.data_inicio
+      if (relatorioFilters.data_fim) params.data_fim = relatorioFilters.data_fim
+      if (relatorioFilters.database) params.database = relatorioFilters.database
+
+      const cacheKey = JSON.stringify(params)
+      const cached = relatorioResultadosCacheRef.current.get(cacheKey)
+      if (cached) {
+        setRelatorioData(cached)
+        return
+      }
+
+      const qs = new URLSearchParams(params).toString()
+      const url = qs ? `${api.dashboardRelatorioResultados}?${qs}` : api.dashboardRelatorioResultados
+      const res = await httpGet(url)
+      const payload = res?.payload ?? res
+      if (!payload || typeof payload !== 'object') {
+        throw new Error('Resposta inválida do relatório de resultados')
+      }
+
+      relatorioResultadosCacheRef.current.set(cacheKey, payload)
+      setRelatorioData(payload)
+    } catch (e) {
+      setRelatorioError(e?.message || 'Erro ao carregar relatório de resultados')
+    } finally {
+      setRelatorioLoading(false)
+    }
+  }, [relatorioFilters])
 
   const formatIndicatorValue = useCallback((value, format) => {
     const fmt = (format || 'number').toString()
@@ -193,6 +253,25 @@ export default function Dashboards() {
       },
     ],
     [occFilters]
+  )
+
+  const relatorioFilterConfig = useMemo(
+    () => [
+      { id: 'data_inicio', label: 'Data Início', type: 'date', value: relatorioFilters.data_inicio },
+      { id: 'data_fim', label: 'Data Fim', type: 'date', value: relatorioFilters.data_fim },
+      {
+        id: 'database',
+        label: 'Base de Dados',
+        type: 'select',
+        value: relatorioFilters.database,
+        options: [
+          { value: '', label: 'Padrão (azportoex)' },
+          { value: 'azportoex', label: 'MATRIZ (azportoex)' },
+          { value: 'portoexsp', label: 'FILIAL (portoexsp)' },
+        ],
+      },
+    ],
+    [relatorioFilters]
   )
 
   const handleIndApply = useCallback(async () => {
@@ -327,6 +406,84 @@ export default function Dashboards() {
       datasets: [{ label: opts.label || 'Qtd', data }],
     }
   }, [])
+
+  const relatorioKpiCards = useMemo(() => {
+    const kpis = relatorioData?.kpis
+    if (!kpis) return []
+    return [
+      { key: 'total_entregas', label: 'Total de entregas', value: kpis.total_entregas, format: 'number' },
+      { key: 'custo_total', label: 'Custo total (R$)', value: kpis.custo_total, format: 'currency' },
+      { key: 'entregas_no_prazo_percent', label: 'No prazo (%)', value: kpis.entregas_no_prazo_percent, format: 'percent' },
+      { key: 'reprogramacao_percent', label: 'Reprogramações (%)', value: kpis.reprogramacao_percent, format: 'percent' },
+    ]
+  }, [relatorioData])
+
+  const buildRankingChart = useCallback((items, title, chartId) => {
+    if (!Array.isArray(items) || items.length === 0) return null
+    return {
+      id: chartId,
+      type: 'bar',
+      title,
+      labels: items.map((item) => item.name || '—'),
+      datasets: [
+        {
+          key: `${chartId}-value`,
+          label: 'Quantidade',
+          data: items.map((item) => Number(item.value) || 0),
+        },
+      ],
+    }
+  }, [])
+
+  const relatorioClientRankingChart = useMemo(
+    () => buildRankingChart(relatorioData?.rankings?.clientes, 'Ranking de clientes', 'relatorio-ranking-clientes'),
+    [buildRankingChart, relatorioData],
+  )
+  const relatorioAgenteRankingChart = useMemo(
+    () => buildRankingChart(relatorioData?.rankings?.agentes, 'Ranking de agentes', 'relatorio-ranking-agentes'),
+    [buildRankingChart, relatorioData],
+  )
+
+  const relatorioComparativoChart = useMemo(() => {
+    const comparativos = relatorioData?.comparativos_mensais
+    if (!Array.isArray(comparativos) || comparativos.length === 0) return null
+    const labels = comparativos.map((item) => item.month)
+    return {
+      id: 'relatorio-comparativo-mensal',
+      type: 'line',
+      title: 'Comparativo mensal',
+      labels,
+      datasets: [
+        { key: 'total', label: 'Entregas', data: comparativos.map((item) => Number(item.total) || 0) },
+        { key: 'custo', label: 'Custo (R$)', data: comparativos.map((item) => Number(item.custo) || 0) },
+      ],
+    }
+  }, [relatorioData])
+
+  const relatorioReprogramacaoChart = useMemo(() => {
+    const comparativos = relatorioData?.comparativos_mensais
+    if (!Array.isArray(comparativos) || comparativos.length === 0) return null
+    return {
+      id: 'relatorio-reprogramacoes',
+      type: 'line',
+      title: 'Reprogramações (%)',
+      labels: comparativos.map((item) => item.month),
+      datasets: [
+        {
+          key: 'reprogramacao_percent',
+          label: '% de reprogramações',
+          data: comparativos.map((item) => Number(item.reprogramacao_percent) || 0),
+        },
+      ],
+    }
+  }, [relatorioData])
+
+  const relatorioDreRows = useMemo(
+    () => (Array.isArray(relatorioData?.dre) ? relatorioData.dre : []),
+    [relatorioData],
+  )
+
+  const relatorioGaugeWidgets = useMemo(() => (Array.isArray(relatorioData?.gauges) ? relatorioData.gauges : []), [relatorioData])
 
   useEffect(() => {
     if (!indRequestId || !indStatusUrl) return
