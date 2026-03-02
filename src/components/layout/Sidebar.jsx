@@ -12,6 +12,7 @@ import {
   Sun,
   X,
   Settings,
+  TrendingUp,
 } from 'lucide-react'
 import env from '../../config/env'
 import { useAuth } from '../../context/useAuth'
@@ -19,6 +20,7 @@ import { useAuth } from '../../context/useAuth'
 const navItems = [
   { label: 'Início', path: '/', icon: Home },
   { label: 'Dashboards', path: '/dashboards', icon: LayoutDashboard },
+  { label: 'Insights', path: '/insights', icon: TrendingUp },
   { label: 'Indicadores', path: '/indicadores', icon: BarChart3 },
   { label: 'Chat IA', path: '/chat', icon: MessageSquare },
   { label: 'Agenda CD', path: '/agenda', icon: Calendar },

@@ -5,6 +5,7 @@ import { MainLayout } from './components/layout/MainLayout'
 import env from './config/env'
 import Home from './pages/Home'
 import Dashboards from './pages/Dashboards'
+import Insights from './pages/Insights'
 import Indicadores from './pages/Indicadores'
 import Chat from './pages/Chat'
 import Agenda from './pages/Agenda'
@@ -70,6 +71,18 @@ function App() {
               </RequireAuth>
             ) : (
               <Dashboards />
+            )
+          }
+        />
+        <Route
+          path="/insights"
+          element={
+            env.apiBaseUrl ? (
+              <RequireAuth user={user}>
+                <Insights />
+              </RequireAuth>
+            ) : (
+              <Insights />
             )
           }
         />
