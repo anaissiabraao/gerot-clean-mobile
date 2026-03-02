@@ -68,6 +68,7 @@ const frontendOrigin = (() => {
     return ''
   }
 })()
+const seedAdminKey = (process.env.SEED_ADMIN_KEY || '').toString().trim()
 
 app.get('/login', async (req, reply) => {
   const next = (req.query?.next || '').toString()
@@ -188,6 +189,52 @@ app.post('/logout', async (req, reply) => {
     req.log.error({ err }, '[AUTH] Falha ao limpar sessão')
   }
   return jsonResponse(reply, 200, { success: true })
+})
+
+// Admin seeder (protected by SEED_ADMIN_KEY header x-seed-key)
+app.post('/admin/seed-admin', async (req, reply) => {
+  if (!seedAdminKey) {
+    return jsonResponse(reply, 404, { error: 'Indisponível' })
+  }
+  const key = (req.headers['x-seed-key'] || '').toString().trim()
+  if (!key || key !== seedAdminKey) {
+    return jsonResponse(reply, 401, { error: 'Chave inválida' })
+  }
+
+  const body = req.body || {}
+  const username = (body.username || 'admin').toString().trim().toLowerCase() || 'admin'
+  const email = (body.email || 'admin@gerot').toString().trim() || 'admin@gerot'
+  const password = (body.password || '').toString()
+
+  if (!password) {
+    return jsonResponse(reply, 400, { error: 'password obrigatório' })
+  }
+
+  try {
+    const hash = await bcrypt.hash(password, 12)
+    await withTx(pool, async (client) => {
+      await client.query(
+        `
+        INSERT INTO users_new (username, email, password, role, is_admin, permissions, is_active, first_login)
+        VALUES ($1, $2, convert_to($3, 'utf8'), 'admin', true, '{}'::jsonb, true, false)
+        ON CONFLICT (username)
+        DO UPDATE SET
+          password = excluded.password,
+          role = 'admin',
+          is_admin = true,
+          permissions = '{}'::jsonb,
+          is_active = true,
+          first_login = false
+        `,
+        [username, email, hash],
+      )
+    })
+
+    return jsonResponse(reply, 200, { success: true, username })
+  } catch (err) {
+    req.log.error({ err }, '[AUTH] Falha ao semear admin')
+    return jsonResponse(reply, 500, { error: 'Erro ao semear admin' })
+  }
 })
 
 function getSessionUser(req) {
