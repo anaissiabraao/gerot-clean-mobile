@@ -61,14 +61,33 @@ app.addContentTypeParser(
 const pool = createPool()
 
 const frontendUrl = (process.env.FRONTEND_URL || process.env.FRONTEND_APP_URL || '').trim().replace(/\/+$/, '')
+const frontendOrigin = (() => {
+  try {
+    return frontendUrl ? new URL(frontendUrl).origin : ''
+  } catch {
+    return ''
+  }
+})()
 
 app.get('/login', async (req, reply) => {
   const next = (req.query?.next || '').toString()
   const frontendLogin = frontendUrl ? `${frontendUrl}/login` : ''
   const nextIsFrontendLogin = frontendLogin && next.startsWith(frontendLogin)
 
+  let safeNext = ''
+  if (next && !nextIsFrontendLogin) {
+    try {
+      const parsed = new URL(next, frontendOrigin || undefined)
+      if (!frontendOrigin || parsed.origin === frontendOrigin) {
+        safeNext = parsed.pathname + parsed.search
+      }
+    } catch {
+      // ignore invalid URL; drop next
+    }
+  }
+
   if (frontendUrl) {
-    const target = `${frontendUrl}/login${next && !nextIsFrontendLogin ? `?next=${encodeURIComponent(next)}` : ''}`
+    const target = `${frontendUrl}/login${safeNext ? `?next=${encodeURIComponent(safeNext)}` : ''}`
     return reply.code(302).header('location', target).send()
   }
 
