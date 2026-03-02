@@ -26,3 +26,7 @@ export function CardTitle({ children, className }) {
 export function CardDescription({ children, className }) {
   return <p className={cn('text-xs text-muted-foreground mt-0.5', className)}>{children}</p>
 }
+
+export function CardContent({ children, className }) {
+  return <div className={cn('', className)}>{children}</div>
+}
