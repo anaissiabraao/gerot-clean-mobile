@@ -248,8 +248,8 @@ app.post('/admin/seed-admin', async (req, reply) => {
 
     return jsonResponse(reply, 200, { success: true, username })
   } catch (err) {
-    req.log.error({ err }, '[AUTH] Falha ao semear admin')
-    return jsonResponse(reply, 500, { error: 'Erro ao semear admin' })
+    req.log.error({ err, body }, '[AUTH] Falha ao semear admin')
+    return jsonResponse(reply, 500, { error: 'Erro ao semear admin', details: err.message })
   }
 })
 
