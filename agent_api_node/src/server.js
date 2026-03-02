@@ -1119,23 +1119,22 @@ app.get('/api/agent/rpas/pending', async (req, reply) => {
             ELSE 4
           END,
           r.created_at ASC
-        LIMIT 10
+        LIMIT 5
         `,
       )
 
-      const rows = q.rows
-      for (const row of rows) {
+      // Simplificar update - apenas marcar como running
+      if (q.rows.length > 0) {
+        const ids = q.rows.map(row => row.id)
         await client.query(
-          `
-          UPDATE agent_rpas
-          SET status = 'running', executed_at = NOW()
-          WHERE id = $1 AND status = 'pending'
-          `,
-          [row.id],
+          `UPDATE agent_rpas 
+           SET status = 'running', executed_at = NOW() 
+           WHERE id = ANY($1) AND status = 'pending'`,
+          [ids]
         )
       }
 
-      return rows
+      return q.rows
     })
 
     return jsonResponse(reply, 200, { rpas })
@@ -1196,38 +1195,35 @@ app.get('/api/agent/dashboards/pending', async (req, reply) => {
 
   try {
     const dashboards = await withTx(pool, async (client) => {
-      await client.query('ALTER TABLE agent_dashboard_requests ADD COLUMN IF NOT EXISTS leased_by TEXT;')
-      await client.query('ALTER TABLE agent_dashboard_requests ADD COLUMN IF NOT EXISTS leased_until TIMESTAMPTZ;')
-      await client.query('CREATE INDEX IF NOT EXISTS idx_agent_dashboard_requests_lease ON agent_dashboard_requests(leased_until);')
-
+      // Simplificar query sem ALTER TABLE dinâmicos
       const q = await client.query(
         `
-        WITH to_claim AS (
-          SELECT id
-          FROM agent_dashboard_requests
-          WHERE status = 'pending'
-            AND (leased_until IS NULL OR leased_until < NOW())
-            AND filters IS NOT NULL
-            AND (
-                  filters::text ILIKE '%"query"%'
-               OR filters::text ILIKE '%"procedure"%'
-               OR filters::text ILIKE '%"runner"%'
-            )
-          ORDER BY created_at ASC
-          FOR UPDATE SKIP LOCKED
-          LIMIT $1
-        )
-        UPDATE agent_dashboard_requests d
-        SET status = 'processing',
-            leased_by = $2,
-            leased_until = NOW() + INTERVAL '20 minutes',
-            updated_at = NOW()
-        FROM to_claim c
-        WHERE d.id = c.id
-        RETURNING d.id, d.title, d.description, d.category, d.chart_types, d.filters, d.created_by
+        SELECT id, title, description, category, chart_types, filters, created_by
+        FROM agent_dashboard_requests
+        WHERE status = 'pending'
+          AND (leased_until IS NULL OR leased_until < NOW())
+          AND filters IS NOT NULL
+          AND (
+                filters::text ILIKE '%"query"%'
+             OR filters::text ILIKE '%"procedure"%'
+             OR filters::text ILIKE '%"runner"%'
+          )
+        ORDER BY created_at ASC
+        LIMIT $1
         `,
-        [limit, agentId],
+        [limit],
       )
+
+      // Atualizar status sem complexidade de lease
+      if (q.rows.length > 0) {
+        const ids = q.rows.map(row => row.id)
+        await client.query(
+          `UPDATE agent_dashboard_requests 
+           SET status = 'processing', updated_at = NOW() 
+           WHERE id = ANY($1)`,
+          [ids]
+        )
+      }
 
       return q.rows
     })
