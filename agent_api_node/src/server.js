@@ -220,7 +220,7 @@ app.post('/admin/seed-admin', async (req, reply) => {
 
   const username = (body.username || 'admin').toString().trim().toLowerCase() || 'admin'
   const email = (body.email || 'admin@gerot').toString().trim() || 'admin@gerot'
-  const password = (body.password || '').toString()
+  const password = (body.password || process.env.SEED_ADMIN_PASSWORD || '').toString()
 
   if (!password) {
     return jsonResponse(reply, 400, { error: 'password obrigatório' })
