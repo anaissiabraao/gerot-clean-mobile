@@ -134,8 +134,20 @@ app.post('/login', async (req, reply) => {
       return jsonResponse(reply, 401, { error: 'Credenciais inválidas' })
     }
 
-    const storedHash = row.password_hash || (Buffer.isBuffer(row.password) ? row.password.toString() : row.password)
-    if (!storedHash || !(await bcrypt.compare(password, storedHash.toString()))) {
+    const rawHash = row.password_hash || (Buffer.isBuffer(row.password) ? row.password.toString() : row.password)
+    const storedHash = rawHash ? rawHash.toString() : ''
+
+    if (!storedHash || !storedHash.startsWith('$2')) {
+      return jsonResponse(reply, 401, { error: 'Credenciais inválidas' })
+    }
+
+    try {
+      const ok = await bcrypt.compare(password, storedHash)
+      if (!ok) {
+        return jsonResponse(reply, 401, { error: 'Credenciais inválidas' })
+      }
+    } catch (err) {
+      req.log.error({ err }, '[AUTH] Hash inválido/bcrypt erro')
       return jsonResponse(reply, 401, { error: 'Credenciais inválidas' })
     }
 
