@@ -120,7 +120,7 @@ app.post('/login', async (req, reply) => {
     const row = await withTx(pool, async (client) => {
       const res = await client.query(
         `
-        SELECT id, username, email, role, is_admin, permissions, password, password_hash
+        SELECT id, username, email, role, is_admin, permissions, password
         FROM users_new
         WHERE LOWER(username) = $1 OR LOWER(email) = $1
         LIMIT 1
@@ -134,7 +134,7 @@ app.post('/login', async (req, reply) => {
       return jsonResponse(reply, 401, { error: 'Credenciais inválidas' })
     }
 
-    const rawHash = row.password_hash || (Buffer.isBuffer(row.password) ? row.password.toString() : row.password)
+    const rawHash = Buffer.isBuffer(row.password) ? row.password.toString() : row.password
     const storedHash = rawHash ? rawHash.toString() : ''
 
     if (!storedHash || !storedHash.startsWith('$2')) {
