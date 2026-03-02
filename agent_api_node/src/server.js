@@ -67,7 +67,7 @@ app.get('/login', async (req, reply) => {
 
   if (frontendUrl) {
     const target = `${frontendUrl}/login${next ? `?next=${encodeURIComponent(next)}` : ''}`
-    return reply.redirect(302, target)
+    return reply.code(302).header('location', target).send()
   }
 
   reply.header('content-type', 'text/html; charset=utf-8')
