@@ -105,6 +105,79 @@ app.get('/login', async (req, reply) => {
   )
 })
 
+app.post('/login', async (req, reply) => {
+  const body = req.body || {}
+  const usernameRaw = (body.username || body.email || '').toString().trim()
+  const password = (body.password || '').toString()
+
+  if (!usernameRaw || !password) {
+    return jsonResponse(reply, 400, { error: 'username e password são obrigatórios' })
+  }
+
+  const username = usernameRaw.toLowerCase()
+
+  try {
+    const row = await withTx(pool, async (client) => {
+      const res = await client.query(
+        `
+        SELECT id, username, email, role, is_admin, permissions, password, password_hash
+        FROM users_new
+        WHERE LOWER(username) = $1 OR LOWER(email) = $1
+        LIMIT 1
+        `,
+        [username],
+      )
+      return res.rows?.[0] || null
+    })
+
+    if (!row) {
+      return jsonResponse(reply, 401, { error: 'Credenciais inválidas' })
+    }
+
+    const storedHash = row.password_hash || (Buffer.isBuffer(row.password) ? row.password.toString() : row.password)
+    if (!storedHash || !(await bcrypt.compare(password, storedHash.toString()))) {
+      return jsonResponse(reply, 401, { error: 'Credenciais inválidas' })
+    }
+
+    if (req.session && typeof req.session.set === 'function') {
+      req.session.set('user', {
+        id: row.id,
+        username: row.username,
+        email: row.email,
+        role: row.role,
+        is_admin: row.is_admin,
+        permissions: row.permissions || {},
+      })
+    }
+
+    return jsonResponse(reply, 200, {
+      success: true,
+      user: {
+        id: row.id,
+        username: row.username,
+        email: row.email,
+        role: row.role,
+        is_admin: row.is_admin,
+        permissions: row.permissions || {},
+      },
+    })
+  } catch (err) {
+    req.log.error({ err }, '[AUTH] Falha no login')
+    return jsonResponse(reply, 500, { error: 'Erro ao autenticar' })
+  }
+})
+
+app.post('/logout', async (req, reply) => {
+  try {
+    if (req.session && typeof req.session.delete === 'function') {
+      req.session.delete()
+    }
+  } catch (err) {
+    req.log.error({ err }, '[AUTH] Falha ao limpar sessão')
+  }
+  return jsonResponse(reply, 200, { success: true })
+})
+
 function getSessionUser(req) {
   return (req.session && typeof req.session.get === 'function' ? req.session.get('user') : null) || null
 }
