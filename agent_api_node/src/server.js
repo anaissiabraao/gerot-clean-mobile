@@ -231,18 +231,19 @@ app.post('/admin/seed-admin', async (req, reply) => {
     await withTx(pool, async (client) => {
       await client.query(
         `
-        INSERT INTO users_new (username, email, password, role, is_admin, permissions, is_active, first_login)
-        VALUES ($1, $2, $3, 'admin', true, '{}'::jsonb, true, false)
+        INSERT INTO users_new (username, email, password, nome_completo, role, is_admin, permissions, is_active, first_login)
+        VALUES ($1, $2, $3, $4, 'admin', true, '{}'::jsonb, true, false)
         ON CONFLICT (username)
         DO UPDATE SET
           password = excluded.password,
+          nome_completo = excluded.nome_completo,
           role = 'admin',
           is_admin = true,
           permissions = '{}'::jsonb,
           is_active = true,
           first_login = false
         `,
-        [username, email, hash],
+        [username, email, hash, email],
       )
     })
 
