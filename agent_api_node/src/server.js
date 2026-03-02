@@ -64,9 +64,11 @@ const frontendUrl = (process.env.FRONTEND_URL || process.env.FRONTEND_APP_URL ||
 
 app.get('/login', async (req, reply) => {
   const next = (req.query?.next || '').toString()
+  const frontendLogin = frontendUrl ? `${frontendUrl}/login` : ''
+  const nextIsFrontendLogin = frontendLogin && next.startsWith(frontendLogin)
 
   if (frontendUrl) {
-    const target = `${frontendUrl}/login${next ? `?next=${encodeURIComponent(next)}` : ''}`
+    const target = `${frontendUrl}/login${next && !nextIsFrontendLogin ? `?next=${encodeURIComponent(next)}` : ''}`
     return reply.code(302).header('location', target).send()
   }
 
