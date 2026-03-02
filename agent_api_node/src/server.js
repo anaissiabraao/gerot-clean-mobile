@@ -8,7 +8,7 @@ import bcrypt from 'bcryptjs'
 
 import { createPool, withTx } from './db.js'
 import { verifyAgentApiKey } from './auth.js'
-import { clampInt, jsonResponse, parseJsonFromBuffer } from './utils.js'
+import { clampInt, jsonResponse, parseJsonFromBuffer, parsePossiblyGzippedJson } from './utils.js'
 
 const app = Fastify({
   logger: true,
@@ -199,7 +199,10 @@ app.post('/admin/seed-admin', async (req, reply) => {
     return jsonResponse(reply, 401, { error: 'Chave inválida' })
   }
 
-  const body = req.body || {}
+  // Fallback para casos em que o parser de JSON falhe na borda (Railway/CDN)
+  const parsedFallback = parsePossiblyGzippedJson(req) || {}
+  const body = req.body && Object.keys(req.body).length ? req.body : parsedFallback
+
   const username = (body.username || 'admin').toString().trim().toLowerCase() || 'admin'
   const email = (body.email || 'admin@gerot').toString().trim() || 'admin@gerot'
   const password = (body.password || '').toString()
