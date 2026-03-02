@@ -151,14 +151,7 @@ app.post('/login', async (req, reply) => {
     }
 
     if (req.session && typeof req.session.set === 'function') {
-      req.session.set('user', {
-        id: row.id,
-        username: row.username,
-        email: row.email,
-        role: row.role,
-        is_admin: row.is_admin,
-        permissions: row.permissions || {},
-      })
+      req.session.set('userId', row.id)
     }
 
     return jsonResponse(reply, 200, {
@@ -254,8 +247,34 @@ app.post('/admin/seed-admin', async (req, reply) => {
   }
 })
 
-function getSessionUser(req) {
-  return (req.session && typeof req.session.get === 'function' ? req.session.get('user') : null) || null
+app.get('/api/me', async (req, reply) => {
+  const user = await getSessionUser(req)
+  if (!user) {
+    return jsonResponse(reply, 401, { error: 'Login obrigatório' })
+  }
+  return jsonResponse(reply, 200, { user })
+})
+
+async function getSessionUser(req) {
+  const userId = req.session && typeof req.session.get === 'function' ? req.session.get('userId') : null
+  if (!userId) return null
+  try {
+    const row = await withTx(pool, async (client) => {
+      const res = await client.query(
+        `
+        SELECT id, username, email, role, is_admin, permissions
+        FROM users_new
+        WHERE id = $1
+        LIMIT 1
+        `,
+        [userId],
+      )
+      return res.rows?.[0] || null
+    })
+    return row
+  } catch {
+    return null
+  }
 }
 
 function isGlobalAdmin(user) {
