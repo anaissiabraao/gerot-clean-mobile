@@ -669,10 +669,6 @@ function normalizeRelatorioFilters(raw) {
   }
 }
 
-function buildRelatorioCacheKey(filters) {
-  return `relatorio-resultados:${filters.database}:${filters.data_inicio}:${filters.data_fim}`
-}
-
 async function buildRelatorioResultados(filters) {
   const startDate = filters.data_inicio
   const endDate = filters.data_fim
