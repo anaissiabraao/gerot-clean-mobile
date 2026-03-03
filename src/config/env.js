@@ -13,6 +13,7 @@ function normalizeBaseUrl(rawUrl) {
 const backendUrl = normalizeBaseUrl(import.meta.env.VITE_BACKEND_URL ?? '')
 const apiBaseUrl = normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL ?? backendUrl)
 const agentApiKey = (import.meta.env.VITE_AGENT_API_KEY ?? '').toString().trim()
+const insightsAppUrl = normalizeBaseUrl(import.meta.env.VITE_PORTOEX_INSIGHTS_URL ?? '')
 
 const env = {
   backendUrl,
@@ -22,6 +23,7 @@ const env = {
   requestTimeoutMs: Number(import.meta.env.VITE_REQUEST_TIMEOUT_MS ?? 10000),
   redirectToBackendLogin: String(import.meta.env.VITE_REDIRECT_TO_BACKEND_LOGIN ?? 'false').toLowerCase() === 'true',
   forceLogin: String(import.meta.env.VITE_FORCE_LOGIN ?? 'false').toLowerCase() === 'true',
+  insightsAppUrl,
 }
 
 export default env

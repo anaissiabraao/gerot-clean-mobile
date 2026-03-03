@@ -1,72 +1,61 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { httpGet, httpPost, httpPut, httpDelete } from '../services/httpClient'
 
 const OccurrenceContext = createContext()
 
+const API_BASE = '/api/insights/occurrences'
+
 export function OccurrenceProvider({ children }) {
   const [occurrences, setOccurrences] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Mock data para demonstração
-  useEffect(() => {
+  const loadOccurrences = useCallback(async () => {
     setLoading(true)
-    setTimeout(() => {
-      setOccurrences([
-        {
-          id: 1,
-          data: '2024-01-15',
-          categoria: 'cliente',
-          subcategoria: 'Mudança de endereço',
-          responsavel: 'João Silva',
-          descricao: 'Cliente solicitou mudança de endereço de entrega',
-          impacto_financeiro: 150.00,
-          impacto_operacional: 'Alto',
-          reprogramado: 'Sim',
-          data_reprogramacao: '2024-01-16',
-          impacto_score: 8,
-          frequencia: 3
-        },
-        {
-          id: 2,
-          data: '2024-01-16',
-          categoria: 'operacao',
-          subcategoria: 'Programação incorreta',
-          responsavel: 'Maria Santos',
-          descricao: 'Erro na programação da rota de entrega',
-          impacto_financeiro: 75.50,
-          impacto_operacional: 'Médio',
-          reprogramado: 'Não',
-          impacto_score: 5,
-          frequencia: 1
-        },
-        {
-          id: 3,
-          data: '2024-01-17',
-          categoria: 'armazem',
-          subcategoria: 'NF não liberada',
-          responsavel: 'Pedro Costa',
-          descricao: 'Nota fiscal não foi liberada a tempo',
-          impacto_financeiro: 200.00,
-          impacto_operacional: 'Alto',
-          reprogramado: 'Sim',
-          data_reprogramacao: '2024-01-18',
-          impacto_score: 9,
-          frequencia: 2
-        }
-      ])
+    setError(null)
+    try {
+      const payload = await httpGet(API_BASE)
+      setOccurrences(Array.isArray(payload?.occurrences) ? payload.occurrences : [])
+    } catch (err) {
+      setError(err?.message || 'Erro ao carregar ocorrências')
+    } finally {
       setLoading(false)
-    }, 1000)
+    }
   }, [])
 
-  const value = {
-    occurrences,
-    loading,
-    error,
-    setOccurrences
+  useEffect(() => {
+    loadOccurrences()
+  }, [loadOccurrences])
+
+  const addOccurrence = async (occurrence) => {
+    const created = await httpPost(API_BASE, { body: JSON.stringify(occurrence) })
+    setOccurrences((prev) => [created, ...prev])
+    return created
+  }
+
+  const updateOccurrence = async (id, data) => {
+    const updated = await httpPut(`${API_BASE}/${id}`, { body: JSON.stringify(data) })
+    setOccurrences((prev) => prev.map((o) => (String(o.id) === String(id) ? updated : o)))
+    return updated
+  }
+
+  const deleteOccurrence = async (id) => {
+    await httpDelete(`${API_BASE}/${id}`)
+    setOccurrences((prev) => prev.filter((o) => String(o.id) !== String(id)))
   }
 
   return (
-    <OccurrenceContext.Provider value={value}>
+    <OccurrenceContext.Provider
+      value={{
+        occurrences,
+        loading,
+        error,
+        reload: loadOccurrences,
+        addOccurrence,
+        updateOccurrence,
+        deleteOccurrence,
+      }}
+    >
       {children}
     </OccurrenceContext.Provider>
   )

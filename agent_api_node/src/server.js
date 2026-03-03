@@ -936,6 +936,27 @@ async function insertOcorrencia(pool, payload) {
   return res
 }
 
+async function updateOcorrencia(pool, id, payload) {
+  const cols = Object.keys(payload)
+  if (cols.length === 0) return null
+  const sets = cols.map((col, idx) => `${col} = $${idx + 1}`)
+  const values = cols.map((col) => payload[col])
+  values.push(id)
+  const res = await withTx(pool, async (client) => {
+    const q = await client.query(
+      `
+      UPDATE ocorrencias_portoex
+      SET ${sets.join(', ')}, updated_at = NOW()
+      WHERE id = $${values.length}
+      RETURNING *
+      `,
+      values,
+    )
+    return q.rows?.[0] ?? null
+  })
+  return res
+}
+
 async function listOcorrencias(pool, filters) {
   const clauses = []
   const values = []
@@ -960,6 +981,22 @@ async function listOcorrencias(pool, filters) {
     return res.rows || []
   })
   return q
+}
+
+async function getOcorrenciaById(pool, id) {
+  const q = await withTx(pool, async (client) => {
+    const res = await client.query('SELECT * FROM ocorrencias_portoex WHERE id = $1', [id])
+    return res.rows?.[0] || null
+  })
+  return q
+}
+
+async function deleteOcorrencia(pool, id) {
+  const removed = await withTx(pool, async (client) => {
+    const res = await client.query('DELETE FROM ocorrencias_portoex WHERE id = $1 RETURNING id', [id])
+    return res.rowCount > 0
+  })
+  return removed
 }
 
 async function buildOcorrenciasDashboard(pool, filters) {
@@ -1076,7 +1113,86 @@ app.get('/api/ocorrencias', async (req, reply) => {
     status: (req.query?.status || '').toString().trim() || null,
   }
 
-  return null
+  return normalResponse(reply, 501, { error: 'Indisponível' })
+})
+
+app.get('/api/insights/occurrences', async (req, reply) => {
+  const sessionUser = requireLogin(req, reply)
+  if (!sessionUser) return
+
+  const filters = {
+    data_inicio: (req.query?.data_inicio || '').toString().trim() || null,
+    data_fim: (req.query?.data_fim || '').toString().trim() || null,
+    filial: (req.query?.filial || '').toString().trim() || null,
+    categoria: (req.query?.categoria || '').toString().trim() || null,
+    subcategoria: (req.query?.subcategoria || '').toString().trim() || null,
+    status: (req.query?.status || '').toString().trim() || null,
+  }
+
+  try {
+    const occurrences = await listOcorrencias(pool, filters)
+    return jsonResponse(reply, 200, { occurrences })
+  } catch (err) {
+    req.log.error({ err }, '[INSIGHTS] Falha ao listar ocorrências')
+    return jsonResponse(reply, 500, { error: err?.message || 'Erro ao listar ocorrências' })
+  }
+})
+
+app.post('/api/insights/occurrences', async (req, reply) => {
+  const sessionUser = requireLogin(req, reply)
+  if (!sessionUser) return
+
+  try {
+    const payload = normalizeOcorrenciaInput(req.body, sessionUser)
+    const created = await insertOcorrencia(pool, payload)
+    return jsonResponse(reply, 201, { occurrence: created })
+  } catch (err) {
+    req.log.error({ err }, '[INSIGHTS] Falha ao criar ocorrência')
+    return jsonResponse(reply, err?.statusCode || 500, { error: err?.message || 'Erro ao criar ocorrência' })
+  }
+})
+
+app.put('/api/insights/occurrences/:id', async (req, reply) => {
+  const sessionUser = requireLogin(req, reply)
+  if (!sessionUser) return
+
+  const id = Number.parseInt(req.params?.id, 10)
+  if (!Number.isFinite(id)) {
+    return jsonResponse(reply, 400, { error: 'ID inválido' })
+  }
+
+  try {
+    const payload = normalizeOcorrenciaInput(req.body, sessionUser)
+    const updated = await updateOcorrencia(pool, id, payload)
+    if (!updated) {
+      return jsonResponse(reply, 404, { error: 'Ocorrência não encontrada' })
+    }
+    return jsonResponse(reply, 200, { occurrence: updated })
+  } catch (err) {
+    req.log.error({ err }, '[INSIGHTS] Falha ao atualizar ocorrência')
+    return jsonResponse(reply, err?.statusCode || 500, { error: err?.message || 'Erro ao atualizar ocorrência' })
+  }
+})
+
+app.delete('/api/insights/occurrences/:id', async (req, reply) => {
+  const sessionUser = requireLogin(req, reply)
+  if (!sessionUser) return
+
+  const id = Number.parseInt(req.params?.id, 10)
+  if (!Number.isFinite(id)) {
+    return jsonResponse(reply, 400, { error: 'ID inválido' })
+  }
+
+  try {
+    const removed = await deleteOcorrencia(pool, id)
+    if (!removed) {
+      return jsonResponse(reply, 404, { error: 'Ocorrência não encontrada' })
+    }
+    return jsonResponse(reply, 200, { success: true })
+  } catch (err) {
+    req.log.error({ err }, '[INSIGHTS] Falha ao deletar ocorrência')
+    return jsonResponse(reply, 500, { error: err?.message || 'Erro ao deletar ocorrência' })
+  }
 })
 
 function normalizeRelatorioFilters(raw) {
